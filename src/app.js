@@ -195,7 +195,12 @@ function renderIstirahat() {
       ${rows || '<span class="off">Tanpa jam istirahat</span>'}
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-addb="${d}">＋ Tambah istirahat</button><button class="btn sm ghost" type="button" data-copyb="${d}">Salin ke semua hari</button></div></div>`;
   }).join("");
-  el.innerHTML = `<div class="head"><div><h2>3 · Jam Istirahat</h2><p>Selama jam istirahat tidak ada loading, perjalanan, maupun bongkar/muat; aktivitas berhenti lalu dilanjutkan setelahnya. Tiap hari bisa punya jam istirahat berbeda (mis. Jumat istirahat siang lebih panjang).</p></div></div>
+  el.innerHTML = `<div class="head"><div><h2>3 · Hari Distribusi &amp; Jam Istirahat</h2><p>Selama jam istirahat tidak ada loading, perjalanan, maupun bongkar/muat; aktivitas berhenti lalu dilanjutkan setelahnya. Tiap hari bisa punya jam istirahat berbeda (mis. Jumat istirahat siang lebih panjang).</p></div></div>
+    <div class="card pad" style="display:grid;gap:14px;align-content:start">
+      <h3>Hari distribusi</h3>
+      <div class="days" style="flex-wrap:wrap;gap:6px">${HARI.map((h, d) => `<button type="button" class="dchip big ${state.params.hari[d] ? "on" : ""}" data-chip="params.hari|${d}" data-rerender="1">${h}</button>`).join("")}</div>
+      <span class="hint">Hari yang tidak dipilih dianggap libur (contoh: Minggu). Frekuensi antar store dibagi rata ke hari yang dipilih.</span>
+    </div>
     <div class="grid3">${cards}</div>`;
   el.querySelectorAll("[data-addb]").forEach(b => b.onclick = () => { const arr = state.breaks[+b.dataset.addb]; const last = arr.reduce((m, x) => Math.max(m, toMin(x.selesai) ?? 0), 0); const st = arr.length ? Math.min(last + 60, 23 * 60) : 720; arr.push({ mulai: fmtJam(st), selesai: fmtJam(Math.min(st + 30, 1439)) }); save(); renderIstirahat(); });
   el.querySelectorAll("[data-copyb]").forEach(b => b.onclick = () => { const src = state.breaks[+b.dataset.copyb]; for (let d = 0; d < 7; d++) state.breaks[d] = clone(src); save(); renderIstirahat(); toast("Jam istirahat " + HARI[+b.dataset.copyb] + " disalin ke semua hari"); });
@@ -213,18 +218,13 @@ function renderParameter() {
     <td><button class="btn icon" type="button" data-del="params.aktivitas|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
   const peaks = L.jamSibuk.map((j, i) => `<div class="brow" style="grid-template-columns:1fr auto 1fr 80px auto"><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.mulai" value="${esc(j.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.selesai" value="${esc(j.selesai)}"><input class="in num" type="number" step="0.05" min="1" data-t="num" data-k="params.lalin.jamSibuk.${i}.faktor" value="${j.faktor}" title="Faktor pengali waktu"><button class="btn icon" type="button" data-del="params.lalin.jamSibuk|${i}" aria-label="Hapus">✕</button></div>`).join("");
   const num = (k, v, step = "0.05", extra = "") => `<input class="in num" type="number" step="${step}" data-t="num" data-k="${k}" value="${v ?? ""}" ${extra}>`;
-  el.innerHTML = `<div class="head"><div><h2>4 · Parameter</h2><p>Aturan shift, aktivitas harian, hari distribusi, dan kecepatan bongkar/muat.</p></div></div>
+  el.innerHTML = `<div class="head"><div><h2>4 · Parameter</h2><p>Aturan shift, aktivitas harian, dan kecepatan bongkar/muat.</p></div></div>
   <div class="grid2">
     <div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Shift &amp; waktu</h3>
       <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang.</span></div>
       <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
       <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
-    </div>
-    <div class="card pad" style="display:grid;gap:14px;align-content:start">
-      <h3>Hari distribusi</h3>
-      <div class="days" style="flex-wrap:wrap;gap:6px">${HARI.map((h, d) => `<button type="button" class="dchip big ${p.hari[d] ? "on" : ""}" data-chip="params.hari|${d}" data-rerender="1">${h}</button>`).join("")}</div>
-      <span class="hint">Hari yang tidak dipilih dianggap libur (contoh: Minggu). Frekuensi antar store dibagi rata ke hari yang dipilih.</span>
     </div>
   </div>
   <div class="card">

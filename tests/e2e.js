@@ -32,7 +32,7 @@ const log=(...a)=>console.log('•',...a);
   await p.click('[data-tab="istirahat"]'); await p.click('[data-addb="0"]'); await p.click('[data-addb="0"]'); await p.fill('[data-k="breaks.0.1.mulai"]','15:00'); await p.fill('[data-k="breaks.0.1.selesai"]','15:30'); await p.click('[data-copyb="0"]');
   log('breaks', await p.evaluate(()=>JSON.stringify(state.breaks[4])));
   // 5 params
-  await p.click('[data-tab="parameter"]'); await p.fill('#pShift','9'); await p.click('#addA'); await p.fill('[data-k="params.aktivitas.3.nama"]','Briefing'); await p.fill('[data-k="params.aktivitas.3.durasi"]','15'); await p.click('[data-chip="params.hari|6"]');
+  await p.click('[data-tab="parameter"]'); await p.fill('#pShift','9'); await p.click('#addA'); await p.fill('[data-k="params.aktivitas.3.nama"]','Briefing'); await p.fill('[data-k="params.aktivitas.3.durasi"]','15'); await p.click('[data-tab="istirahat"]'); await p.click('[data-chip="params.hari|6"]');
   // 6 plan
   await p.click('#btnPlan'); await p.waitForTimeout(300);
   log('plan tiles', (await p.textContent('.tiles')).replace(/\s+/g,' '));
