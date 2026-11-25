@@ -25,6 +25,7 @@ function normalize(s) {
   for (let d = 0; d < 7; d++) s.breaks[d] = s.breaks[d] || [];
   s.params = Object.assign(clone(SAMPLE.params), s.params || {});
   s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), s.params.lalin || {});
+  ["pusat", "fPusat", "fPusatLuar", "fPinggir"].forEach(k => delete s.params.lalin[k]);
   s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
   s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; });
@@ -237,14 +238,11 @@ function renderParameter() {
       <div class="grid2">
         <div style="display:grid;gap:12px;align-content:start">
           <div class="field"><label>Faktor jarak jalan (tanpa tol)</label>${num("params.lalin.faktorJalan", L.faktorJalan)}<span class="hint">Jarak garis lurus × faktor ini = perkiraan jarak jalan. 1,65 dikalibrasi ke Google Maps "hindari tol" di Makassar.</span></div>
-          <div class="field"><label>Pusat kota (zona macet)</label><div class="row">${num("params.lalin.pusat.lat", L.pusat.lat, "any", 'placeholder="lat"')}${num("params.lalin.pusat.lng", L.pusat.lng, "any", 'placeholder="lng"')}${num("params.lalin.pusat.radiusKm", L.pusat.radiusKm, "0.5", 'title="Radius km" style="max-width:80px"')}<span>km</span></div></div>
-          <div class="field"><label>Batas antar kota</label><div class="row">${num("params.lalin.batasAntarKotaKm", L.batasAntarKotaKm, "1", 'style="max-width:110px"')}<span>km garis lurus</span></div></div>
+          <div class="field"><label>Batas antar kota</label><div class="row">${num("params.lalin.batasAntarKotaKm", L.batasAntarKotaKm, "1", 'style="max-width:110px"')}<span>km garis lurus</span></div><span class="hint">Perjalanan antar titik yang lebih jauh dari batas ini memakai faktor antar kota; yang lebih dekat memakai faktor dalam kota.</span></div>
         </div>
         <div style="display:grid;gap:12px;align-content:start">
           <div class="field"><label>Faktor macet (pengali waktu tempuh)</label>
-            <div class="brow" style="grid-template-columns:1fr 90px"><span>Dalam pusat kota</span>${num("params.lalin.fPusat", L.fPusat)}</div>
-            <div class="brow" style="grid-template-columns:1fr 90px"><span>Masuk/keluar pusat kota</span>${num("params.lalin.fPusatLuar", L.fPusatLuar)}</div>
-            <div class="brow" style="grid-template-columns:1fr 90px"><span>Pinggiran kota</span>${num("params.lalin.fPinggir", L.fPinggir)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Dalam kota</span>${num("params.lalin.fDalamKota", L.fDalamKota)}</div>
             <div class="brow" style="grid-template-columns:1fr 90px"><span>Antar kota</span>${num("params.lalin.fAntarKota", L.fAntarKota)}</div></div>
           <div class="field"><label>Jam sibuk (faktor tambahan)</label>${peaks || '<span class="off">Tidak ada</span>'}<div><button class="btn sm" type="button" id="addPeak">＋ Tambah jam sibuk</button></div></div>
         </div>

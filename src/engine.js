@@ -39,9 +39,7 @@ function makeCtx(state, day) {
   const p = state.params, L = p.lalin;
   const breaks = (state.breaks[day] || []).map(b => [toMin(b.mulai), toMin(b.selesai)]).filter(b => b[0] != null && b[1] != null && b[1] > b[0]).sort((a, b) => a[0] - b[0]);
   const peaks = (L.jamSibuk || []).map(j => [toMin(j.mulai), toMin(j.selesai), +j.faktor || 1]).filter(j => j[0] != null && j[1] != null);
-  const pusat = L.pusat && L.pusat.lat != null ? [+L.pusat.lat, +L.pusat.lng] : null;
   const rate = Math.max(0.01, +p.rasioKgMenit || 30);
-  function inCore(pt) { return pusat && +L.pusat.radiusKm > 0 && hav(pt, pusat) <= +L.pusat.radiusKm; }
   function advance(t, dur) {
     for (let guard = 0; guard < 100; guard++) {
       for (const [a, b] of breaks) if (a <= t && t < b) t = b;
@@ -58,8 +56,7 @@ function makeCtx(state, day) {
     let f;
     if (h >= (+L.batasAntarKotaKm || 25)) f = +L.fAntarKota || 1;
     else {
-      const ca = inCore(a), cb = inCore(b);
-      f = (ca && cb) ? (+L.fPusat || 1) : ((ca || cb) ? (+L.fPusatLuar || 1) : (+L.fPinggir || 1));
+      f = +L.fDalamKota || 1;
       if (t != null) { const tm = ((t % 1440) + 1440) % 1440; for (const [s, e, x] of peaks) if (tm >= s && tm < e) { f *= x; break; } }
     }
     return { km: road, min: road / Math.max(1, speed) * 60 * f };
