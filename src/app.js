@@ -27,6 +27,8 @@ function normalize(s) {
   s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), s.params.lalin || {});
   ["pusat", "fPusat", "fPusatLuar", "fPinggir"].forEach(k => delete s.params.lalin[k]);
   s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
+  // alamat lama "Makassar" pada store contoh -> pakai alamat hasil koordinat
+  s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
   s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
@@ -55,6 +57,7 @@ document.addEventListener("input", e => {
   // tampilan turunan
   if (el.dataset.ton) { const s = document.getElementById(el.dataset.ton); if (s) s.textContent = ton(v); }
   if (el.dataset.link) onLink(el, v);
+  if (el.dataset.alamat != null) { const st = state.stores[+el.dataset.alamat]; if (st) st.alamatAuto = false; }
   save();
 });
 document.addEventListener("change", e => {
@@ -78,6 +81,40 @@ document.addEventListener("click", e => {
   if (del) { const [path, idx] = del.dataset.del.split("|"); getPath(path).splice(+idx, 1); save(); renderTab(); return; }
 });
 
+/* Alamat otomatis dari koordinat (reverse geocoding OpenStreetMap/Nominatim, maks. 1 permintaan per detik) */
+let geoLast = 0; const geoTimers = {};
+function fmtAlamat(ad) {
+  if (!ad) return "";
+  const jalan = ad.road ? ad.road + (ad.house_number ? " No. " + ad.house_number : "") : (ad.commercial || ad.amenity || ad.neighbourhood || "");
+  const parts = [jalan, ad.suburb || ad.village || ad.hamlet, ad.city_district, ad.city || ad.town || ad.county || ad.regency || ad.municipality];
+  return parts.filter((x, i, arr) => x && arr.indexOf(x) === i).join(", ");
+}
+async function reverseGeocode(lat, lng) {
+  const wait = 1100 - (Date.now() - geoLast); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  geoLast = Date.now();
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=id&lat=" + lat + "&lon=" + lng);
+    if (r.ok) { const j = await r.json(); const s = fmtAlamat(j.address); if (s) return s; }
+  } catch (e) {}
+  try { // cadangan: Photon (Komoot)
+    const r = await fetch("https://photon.komoot.io/reverse?lat=" + lat + "&lon=" + lng);
+    const p = (await r.json()).features[0].properties;
+    return [p.street || p.name, p.district || p.locality, p.city || p.county].filter(Boolean).join(", ");
+  } catch (e) { return ""; }
+}
+async function isiAlamat(s, i) {
+  if (s.lat == null || s.lng == null) return false;
+  const msg = document.getElementById("lm" + i);
+  if (msg) { msg.className = "msg"; msg.textContent = "Mencari alamat…"; }
+  const lat = s.lat, lng = s.lng;
+  const al = await reverseGeocode(lat, lng);
+  if (s.lat !== lat || s.lng !== lng) return false; // link sudah diganti lagi
+  if (!al) { if (msg) { msg.className = "msg bad"; msg.textContent = "Koordinat terbaca, alamat tidak ditemukan (isi manual)"; } return false; }
+  s.alamat = al; s.alamatAuto = true; save();
+  const inp = document.querySelector(`[data-k="stores.${i}.alamat"]`); if (inp) { inp.value = al; inp.title = al; }
+  if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat & alamat terisi otomatis"; }
+  return true;
+}
 function onLink(el, v) {
   const i = +el.dataset.link; const s = state.stores[i]; const msg = document.getElementById("lm" + i);
   const r = parseKoordinat(v);
@@ -86,6 +123,7 @@ function onLink(el, v) {
     const la = document.getElementById("lat" + i), lo = document.getElementById("lng" + i);
     if (la) la.value = r.lat; if (lo) lo.value = r.lng;
     if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat terbaca"; }
+    clearTimeout(geoTimers[i]); geoTimers[i] = setTimeout(() => isiAlamat(s, i), 700);
   } else if (msg) {
     if (!v) { msg.textContent = ""; }
     else if (r && r.short) { msg.className = "msg bad"; msg.textContent = "Link pendek: buka link, lalu salin URL lengkap dari address bar"; }
@@ -162,10 +200,10 @@ function renderStore() {
     return `<tr>
     <td><input type="checkbox" data-k="stores.${i}.aktif" ${s.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
     <td><input class="in" data-k="stores.${i}.nama" value="${esc(s.nama)}" style="min-width:190px"></td>
-    <td><input class="in" data-k="stores.${i}.alamat" value="${esc(s.alamat)}" style="min-width:150px"></td>
+    <td><input class="in" data-k="stores.${i}.alamat" data-alamat="${i}" value="${esc(s.alamat)}" title="${esc(s.alamat || "")}" placeholder="Terisi otomatis dari link" style="min-width:240px"></td>
     <td><input class="in mono" data-k="stores.${i}.link" data-link="${i}" value="${esc(s.link)}" placeholder="Tempel link Google Maps" style="min-width:200px"><div class="msg" id="lm${i}"></div></td>
-    <td><input class="in num" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" style="min-width:118px"></td>
-    <td><input class="in num" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" style="min-width:128px"></td>
+    <td><input class="in num auto" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" readonly tabindex="-1" title="Terisi otomatis dari link titik maps" style="min-width:118px"></td>
+    <td><input class="in num auto" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" readonly tabindex="-1" title="Terisi otomatis dari link titik maps" style="min-width:128px"></td>
     <td><input class="in mono" type="time" data-k="stores.${i}.buka" value="${esc(s.buka)}" style="min-width:86px"></td>
     <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
     <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
@@ -179,8 +217,9 @@ function renderStore() {
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
   const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
-  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps, koordinat terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</details></div>
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</details></div>
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
+    <button class="btn" type="button" id="geoAll" title="Isi alamat semua store dari koordinatnya">⟳ Isi alamat otomatis</button>
     <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
     ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
     <div class="card tbl-wrap lock pin2"><table>
@@ -188,6 +227,14 @@ function renderStore() {
     <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
     <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai menu <b>Data → Impor store dari Excel/CSV</b>.</p>`;
   $("#addS").onclick = () => { state.stores.push({ id: uid("s"), aktif: true, nama: "Store baru", alamat: "", link: "", lat: null, lng: null, buka: "08:00", tutup: "21:00", beratKg: 500, frek: 1, antaran: "Tujuan", loading: "Menurunkan", hariTetap: [] }); storeFilter = ""; save(); renderStore(); };
+  $("#geoAll").onclick = async () => {
+    const b = $("#geoAll"); if (b.disabled) return;
+    const todo = state.stores.map((s, i) => [s, i]).filter(([s]) => s.lat != null && s.lng != null && (!s.alamat || s.alamatAuto !== false));
+    if (!todo.length) { toast("Tidak ada store yang perlu diisi alamatnya"); return; }
+    b.disabled = true; let ok = 0, n = 0;
+    for (const [s, i] of todo) { n++; b.textContent = "Mengisi alamat " + n + "/" + todo.length + "…"; if (await isiAlamat(s, i)) ok++; }
+    b.disabled = false; b.textContent = "⟳ Isi alamat otomatis"; toast(ok + " dari " + todo.length + " alamat terisi");
+  };
   const ss = $("#storeSearch"); ss.oninput = () => { storeFilter = ss.value; const pos = ss.selectionStart; renderStore(); const n = $("#storeSearch"); n.focus(); n.setSelectionRange(pos, pos); };
 }
 

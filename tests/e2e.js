@@ -19,7 +19,7 @@ const log=(...a)=>console.log('•',...a);
   const links=['https://www.google.com/maps/@-5.1019978,119.4786111,15z','https://www.google.com/maps/place/Toko+A/@-5.15,119.42,17z/data=!3m1!4b1!4m6!3m5!1s0x2dbee:0x1!8m2!3d-5.1631663!4d119.4525599!16s','https://maps.google.com/?q=-5.1823601,119.4453868','https://maps.app.goo.gl/AbCdEf123','-5.1169668, 119.5093495'];
   for(let i=0;i<links.length;i++){ await p.click('#addS'); await p.fill(`[data-k="stores.${i}.nama"]`, i?'Store '+i:'Gudang'); await p.fill(`[data-link="${i}"]`, links[i]); log('link',i, await p.inputValue('#lat'+i), await p.inputValue('#lng'+i), await p.textContent('#lm'+i)); }
   await p.selectOption('[data-k="stores.0.antaran"]','Origin'); await p.waitForTimeout(100);
-  await p.fill('#lat3','-5.1374438'); await p.fill('#lng3','119.5136457');
+  await p.fill('[data-link="3"]','-5.1374438, 119.5136457');
   await p.fill('[data-k="stores.1.beratKg"]','1200.5'); await p.selectOption('[data-k="stores.1.frek"]','2');
   await p.fill('[data-k="stores.2.beratKg"]','800'); await p.fill('[data-k="stores.2.tutup"]','11:00');
   await p.fill('[data-k="stores.3.beratKg"]','2500'); await p.click('[data-chip="stores.3.hariTetap|2"]');
