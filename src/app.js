@@ -387,7 +387,7 @@ document.addEventListener("mousemove", e => {
 /* ---------- Peta ---------- */
 let map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
 const osrmCache = {};
-try { Object.assign(osrmCache, JSON.parse(localStorage.getItem(LS_KEY + "-osrm") || "{}")); } catch (e) {}
+try { localStorage.removeItem(LS_KEY + "-osrm"); Object.assign(osrmCache, JSON.parse(localStorage.getItem(LS_KEY + "-rute-tanpa-tol") || "{}")); } catch (e) {}
 function ensureMap() {
   if (map || typeof L === "undefined") return;
   const el = $("#map"); el.innerHTML = ""; el.classList.add("map-gray");
@@ -403,17 +403,36 @@ function updateMapNote() {
   if (!tileOk && tileErr >= 1) n.innerHTML = `<div class="banner info"><div><b>Peta dasar tidak bisa dimuat di halaman ini</b> (akses ke server peta dibatasi), jadi rute digambar sebagai garis lurus antar titik. Untuk peta dasar abu-abu dan rute mengikuti jalan, unduh aplikasi ini lewat <b>Data → Unduh aplikasi ini (HTML)</b> lalu buka file-nya di Chrome/Edge.</div></div>`;
   else n.innerHTML = "";
 }
+/* Rute jalan: Valhalla (FOSSGIS) dengan jalan tol DIBLOK (exclude_tolls) — termasuk Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan. */
+function decodePoly6(str) {
+  const out = []; let i = 0, lat = 0, lng = 0;
+  while (i < str.length) {
+    for (const k of [0, 1]) {
+      let b, sh = 0, r = 0;
+      do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+      const d = (r & 1) ? ~(r >> 1) : (r >> 1);
+      if (k === 0) lat += d; else lng += d;
+    }
+    out.push([+(lat / 1e6).toFixed(5), +(lng / 1e6).toFixed(5)]);
+  }
+  return out;
+}
+let lastRouteReq = 0;
 async function osrmRoute(pts) {
   const key = pts.map(p => p[0].toFixed(5) + "," + p[1].toFixed(5)).join(";");
   if (osrmCache[key]) return osrmCache[key];
-  const url = "https://router.project-osrm.org/route/v1/driving/" + pts.map(p => p[1] + "," + p[0]).join(";") + "?overview=full&geometries=geojson";
-  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+  const wait = 1100 - (Date.now() - lastRouteReq); if (wait > 0) await new Promise(r => setTimeout(r, wait)); // batas pemakaian server publik
+  lastRouteReq = Date.now();
+  const body = { locations: pts.map(p => ({ lat: p[0], lon: p[1], type: "break" })), costing: "auto", costing_options: { auto: { exclude_tolls: true, use_tolls: 0 } }, directions_options: { units: "km" }, directions_type: "none" };
+  const url = "https://valhalla1.openstreetmap.de/route?json=" + encodeURIComponent(JSON.stringify(body));
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 12000);
   try {
     const r = await fetch(url, { signal: ctl.signal }); const j = await r.json();
-    if (j.code !== "Ok") return null;
-    const g = j.routes[0].geometry.coordinates.map(c => [+c[1].toFixed(5), +c[0].toFixed(5)]);
+    if (!j.trip || !j.trip.legs) return null;
+    if (j.trip.summary && j.trip.summary.has_toll) return null; // jangan pernah tampilkan rute lewat tol
+    const g = j.trip.legs.flatMap(l => decodePoly6(l.shape));
     osrmCache[key] = g;
-    try { localStorage.setItem(LS_KEY + "-osrm", JSON.stringify(osrmCache)); } catch (e) {}
+    try { localStorage.setItem(LS_KEY + "-rute-tanpa-tol", JSON.stringify(osrmCache)); } catch (e) {}
     return g;
   } catch (e) { return null; } finally { clearTimeout(to); }
 }
@@ -421,7 +440,7 @@ function renderPeta() {
   if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
   if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
   if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
-  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (OSRM)</label>`;
+  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan, tanpa tol</label>`;
   document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
   $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
   ensureMap();
