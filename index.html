@@ -1741,7 +1741,7 @@ function renderPlan() {
       <div class="tile"><div class="k">Muatan diantar</div><div class="v">${fmtNum(kg / 1000, 1)}<small>ton</small></div></div>
       <div class="tile"><div class="k">Barang dinaikkan</div><div class="v">${fmtNum(pk / 1000, 1)}<small>ton</small></div></div>
       <div class="tile"><div class="k">Jarak tempuh</div><div class="v">${fmtNum(km)}<small>km</small></div></div>
-      <div class="tile" title="Rata-rata durasi kerja per shift dibanding batas ${state.params.jamShift} jam per shift"><div class="k">Jam kerja / shift (dari ${fmtNum(+state.params.jamShift, 1)} jam)</div><div class="v">${fmtNum(avgPct * 100)}<small>% · ${fmtNum(avgDur / 60, 1)} jam</small></div></div>
+      <div class="tile" title="Rata-rata durasi kerja per shift dibanding batas ${state.params.jamShift} jam per shift"><div class="k">Jam kerja / shift (dari ${fmtNum(+state.params.jamShift, +state.params.jamShift % 1 ? 1 : 0)} jam)</div><div class="v">${fmtNum(avgPct * 100)}<small>% · ${fmtNum(avgDur / 60, 1)} jam</small></div></div>
       <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
       <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
     </div>`;
