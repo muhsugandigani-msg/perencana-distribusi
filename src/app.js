@@ -297,7 +297,7 @@ function vehTable(plan) {
   const tr = (lbl, r, b) => `<tr${b ? ' style="font-weight:700;background:var(--surface2)"' : ""}><td>${lbl}</td><td class="num mono">${r.rit}</td><td class="num mono">${r.kunj}</td><td class="num mono">${fmtNum(r.del)} kg <span class="sub">${ton(r.del)}</span></td><td class="num mono">${fmtNum(r.pick)} kg <span class="sub">${ton(r.pick)}</span></td><td class="num mono">${fmtNum(r.km, 1)} km</td>${pctCell(r.jamPct)}${pctCell(r.muatPct)}</tr>`;
   return `<div class="card"><div class="head" style="padding:14px 16px 0"><div><h3>Ringkasan per kendaraan</h3><p class="hint" style="margin-top:4px">% jam kerja = rata-rata durasi per shift dibanding ${fmtNum(+state.params.jamShift, +state.params.jamShift % 1 ? 1 : 0)} jam kerja per shift. % muatan = rata-rata isi per rit dibanding kapasitas kendaraan (muatan diantar atau dinaikkan, yang lebih besar).</p></div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Kendaraan</th><th class="num">Total rit</th><th class="num">Total kunjungan</th><th class="num">Muatan diantar</th><th class="num">Muatan dinaikkan</th><th class="num">Jarak tempuh</th><th class="num">% jam kerja</th><th class="num">% muatan</th></tr></thead><tbody>
-    ${S.rows.map(r => tr(`<b>${esc(r.v.jenis)}</b> ${r.v.plat ? `<span class="plate">${esc(r.v.plat)}</span>` : ""}`, r)).join("")}
+    ${S.rows.map(r => tr(`<div style="display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:150px"><b>${esc(r.v.jenis)}</b>${r.v.plat ? `<span class="plate">${esc(r.v.plat)}</span>` : ""}</div>`, r)).join("")}
     ${S.rows.length > 1 ? tr("Total", S.total, true) : ""}
     </tbody></table></div></div>`;
 }
