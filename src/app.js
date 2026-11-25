@@ -30,6 +30,8 @@ function normalize(s) {
   s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
+  s.params.jalanBlok = s.params.jalanBlok || clone(SAMPLE.params.jalanBlok);
+  s.params.jalanBlok.daftar = (s.params.jalanBlok.daftar || []).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   return s;
 }
 let saveT = null;
@@ -232,6 +234,11 @@ function renderParameter() {
       <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
     </div>
   </div>
+  <div class="card pad" style="display:grid;gap:12px">
+    <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-k="params.jalanBlok.semuaTol" ${p.jalanBlok.semuaTol !== false ? "checked" : ""}> <span><b>Blok semua jalan tol</b> <span class="hint">(Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan, dan tol lain)</span></span></label>
+    <div style="display:grid;gap:6px">${p.jalanBlok.daftar.map((j, i) => `<div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto"><input type="checkbox" data-k="params.jalanBlok.daftar.${i}.aktif" ${j.aktif !== false ? "checked" : ""} aria-label="Aktif"><input class="in" data-k="params.jalanBlok.daftar.${i}.nama" value="${esc(j.nama || "")}" placeholder="Nama jalan, mis. Tol Reformasi"><button class="btn icon" type="button" data-del="params.jalanBlok.daftar|${i}" aria-label="Hapus">✕</button></div>`).join("") || '<span class="off">Belum ada jalan yang diblok.</span>'}</div>
+  </div>
   <div class="card">
     <div class="head" style="padding:14px 16px 0"><div><h3>Aktivitas per hari</h3><p class="hint" style="margin-top:4px">Contoh: loading di gudang 60 menit, antri BBM 60 menit. Aktivitas <b>sebelum berangkat</b> dijalankan berurutan sebelum rit; yang <b>tidak</b> masuk jam shift dijalankan lebih dulu (mis. pembersihan Senin pagi) dan menggeser jam mulai shift. Aktivitas <b>setelah kembali ke gudang</b> (mis. loading untuk esok hari) dijalankan begitu kendaraan pulang dari rit dan menyiapkan rit berikutnya, jadi tidak perlu dilakukan lagi pagi harinya.</p></div><button class="btn" type="button" id="addA">＋ Tambah aktivitas</button></div>
     <div class="tbl-wrap lock"><table><thead><tr><th>Jenis aktivitas</th><th class="num">Durasi (menit)</th><th>Hari</th><th title="Setelah kembali = disiapkan untuk rit berikutnya (shift berikutnya atau esok hari)">Waktu pelaksanaan</th><th>Berlaku</th><th>Masuk jam shift</th><th></th></tr></thead><tbody>${acts || `<tr><td colspan="7" class="empty">Belum ada aktivitas.</td></tr>`}</tbody></table></div>
@@ -253,6 +260,7 @@ function renderParameter() {
     </details>
   </div>`;
   $("#addA").onclick = () => { p.aktivitas.push({ id: uid("a"), nama: "Aktivitas baru", durasi: 30, hari: [true, true, true, true, true, true, true], waktu: "sebelum", berlaku: "semua", dihitung: true }); save(); renderParameter(); };
+  $("#addJB").onclick = () => { p.jalanBlok.daftar.push({ id: uid("j"), nama: "", aktif: true }); save(); renderParameter(); const ins = document.querySelectorAll('[data-k^="params.jalanBlok.daftar."][data-k$=".nama"]'); if (ins.length) ins[ins.length - 1].focus(); };
   $("#addPeak").onclick = () => { L.jamSibuk.push({ mulai: "07:00", selesai: "09:00", faktor: 1.2 }); save(); renderParameter(); $("details.adv").open = true; };
 }
 
@@ -418,29 +426,67 @@ function decodePoly6(str) {
   return out;
 }
 let lastRouteReq = 0;
-async function osrmRoute(pts) {
-  const key = pts.map(p => p[0].toFixed(5) + "," + p[1].toFixed(5)).join(";");
-  if (osrmCache[key]) return osrmCache[key];
+/* Jalan yang diblok (Parameter): "blok semua tol" + daftar nama jalan. Nama jalan diblok secara adaptif:
+   jika rute masih melewati jalan itu, titik-titik di ruas tsb. dijadikan area terlarang lalu rute dihitung ulang. Titik yang dipelajari disimpan. */
+const blokTitik = {};
+try { Object.assign(blokTitik, JSON.parse(localStorage.getItem(LS_KEY + "-blok-titik") || "{}")); } catch (e) {}
+function normJalan(s) {
+  return " " + String(s || "").toLowerCase().replace(/\./g, " ").replace(/\binsinyur\b/g, "ir").replace(/\bdokter\b/g, "dr").replace(/\bjenderal\b/g, "jend").replace(/\b(jalan|jln|jl)\b/g, " ").replace(/\s+/g, " ").trim() + " ";
+}
+function blokCfg() {
+  const b = state.params.jalanBlok || {};
+  return { tol: b.semuaTol !== false, nama: (b.daftar || []).filter(x => x.aktif !== false && String(x.nama || "").trim()).map(x => normJalan(x.nama)) };
+}
+function cincin(lat, lng, m) { const dl = m / 111320, dg = m / (111320 * Math.cos(lat * Math.PI / 180)); const r = []; for (let i = 0; i <= 8; i++) { const a = i / 8 * 2 * Math.PI; r.push([+(lng + dg * Math.cos(a)).toFixed(6), +(lat + dl * Math.sin(a)).toFixed(6)]); } return r; }
+async function valhalla(body) {
   const wait = 1100 - (Date.now() - lastRouteReq); if (wait > 0) await new Promise(r => setTimeout(r, wait)); // batas pemakaian server publik
   lastRouteReq = Date.now();
-  const body = { locations: pts.map(p => ({ lat: p[0], lon: p[1], type: "break" })), costing: "auto", costing_options: { auto: { exclude_tolls: true, use_tolls: 0 } }, directions_options: { units: "km" }, directions_type: "none" };
-  const url = "https://valhalla1.openstreetmap.de/route?json=" + encodeURIComponent(JSON.stringify(body));
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 12000);
+  try { const r = await fetch("https://valhalla1.openstreetmap.de/route?json=" + encodeURIComponent(JSON.stringify(body)), { signal: ctl.signal }); return await r.json(); }
+  finally { clearTimeout(to); }
+}
+async function osrmRoute(pts) {
+  const cfg = blokCfg();
+  const key = (cfg.tol ? "T" : "t") + (cfg.nama.length ? "[" + cfg.nama.join("|") + "]" : "") + pts.map(p => p[0].toFixed(5) + "," + p[1].toFixed(5)).join(";");
+  if (osrmCache[key]) return osrmCache[key];
   try {
-    const r = await fetch(url, { signal: ctl.signal }); const j = await r.json();
-    if (!j.trip || !j.trip.legs) return null;
-    if (j.trip.summary && j.trip.summary.has_toll) return null; // jangan pernah tampilkan rute lewat tol
-    const g = j.trip.legs.flatMap(l => decodePoly6(l.shape));
-    osrmCache[key] = g;
-    try { localStorage.setItem(LS_KEY + "-rute-tanpa-tol", JSON.stringify(osrmCache)); } catch (e) {}
-    return g;
-  } catch (e) { return null; } finally { clearTimeout(to); }
+    for (let iter = 0; iter < 5; iter++) {
+      const zona = cfg.nama.flatMap(n => blokTitik[n] || []);
+      const body = { locations: pts.map(p => ({ lat: p[0], lon: p[1], type: "break" })), costing: "auto", costing_options: { auto: cfg.tol ? { exclude_tolls: true, use_tolls: 0 } : {} }, directions_options: { units: "km" } };
+      if (zona.length) body.exclude_polygons = zona.map(([la, ln]) => cincin(la, ln, 14));
+      const j = await valhalla(body);
+      if (!j.trip || !j.trip.legs) return null;
+      if (cfg.tol && j.trip.summary && j.trip.summary.has_toll) return null; // jangan pernah tampilkan rute lewat tol
+      // cek nama jalan yang diblok
+      let baru = 0;
+      j.trip.legs.forEach(l => {
+        const shp = decodePoly6(l.shape);
+        (l.maneuvers || []).forEach(m => {
+          const nms = (m.street_names || []).map(normJalan);
+          const hit = cfg.nama.find(n => nms.some(x => x.includes(n))); if (!hit) return;
+          const seg = shp.slice(m.begin_shape_index, m.end_shape_index + 1);
+          const inner = seg.length > 2 ? seg.slice(1, -1) : seg; // hindari titik persimpangan
+          const step = Math.max(1, Math.floor(inner.length / 6));
+          const list = blokTitik[hit] = blokTitik[hit] || [];
+          for (let i = 0; i < inner.length; i += step) { const p = inner[i]; if (!list.some(q => Math.abs(q[0] - p[0]) < 2e-4 && Math.abs(q[1] - p[1]) < 2e-4)) { list.push(p); baru++; } }
+        });
+      });
+      if (!baru) {
+        const g = j.trip.legs.flatMap(l => decodePoly6(l.shape));
+        osrmCache[key] = g;
+        try { localStorage.setItem(LS_KEY + "-rute-tanpa-tol", JSON.stringify(osrmCache)); } catch (e) {}
+        return g;
+      }
+      try { localStorage.setItem(LS_KEY + "-blok-titik", JSON.stringify(blokTitik)); } catch (e) {}
+    }
+    return null; // masih melewati jalan yang diblok: tampilkan garis lurus
+  } catch (e) { return null; }
 }
 function renderPeta() {
   if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
   if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
   if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
-  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan, tanpa tol</label>`;
+  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (hindari jalan yang diblok)</label>`;
   document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
   $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
   ensureMap();
@@ -526,6 +572,8 @@ function exportExcel() {
   const sto = storeRows();
   const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
+  par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
+  state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
   HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
   if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
