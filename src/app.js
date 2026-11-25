@@ -427,7 +427,7 @@ function decodePoly6(str) {
 }
 let lastRouteReq = 0;
 /* Jalan yang diblok (Parameter): "blok semua tol" + daftar nama jalan. Nama jalan diblok secara adaptif:
-   jika rute masih melewati jalan itu, titik-titik di ruas tsb. dijadikan area terlarang lalu rute dihitung ulang. Titik yang dipelajari disimpan. */
+   jika rute masih melewati jalan itu, titik-titik di ruas tsb. dikeluarkan (exclude_locations) lalu rute dihitung ulang. Titik yang dipelajari disimpan. */
 const blokTitik = {};
 try { Object.assign(blokTitik, JSON.parse(localStorage.getItem(LS_KEY + "-blok-titik") || "{}")); } catch (e) {}
 function normJalan(s) {
@@ -453,7 +453,7 @@ async function osrmRoute(pts) {
     for (let iter = 0; iter < 5; iter++) {
       const zona = cfg.nama.flatMap(n => blokTitik[n] || []);
       const body = { locations: pts.map(p => ({ lat: p[0], lon: p[1], type: "break" })), costing: "auto", costing_options: { auto: cfg.tol ? { exclude_tolls: true, use_tolls: 0 } : {} }, directions_options: { units: "km" } };
-      if (zona.length) body.exclude_polygons = zona.map(([la, ln]) => cincin(la, ln, 14));
+      if (zona.length) body.exclude_locations = zona.slice(-50).map(([la, ln]) => ({ lat: la, lon: ln })); // ruas jalan di titik ini dikeluarkan (maks. 50 titik di server publik)
       const j = await valhalla(body);
       if (!j.trip || !j.trip.legs) return null;
       if (cfg.tol && j.trip.summary && j.trip.summary.has_toll) return null; // jangan pernah tampilkan rute lewat tol
@@ -466,7 +466,7 @@ async function osrmRoute(pts) {
           const hit = cfg.nama.find(n => nms.some(x => x.includes(n))); if (!hit) return;
           const seg = shp.slice(m.begin_shape_index, m.end_shape_index + 1);
           const inner = seg.length > 2 ? seg.slice(1, -1) : seg; // hindari titik persimpangan
-          const step = Math.max(1, Math.floor(inner.length / 6));
+          const step = Math.max(1, Math.floor(inner.length / 3));
           const list = blokTitik[hit] = blokTitik[hit] || [];
           for (let i = 0; i < inner.length; i += step) { const p = inner[i]; if (!list.some(q => Math.abs(q[0] - p[0]) < 2e-4 && Math.abs(q[1] - p[1]) < 2e-4)) { list.push(p); baru++; } }
         });
