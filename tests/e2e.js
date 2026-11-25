@@ -50,11 +50,11 @@ const log=(...a)=>console.log('•',...a);
   const fh = await dl(()=>p.click('#btnMenu').then(()=>p.click('[data-act="html"]'))); log('html', fh, fs.statSync(fh).size);
   const before = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariTetap])));
   // import store from exported excel (Store sheet), replace
-  await p.click('#btnMenu'); const [fc]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc.setFiles(fx); await p.waitForTimeout(300); log('confirm', await p.textContent('#confirmBox')); await p.click('[data-ci="0"]'); await p.waitForTimeout(200);
+  await p.click('#btnMenu'); const [fc]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc.setFiles(fx); await p.waitForTimeout(300); log('imp', await p.textContent('.imp')); await p.waitForTimeout(200);
   const after = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariTetap])));
   log('excel roundtrip equal:', before===after); if(before!==after){console.log(before);console.log(after);}
   // template import
-  await p.click('#btnMenu'); const [fc2]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc2.setFiles(ft); await p.waitForTimeout(300); await p.click('[data-ci="1"]'); log('after template add', await p.evaluate(()=>JSON.stringify(state.stores.slice(-3).map(s=>[s.nama,s.lat,s.lng,s.beratKg,s.frek,s.antaran,s.loading,s.hariTetap,s.buka]))));
+  await p.click('#btnMenu'); const [fc2]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc2.setFiles(ft); await p.waitForTimeout(300); log('after template add', await p.evaluate(()=>JSON.stringify(state.stores.slice(-3).map(s=>[s.nama,s.lat,s.lng,s.beratKg,s.frek,s.antaran,s.loading,s.hariTetap,s.buka]))));
   // json import
   await p.click('#btnMenu'); const [fc3]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="import"]')]); await fc3.setFiles(fj); await p.waitForTimeout(300); log('json import stores', await p.evaluate(()=>state.stores.length));
   // sample reload

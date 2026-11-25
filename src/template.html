@@ -67,6 +67,11 @@ main { padding-block: 20px 60px; }
 .head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .head h2 { font: 700 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; margin: 0; margin-right: auto; text-wrap: balance; }
 .head p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.addways { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 12px; }
+.addways .way { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; }
+.addways .way > div:first-child { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.addways .way .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.addways .imp { font-size: 12.5px; color: var(--ok, #1a7f45); margin-top: 2px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
 .card.pad { padding: 16px; }
 .tbl-wrap { overflow-x: auto; }
@@ -204,7 +209,7 @@ details.adv[open] summary { margin-bottom: 12px; }
           <button type="button" data-act="excel">Unduh plan (Excel)</button>
           <button type="button" data-act="export">Simpan data input (JSON)</button>
           <button type="button" data-act="import">Buka data input (JSON)</button>
-          <button type="button" data-act="importStore">Impor store dari Excel/CSV</button>
+          <button type="button" data-act="importStore">Upload store dari Excel (update/tambah)</button>
           <button type="button" data-act="template">Unduh template store (Excel)</button>
           <hr>
           <button type="button" data-act="html">Unduh aplikasi ini (HTML)</button>

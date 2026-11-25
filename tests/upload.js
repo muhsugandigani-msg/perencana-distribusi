@@ -1,0 +1,14 @@
+const { chromium } = require('playwright'); const XLSX = require('../deps/xlsx');
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1400,height:800},acceptDownloads:true});
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.goto('file://'+__dirname+'/local.html');await p.click('[data-tab="store"]');
+const n0=await p.evaluate(()=>state.stores.length);
+const [dl]=await Promise.all([p.waitForEvent('download'),p.click('#tplS')]); const tp=__dirname+'/../tpl.xlsx'; await dl.saveAs(tp);
+const twb=XLSX.readFile(tp); console.log('template sheets',twb.SheetNames, XLSX.utils.sheet_to_json(twb.Sheets.Store,{header:1})[0].length);
+const rows=[["Nama store","Berat (kg)","Link maps","Frekuensi kirim"],["  lazuna chicken PANAKKUKANG ",1234,"",""],["Store Baru X",500,"https://www.google.com/maps/place/@-5.2062,119.4540,17z","3x seminggu"],["Store Baru X",600,"",""]];
+const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Store"); const up=__dirname+'/../up.xlsx'; XLSX.writeFile(wb,up);
+const before=await p.evaluate(()=>{const s=state.stores.find(x=>x.nama==="Lazuna Chicken Panakkukang");return {id:s.id,kg:s.beratKg,alamat:s.alamat,frek:s.frek};});
+await p.setInputFiles('#fileStore',up); await p.waitForTimeout(800);
+const after=await p.evaluate(()=>{const s=state.stores.find(x=>x.nama.toLowerCase().includes("panakkukang"));const x=state.stores.find(x=>x.nama==="Store Baru X");return {n:state.stores.length,s:{id:s.id,kg:s.beratKg,alamat:s.alamat,frek:s.frek,nama:s.nama},x:{kg:x.beratKg,lat:x.lat,lng:x.lng,frek:x.frek},imp:document.querySelector('.imp')?.textContent};});
+console.log(n0,JSON.stringify(before),JSON.stringify(after),errs);
+await p.screenshot({path:__dirname+'/../up.png'}); await b.close();})();
