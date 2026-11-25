@@ -1,0 +1,572 @@
+/* ===== Aplikasi ===== */
+const LS_KEY = "perencana-distribusi-v1";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = p => p + Math.random().toString(36).slice(2, 8);
+const fmtNum = (n, d = 0) => (+n || 0).toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d });
+const ton = kg => fmtNum((+kg || 0) / 1000, 2) + " t";
+const dayColor = d => getComputedStyle(document.documentElement).getPropertyValue("--d" + d).trim() || "#2563eb";
+const JENIS = ["CDD Box", "CDD Bak", "CDE", "Traga Box", "Traga Bak", "Engkel", "Pickup", "Blind Van", "Fuso", "Wingbox", "Motor"];
+
+let state = loadState();
+let plan = null, planDirty = true;
+let tab = "kendaraan";
+
+function loadState() {
+  let ls = null;
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) ls = JSON.parse(raw); } catch (e) {}
+  if (window.INIT_STATE && !(ls && ls._stamp && ls._stamp === window.INIT_STATE._stamp)) return normalize(clone(window.INIT_STATE));
+  if (ls) return normalize(ls);
+  return normalize(clone(SAMPLE));
+}
+function normalize(s) {
+  s.vehicles = s.vehicles || []; s.stores = s.stores || []; s.breaks = s.breaks || {};
+  for (let d = 0; d < 7; d++) s.breaks[d] = s.breaks[d] || [];
+  s.params = Object.assign(clone(SAMPLE.params), s.params || {});
+  s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), s.params.lalin || {});
+  s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
+  s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
+  s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; });
+  return s;
+}
+let saveT = null;
+function save() {
+  planDirty = true; markDirty();
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }, 300);
+}
+function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
+
+/* ---------- binding generik ---------- */
+function getPath(path) { return path.split(".").reduce((o, k) => o == null ? o : o[k], state); }
+function setPath(path, val) { const ks = path.split("."); const last = ks.pop(); const o = ks.reduce((o, k) => o[k], state); o[last] = val; }
+document.addEventListener("input", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.k) return;
+  let v;
+  if (el.type === "checkbox") v = el.checked;
+  else if (el.dataset.t === "num") v = el.value === "" ? null : parseFloat(String(el.value).replace(",", "."));
+  else v = el.value;
+  setPath(el.dataset.k, v);
+  // tampilan turunan
+  if (el.dataset.ton) { const s = document.getElementById(el.dataset.ton); if (s) s.textContent = ton(v); }
+  if (el.dataset.link) onLink(el, v);
+  save();
+});
+document.addEventListener("change", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.k) return;
+  if (el.dataset.rerender) renderTab();
+});
+document.addEventListener("click", e => {
+  const chip = e.target.closest("[data-chip]");
+  if (chip) {
+    const [path, idx] = chip.dataset.chip.split("|"); const i = +idx;
+    if (chip.dataset.mode === "list") {
+      const arr = getPath(path); const at = arr.indexOf(i);
+      if (at >= 0) arr.splice(at, 1); else { arr.push(i); arr.sort((a, b) => a - b); }
+      chip.classList.toggle("on", arr.includes(i));
+    } else {
+      const arr = getPath(path); arr[i] = !arr[i]; chip.classList.toggle("on", !!arr[i]);
+    }
+    save(); if (chip.dataset.rerender) renderTab(); return;
+  }
+  const del = e.target.closest("[data-del]");
+  if (del) { const [path, idx] = del.dataset.del.split("|"); getPath(path).splice(+idx, 1); save(); renderTab(); return; }
+});
+
+function onLink(el, v) {
+  const i = +el.dataset.link; const s = state.stores[i]; const msg = document.getElementById("lm" + i);
+  const r = parseKoordinat(v);
+  if (r && r.lat != null) {
+    s.lat = r.lat; s.lng = r.lng;
+    const la = document.getElementById("lat" + i), lo = document.getElementById("lng" + i);
+    if (la) la.value = r.lat; if (lo) lo.value = r.lng;
+    if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat terbaca"; }
+  } else if (msg) {
+    if (!v) { msg.textContent = ""; }
+    else if (r && r.short) { msg.className = "msg bad"; msg.textContent = "Link pendek: buka link, lalu salin URL lengkap dari address bar"; }
+    else { msg.className = "msg bad"; msg.textContent = "Koordinat tidak ditemukan di link"; }
+  }
+}
+
+/* ---------- tab ---------- */
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"));
+  document.querySelectorAll("main > .panel").forEach(p => p.hidden = p.id !== "p-" + t);
+  try { localStorage.setItem(LS_KEY + "-tab", t); } catch (e) {}
+  if (["plan", "gantt", "peta"].includes(t) && (planDirty || !plan)) runPlan(true);
+  renderTab();
+  try { if (location.hash.slice(1) !== t) history.replaceState(null, "", "#" + t); } catch (e) {}
+}
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h && h !== tab && document.getElementById("p-" + h)) setTab(h); });
+
+function renderTab() {
+  ({ kendaraan: renderKendaraan, store: renderStore, istirahat: renderIstirahat, parameter: renderParameter, plan: renderPlan, gantt: renderGantt, peta: renderPeta })[tab]();
+}
+function markDirty() {
+  const b = document.getElementById("dirtyBanner"); if (b) b.hidden = !planDirty;
+}
+function dirtyBanner() { return `<div class="banner warn" id="dirtyBanner" ${planDirty ? "" : "hidden"}><b>Data input berubah.</b> Hasil di bawah memakai data lama. <button class="btn sm" type="button" onclick="runPlan();renderTab()">Buat ulang plan</button></div>`; }
+
+/* ---------- 1. Kendaraan ---------- */
+function renderKendaraan() {
+  const el = $("#p-kendaraan");
+  const rows = state.vehicles.map((v, i) => `<tr>
+    <td><input type="checkbox" data-k="vehicles.${i}.aktif" ${v.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
+    <td><input class="in" list="jenisList" data-k="vehicles.${i}.jenis" value="${esc(v.jenis)}" style="min-width:130px"></td>
+    <td><input class="in mono" data-k="vehicles.${i}.plat" value="${esc(v.plat)}" style="min-width:110px"></td>
+    <td><input class="in num" type="number" min="0" step="50" data-t="num" data-k="vehicles.${i}.kapasitasKg" data-ton="vt${i}" value="${v.kapasitasKg ?? ""}" style="min-width:90px"><span class="sub" id="vt${i}">${ton(v.kapasitasKg)}</span></td>
+    <td><input class="in num" type="number" min="1" step="1" data-t="num" data-k="vehicles.${i}.kecepatan" value="${v.kecepatan ?? ""}" style="min-width:70px"></td>
+    <td><input class="in num" type="number" min="1" max="4" step="1" data-t="num" data-k="vehicles.${i}.maksShift" value="${v.maksShift ?? 1}" style="min-width:60px"></td>
+    <td><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
+  const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
+  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari.</p></div>
+    <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
+    <div class="card tbl-wrap"><table>
+    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="7" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
+    <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
+    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
+  $("#addV").onclick = () => { state.vehicles.push({ id: uid("v"), aktif: true, jenis: "Pickup", plat: "", kapasitasKg: 1000, kecepatan: 40, maksShift: 1 }); save(); renderKendaraan(); };
+}
+
+/* ---------- 2. Store ---------- */
+let storeFilter = "";
+function renderStore() {
+  const el = $("#p-store");
+  const f = storeFilter.toLowerCase();
+  const list = state.stores.map((s, i) => [s, i]).filter(([s]) => !f || (s.nama || "").toLowerCase().includes(f) || (s.alamat || "").toLowerCase().includes(f));
+  const rows = list.map(([s, i]) => {
+    const origin = s.antaran === "Origin";
+    return `<tr>
+    <td><input type="checkbox" data-k="stores.${i}.aktif" ${s.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
+    <td><input class="in" data-k="stores.${i}.nama" value="${esc(s.nama)}" style="min-width:190px"></td>
+    <td><input class="in" data-k="stores.${i}.alamat" value="${esc(s.alamat)}" style="min-width:150px"></td>
+    <td><input class="in mono" data-k="stores.${i}.link" data-link="${i}" value="${esc(s.link)}" placeholder="Tempel link Google Maps" style="min-width:200px"><div class="msg" id="lm${i}"></div></td>
+    <td><input class="in num" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" style="min-width:95px"></td>
+    <td><input class="in num" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" style="min-width:100px"></td>
+    <td><input class="in mono" type="time" data-k="stores.${i}.buka" value="${esc(s.buka)}" style="min-width:86px"></td>
+    <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
+    <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
+    <td><input class="in num" type="number" min="0" max="7" step="1" data-t="num" data-k="stores.${i}.frek" value="${s.frek ?? 1}" ${origin ? "disabled" : ""} style="min-width:56px"></td>
+    <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
+    <td><select class="in" data-k="stores.${i}.loading" ${origin ? "disabled" : ""} style="min-width:150px"><option value="Menurunkan" ${s.loading !== "Menaikkan" ? "selected" : ""}>Menurunkan barang</option><option value="Menaikkan" ${s.loading === "Menaikkan" ? "selected" : ""}>Menaikkan barang</option></select></td>
+    <td>${origin ? '<span class="off">gudang</span>' : `<div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${s.hariTetap.includes(d) ? "on" : ""}" data-mode="list" data-chip="stores.${i}.hariTetap|${d}" title="${HARI[d]}" ${state.params.hari[d] ? "" : "disabled"}>${h}</button>`).join("")}</div>`}</td>
+    <td><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></td></tr>`;
+  }).join("");
+  const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
+  const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
+  const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps, koordinat terisi otomatis. Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Hari tetap</b> opsional; kosong = diatur otomatis sesuai frekuensi.</p></div>
+    <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
+    <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
+    ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
+    <div class="card tbl-wrap"><table>
+    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th class="num">Frek/mgg</th><th>Antaran</th><th>Jenis loading</th><th>Hari tetap</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="14" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
+    <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai menu <b>Data → Impor store dari Excel/CSV</b>.</p>`;
+  $("#addS").onclick = () => { state.stores.push({ id: uid("s"), aktif: true, nama: "Store baru", alamat: "", link: "", lat: null, lng: null, buka: "08:00", tutup: "21:00", beratKg: 500, frek: 1, antaran: "Tujuan", loading: "Menurunkan", hariTetap: [] }); storeFilter = ""; save(); renderStore(); };
+  const ss = $("#storeSearch"); ss.oninput = () => { storeFilter = ss.value; const pos = ss.selectionStart; renderStore(); const n = $("#storeSearch"); n.focus(); n.setSelectionRange(pos, pos); };
+}
+
+/* ---------- 3. Istirahat ---------- */
+function renderIstirahat() {
+  const el = $("#p-istirahat");
+  const cards = HARI.map((h, d) => {
+    const rows = state.breaks[d].map((b, i) => `<div class="brow"><input class="in mono" type="time" data-k="breaks.${d}.${i}.mulai" value="${esc(b.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="breaks.${d}.${i}.selesai" value="${esc(b.selesai)}"><button class="btn icon" type="button" data-del="breaks.${d}|${i}" aria-label="Hapus">✕</button></div>`).join("");
+    return `<div class="card daycard"><div class="hrow"><span class="dot" style="background:var(--d${d})"></span><h3>${h}</h3>${state.params.hari[d] ? "" : '<span class="pill">libur</span>'}</div>
+      ${rows || '<span class="off">Tanpa jam istirahat</span>'}
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-addb="${d}">＋ Tambah istirahat</button><button class="btn sm ghost" type="button" data-copyb="${d}">Salin ke semua hari</button></div></div>`;
+  }).join("");
+  el.innerHTML = `<div class="head"><div><h2>3 · Jam Istirahat</h2><p>Selama jam istirahat tidak ada loading, perjalanan, maupun bongkar/muat; aktivitas berhenti lalu dilanjutkan setelahnya. Tiap hari bisa punya jam istirahat berbeda (mis. Jumat istirahat siang lebih panjang).</p></div></div>
+    <div class="grid3">${cards}</div>`;
+  el.querySelectorAll("[data-addb]").forEach(b => b.onclick = () => { const arr = state.breaks[+b.dataset.addb]; const last = arr.reduce((m, x) => Math.max(m, toMin(x.selesai) ?? 0), 0); const st = arr.length ? Math.min(last + 60, 23 * 60) : 720; arr.push({ mulai: fmtJam(st), selesai: fmtJam(Math.min(st + 30, 1439)) }); save(); renderIstirahat(); });
+  el.querySelectorAll("[data-copyb]").forEach(b => b.onclick = () => { const src = state.breaks[+b.dataset.copyb]; for (let d = 0; d < 7; d++) state.breaks[d] = clone(src); save(); renderIstirahat(); toast("Jam istirahat " + HARI[+b.dataset.copyb] + " disalin ke semua hari"); });
+}
+
+/* ---------- 4. Parameter ---------- */
+function renderParameter() {
+  const el = $("#p-parameter"), p = state.params, L = p.lalin;
+  const acts = p.aktivitas.map((a, i) => `<tr>
+    <td><input class="in" data-k="params.aktivitas.${i}.nama" value="${esc(a.nama)}" style="min-width:190px"></td>
+    <td><input class="in num" type="number" min="0" step="5" data-t="num" data-k="params.aktivitas.${i}.durasi" value="${a.durasi ?? ""}" style="min-width:70px"></td>
+    <td><div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${a.hari[d] ? "on" : ""}" data-chip="params.aktivitas.${i}.hari|${d}" title="${HARI[d]}">${h}</button>`).join("")}</div></td>
+    <td><select class="in" data-k="params.aktivitas.${i}.berlaku" style="min-width:120px"><option value="semua" ${a.berlaku !== "shift1" ? "selected" : ""}>Setiap shift</option><option value="shift1" ${a.berlaku === "shift1" ? "selected" : ""}>Shift 1 saja</option></select></td>
+    <td style="text-align:center"><input type="checkbox" data-k="params.aktivitas.${i}.dihitung" ${a.dihitung ? "checked" : ""} aria-label="Masuk jam shift"></td>
+    <td><button class="btn icon" type="button" data-del="params.aktivitas|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
+  const peaks = L.jamSibuk.map((j, i) => `<div class="brow" style="grid-template-columns:1fr auto 1fr 80px auto"><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.mulai" value="${esc(j.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.selesai" value="${esc(j.selesai)}"><input class="in num" type="number" step="0.05" min="1" data-t="num" data-k="params.lalin.jamSibuk.${i}.faktor" value="${j.faktor}" title="Faktor pengali waktu"><button class="btn icon" type="button" data-del="params.lalin.jamSibuk|${i}" aria-label="Hapus">✕</button></div>`).join("");
+  const num = (k, v, step = "0.05", extra = "") => `<input class="in num" type="number" step="${step}" data-t="num" data-k="${k}" value="${v ?? ""}" ${extra}>`;
+  el.innerHTML = `<div class="head"><div><h2>4 · Parameter</h2><p>Aturan shift, aktivitas harian, hari distribusi, dan kecepatan bongkar/muat.</p></div></div>
+  <div class="grid2">
+    <div class="card pad" style="display:grid;gap:14px;align-content:start">
+      <h3>Shift &amp; waktu</h3>
+      <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang.</span></div>
+      <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
+      <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
+    </div>
+    <div class="card pad" style="display:grid;gap:14px;align-content:start">
+      <h3>Hari distribusi</h3>
+      <div class="days" style="flex-wrap:wrap;gap:6px">${HARI.map((h, d) => `<button type="button" class="dchip big ${p.hari[d] ? "on" : ""}" data-chip="params.hari|${d}" data-rerender="1">${h}</button>`).join("")}</div>
+      <span class="hint">Hari yang tidak dipilih dianggap libur (contoh: Minggu). Frekuensi antar store dibagi rata ke hari yang dipilih.</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="head" style="padding:14px 16px 0"><div><h3>Aktivitas per hari</h3><p class="hint" style="margin-top:4px">Contoh: loading di gudang 60 menit, antri BBM 60 menit. Urutan dijalankan sebelum berangkat. Yang <b>tidak</b> masuk jam shift dijalankan lebih dulu (mis. pembersihan Senin pagi) dan menggeser jam mulai shift.</p></div><button class="btn" type="button" id="addA">＋ Tambah aktivitas</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Jenis aktivitas</th><th class="num">Durasi (menit)</th><th>Hari</th><th>Berlaku</th><th>Masuk jam shift</th><th></th></tr></thead><tbody>${acts || `<tr><td colspan="6" class="empty">Belum ada aktivitas.</td></tr>`}</tbody></table></div>
+  </div>
+  <div class="card pad">
+    <details class="adv"><summary>Lalu lintas &amp; jalan (lanjutan)</summary>
+      <div class="grid2">
+        <div style="display:grid;gap:12px;align-content:start">
+          <div class="field"><label>Faktor jarak jalan (tanpa tol)</label>${num("params.lalin.faktorJalan", L.faktorJalan)}<span class="hint">Jarak garis lurus × faktor ini = perkiraan jarak jalan. 1,65 dikalibrasi ke Google Maps "hindari tol" di Makassar.</span></div>
+          <div class="field"><label>Pusat kota (zona macet)</label><div class="row">${num("params.lalin.pusat.lat", L.pusat.lat, "any", 'placeholder="lat"')}${num("params.lalin.pusat.lng", L.pusat.lng, "any", 'placeholder="lng"')}${num("params.lalin.pusat.radiusKm", L.pusat.radiusKm, "0.5", 'title="Radius km" style="max-width:80px"')}<span>km</span></div></div>
+          <div class="field"><label>Batas antar kota</label><div class="row">${num("params.lalin.batasAntarKotaKm", L.batasAntarKotaKm, "1", 'style="max-width:110px"')}<span>km garis lurus</span></div></div>
+        </div>
+        <div style="display:grid;gap:12px;align-content:start">
+          <div class="field"><label>Faktor macet (pengali waktu tempuh)</label>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Dalam pusat kota</span>${num("params.lalin.fPusat", L.fPusat)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Masuk/keluar pusat kota</span>${num("params.lalin.fPusatLuar", L.fPusatLuar)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Pinggiran kota</span>${num("params.lalin.fPinggir", L.fPinggir)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Antar kota</span>${num("params.lalin.fAntarKota", L.fAntarKota)}</div></div>
+          <div class="field"><label>Jam sibuk (faktor tambahan)</label>${peaks || '<span class="off">Tidak ada</span>'}<div><button class="btn sm" type="button" id="addPeak">＋ Tambah jam sibuk</button></div></div>
+        </div>
+      </div>
+    </details>
+  </div>`;
+  $("#addA").onclick = () => { p.aktivitas.push({ id: uid("a"), nama: "Aktivitas baru", durasi: 30, hari: [true, true, true, true, true, true, true], berlaku: "semua", dihitung: true }); save(); renderParameter(); };
+  $("#addPeak").onclick = () => { L.jamSibuk.push({ mulai: "07:00", selesai: "09:00", faktor: 1.2 }); save(); renderParameter(); $("details.adv").open = true; };
+}
+
+/* ---------- Plan ---------- */
+function runPlan(silent) {
+  try { plan = buildPlan(state); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
+  planDirty = false; mapDrawn = null;
+  if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
+}
+$("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
+
+function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
+function gmapsLink(t) {
+  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d.lat, d.lng]]);
+  return "https://www.google.com/maps/dir/" + pts.map(p => p[0] + "," + p[1]).join("/") + "/data=!4m4!4m3!2m1!2b1!3e0";
+}
+function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
+
+function renderPlan() {
+  const el = $("#p-plan");
+  if (!plan) { el.innerHTML = '<div class="empty">Klik "Buat Plan".</div>'; return; }
+  if (plan.error) { el.innerHTML = `<div class="head"><div><h2>Plan Distribusi</h2></div></div><div class="banner bad"><b>Plan belum bisa dibuat.</b> ${esc(plan.error)}</div>`; return; }
+  const T = plan.trips;
+  const kg = T.reduce((a, t) => a + t.kgDel, 0), pk = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0);
+  const capUsed = T.length ? T.reduce((a, t) => a + t.kgDel / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
+  const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
+  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Rute disusun otomatis (titik terjauh dulu lalu penyisipan termurah, dicek terhadap kapasitas, jam shift, jam istirahat, dan jam buka store).</p></div>
+    <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
+    ${dirtyBanner()}
+    <div class="tiles">
+      <div class="tile"><div class="k">Total rit</div><div class="v">${T.length}<small>rit/mgg</small></div></div>
+      <div class="tile"><div class="k">Kunjungan</div><div class="v">${nVisit}<small>titik</small></div></div>
+      <div class="tile"><div class="k">Muatan diantar</div><div class="v">${fmtNum(kg / 1000, 1)}<small>ton</small></div></div>
+      <div class="tile"><div class="k">Barang dinaikkan</div><div class="v">${fmtNum(pk / 1000, 1)}<small>ton</small></div></div>
+      <div class="tile"><div class="k">Jarak tempuh</div><div class="v">${fmtNum(km)}<small>km</small></div></div>
+      <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
+      <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
+    </div>`;
+  if (plan.unserved.length) html += `<div class="banner bad"><div><b>${plan.unserved.length} kunjungan tidak muat di jadwal.</b> <br>${plan.unserved.map(u => "• " + esc(u.store.nama) + " (" + HARI[u.day] + "): " + esc(u.reason)).join("<br>")}<br>Coba tambah kendaraan/shift, ubah hari tetap, atau perpanjang jam kerja shift.</div></div>`;
+  if (plan.warn.length) html += `<div class="banner warn"><div>${plan.warn.map(esc).join("<br>")}</div></div>`;
+  for (const d of plan.days) {
+    const td = T.filter(t => t.day === d);
+    const dkg = td.reduce((a, t) => a + t.kgDel, 0);
+    html += `<div class="dayblock"><div class="dayhead"><span class="dot" style="background:var(--d${d})"></span><h3>${HARI[d]}</h3><span class="pill">${td.length} rit</span><span class="pill">${ton(dkg)}</span><span class="pill">${fmtNum(td.reduce((a, t) => a + t.km, 0))} km</span><span class="hint">Istirahat: ${(state.breaks[d] || []).map(b => b.mulai + "–" + b.selesai).join(", ") || "-"}</span></div>`;
+    if (!td.length) html += `<div class="card empty">Tidak ada rit.</div>`;
+    for (const t of td) {
+      const pct = t.kgDel / (+t.veh.kapasitasKg || 1);
+      const over = t.dur > plan.H + 0.5;
+      html += `<div class="card trip"><div class="trip-h"><span class="veh">${esc(t.veh.jenis)}</span>${t.veh.plat ? `<span class="plate">${esc(t.veh.plat)}</span>` : ""}<span class="pill ok">Shift ${t.shift}</span>
+        <div class="meta"><span>Mulai shift <b>${fmtJam(t.shiftStart)}</b></span><span>Berangkat <b>${fmtJam(t.dep)}</b></span><span>Kembali <b>${fmtJam(t.ret)}</b></span><span>Durasi <b class="${over ? "" : ""}">${fmtNum(t.dur / 60, 1)} jam</b></span><span>Muatan <b>${fmtNum(t.kgDel)} kg</b> <span class="meter"><i style="width:${Math.min(100, pct * 100)}%"></i></span> ${fmtNum(pct * 100)}%</span>${t.kgPick ? `<span>Dinaikkan <b>${fmtNum(t.kgPick)} kg</b></span>` : ""}<span><b>${fmtNum(t.km, 1)}</b> km</span></div>
+        <a href="${gmapsLink(t)}" target="_blank" rel="noopener">Buka di Google Maps ↗</a></div>
+        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Store</th><th>Kegiatan</th><th class="num">Berat</th><th class="num">Jarak</th><th class="num">Tempuh</th><th class="num">Tiba</th><th class="num">Selesai</th><th>Jam buka</th></tr></thead><tbody>
+        ${t.stops.map((s, i) => `<tr><td class="mono">${i + 1}</td><td>${esc(s.store.nama)}</td><td>${s.store.loading === "Menaikkan" ? '<span class="tag pick">Menaikkan</span>' : '<span class="tag drop">Menurunkan</span>'}</td><td class="num mono">${fmtNum(s.store.beratKg)} kg</td><td class="num mono">${fmtNum(s.km, 1)} km</td><td class="num mono">${fmtNum(s.drive)} mnt</td><td class="num mono">${fmtJam(s.arr)}</td><td class="num mono">${fmtJam(s.fin)}</td><td class="mono">${esc(s.store.buka || "")}–${esc(s.store.tutup || "")}</td></tr>`).join("")}
+        <tr><td class="mono">↩</td><td colspan="3" class="hint">Kembali ke ${esc(plan.depot.nama)}</td><td class="num mono">${fmtNum(t.backKm, 1)} km</td><td></td><td class="num mono">${fmtJam(t.ret)}</td><td></td><td></td></tr>
+        </tbody></table></div></div>`;
+    }
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+/* ---------- Gantt ---------- */
+function renderGantt() {
+  const el = $("#p-gantt");
+  if (!plan || plan.error) { el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2></div></div><div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  const rows = [];
+  plan.days.forEach(d => plan.vehicles.forEach((v, vi) => rows.push({ d, v, vi, trips: plan.trips.filter(t => t.day === d && t.vIdx === vi) })));
+  let tMin = Infinity, tMax = -Infinity;
+  plan.trips.forEach(t => { t.segs.forEach(s => { tMin = Math.min(tMin, s.start); tMax = Math.max(tMax, s.end); }); });
+  if (!isFinite(tMin)) { tMin = 360; tMax = 1320; }
+  tMin = Math.floor(Math.min(tMin, toMin(state.params.jamMulai) ?? 480) / 60) * 60; tMax = Math.ceil(tMax / 60) * 60;
+  const LW = 190, PX = 64, RH = 30, TOP = 34;
+  const W = LW + (tMax - tMin) / 60 * PX + 130;
+  const H = TOP + rows.length * RH + 10;
+  const x = m => LW + (m - tMin) / 60 * PX;
+  const segCol = { aktivitas: "var(--seg-act)", jalan: "var(--seg-drive)", bongkar: "var(--seg-drop)", muat: "var(--seg-pick)", tunggu: "var(--seg-wait)" };
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gantt jadwal armada">`;
+  for (let m = tMin; m <= tMax; m += 60) svg += `<line x1="${x(m)}" x2="${x(m)}" y1="${TOP - 6}" y2="${H - 10}" stroke="var(--line)"/><text x="${x(m)}" y="${TOP - 12}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtJam(m)}</text>`;
+  let prevD = null;
+  rows.forEach((r, i) => {
+    const y = TOP + i * RH;
+    if (r.d !== prevD) { if (prevD !== null) svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-width="1"/>`; prevD = r.d; }
+    if (i % 2 === 0) svg += `<rect x="0" y="${y}" width="${W}" height="${RH}" fill="var(--surface2)" opacity=".5"/>`;
+    (plan.ctxBreaks[r.d] || []).forEach(([a, b]) => { if (b > tMin && a < tMax) svg += `<rect x="${x(Math.max(a, tMin))}" y="${y}" width="${(Math.min(b, tMax) - Math.max(a, tMin)) / 60 * PX}" height="${RH}" fill="var(--brk)" data-tip="${esc("<b>Istirahat</b><br>" + HARI[r.d] + " " + fmtJam(a) + "–" + fmtJam(b))}"/>`; });
+    const first = rows.findIndex(q => q.d === r.d) === i;
+    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 24))}</text>`;
+    r.trips.forEach(t => {
+      t.segs.forEach(s => {
+        // pecah segmen di jam istirahat agar bar tidak menutupi istirahat
+        const parts = splitByBreaks(s.start, s.end, plan.ctxBreaks[r.d] || []);
+        parts.forEach(([a, b]) => {
+          const w = Math.max(1, (b - a) / 60 * PX);
+          const tip = `<b>${esc(s.label)}</b><br>${HARI[r.d]} · Shift ${t.shift}<br>${fmtJam(s.start)}–${fmtJam(s.end)}${s.kg ? "<br>" + fmtNum(s.kg) + " kg" : ""}${s.km ? "<br>" + fmtNum(s.km, 1) + " km" : ""}`;
+          svg += `<rect x="${x(a)}" y="${y + 6}" width="${w}" height="${RH - 12}" rx="2" fill="${segCol[s.type]}" data-tip="${esc(tip)}"/>`;
+        });
+      });
+      if (t === r.trips[r.trips.length - 1]) svg += `<text x="${x(t.ret) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)">${r.trips.length} shift · selesai ${fmtJam(t.ret)}</text>`;
+      const lim = t.shiftStart + plan.H;
+      if (lim <= tMax) svg += `<line x1="${x(lim)}" x2="${x(lim)}" y1="${y + 3}" y2="${y + RH - 3}" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="2 2" data-tip="${esc("<b>Batas jam shift " + t.shift + "</b><br>" + fmtJam(lim))}"/>`;
+    });
+  });
+  svg += `</svg>`;
+  el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per hari. Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
+    ${dirtyBanner()}
+    <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
+    <div class="card gantt-wrap" id="gantt">${svg}</div>`;
+}
+function splitByBreaks(a, b, brs) {
+  let parts = [[a, b]];
+  for (const [x, y] of brs) { const np = []; for (const [p, q] of parts) { if (y <= p || x >= q) np.push([p, q]); else { if (x > p) np.push([p, x]); if (y < q) np.push([y, q]); } } parts = np; }
+  return parts.filter(([p, q]) => q - p > 0.01);
+}
+document.addEventListener("mousemove", e => {
+  const tg = e.target.closest && e.target.closest("[data-tip]"); const tip = $("#tip");
+  if (!tg) { tip.hidden = true; return; }
+  tip.innerHTML = tg.getAttribute("data-tip"); tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(window.innerWidth - r.width - 8, e.clientX + 12) + "px";
+  tip.style.top = Math.min(window.innerHeight - r.height - 8, e.clientY + 14) + "px";
+});
+
+/* ---------- Peta ---------- */
+let map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
+const osrmCache = {};
+try { Object.assign(osrmCache, JSON.parse(localStorage.getItem(LS_KEY + "-osrm") || "{}")); } catch (e) {}
+function ensureMap() {
+  if (map || typeof L === "undefined") return;
+  const el = $("#map"); el.innerHTML = ""; el.classList.add("map-gray");
+  map = L.map(el, { preferCanvas: false, zoomControl: true }).setView([plan.depot.lat, plan.depot.lng], 12);
+  const tl = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }).addTo(map);
+  tl.on("tileload", () => { if (!tileOk) { tileOk = true; updateMapNote(); } });
+  tl.on("tileerror", () => { tileErr++; if (tileErr === 3) updateMapNote(); });
+  mapLayer = L.layerGroup().addTo(map);
+  setTimeout(updateMapNote, 4000);
+}
+function updateMapNote() {
+  const n = $("#mapNote"); if (!n) return;
+  if (!tileOk && tileErr >= 1) n.innerHTML = `<div class="banner info"><div><b>Peta dasar tidak bisa dimuat di halaman ini</b> (akses ke server peta dibatasi), jadi rute digambar sebagai garis lurus antar titik. Untuk peta dasar abu-abu dan rute mengikuti jalan, unduh aplikasi ini lewat <b>Data → Unduh aplikasi ini (HTML)</b> lalu buka file-nya di Chrome/Edge.</div></div>`;
+  else n.innerHTML = "";
+}
+async function osrmRoute(pts) {
+  const key = pts.map(p => p[0].toFixed(5) + "," + p[1].toFixed(5)).join(";");
+  if (osrmCache[key]) return osrmCache[key];
+  const url = "https://router.project-osrm.org/route/v1/driving/" + pts.map(p => p[1] + "," + p[0]).join(";") + "?overview=full&geometries=geojson";
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal }); const j = await r.json();
+    if (j.code !== "Ok") return null;
+    const g = j.routes[0].geometry.coordinates.map(c => [+c[1].toFixed(5), +c[0].toFixed(5)]);
+    osrmCache[key] = g;
+    try { localStorage.setItem(LS_KEY + "-osrm", JSON.stringify(osrmCache)); } catch (e) {}
+    return g;
+  } catch (e) { return null; } finally { clearTimeout(to); }
+}
+function renderPeta() {
+  if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
+  if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
+  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (OSRM)</label>`;
+  document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
+  $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
+  ensureMap();
+  setTimeout(() => map.invalidateSize(), 50);
+  const sig = mapDay + "|" + useRoad;
+  if (mapDrawn === sig) return;
+  mapDrawn = sig;
+  drawMap();
+}
+async function drawMap() {
+  const sig = mapDrawn;
+  mapLayer.clearLayers();
+  const d0 = plan.depot;
+  const trips = plan.trips.filter(t => mapDay === "all" || String(t.day) === mapDay);
+  const bounds = [[d0.lat, d0.lng]];
+  const legend = [];
+  const visitDays = {};
+  trips.forEach((t, i) => t.stops.forEach((s, k) => { (visitDays[s.store.id] = visitDays[s.store.id] || { s: s.store, list: [] }).list.push({ t, k, i }); }));
+  // garis rute
+  const lines = [];
+  trips.forEach((t, i) => {
+    const col = mapDay === "all" ? dayColor(t.day) : tripColor(t, i);
+    const pts = [[d0.lat, d0.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d0.lat, d0.lng]]);
+    pts.forEach(p => bounds.push(p));
+    const dash = t.shift > 1 ? "8 6" : null;
+    const pl = L.polyline(pts, { color: col, weight: mapDay === "all" ? 3 : 4, opacity: .85, dashArray: dash }).addTo(mapLayer);
+    pl.bindTooltip(`${HARI[t.day]} · ${esc(vehLabel(t.veh))} · Shift ${t.shift}`, { sticky: true });
+    lines.push({ pl, pts, t });
+    if (mapDay !== "all") legend.push(`<span><i class="sw" style="background:${col}"></i>${esc(vehLabel(t.veh))} · Shift ${t.shift} (${t.stops.length} titik, ${fmtNum(t.km, 1)} km)</span>`);
+  });
+  if (mapDay === "all") plan.days.forEach(d => legend.push(`<span><i class="sw" style="background:${dayColor(d)}"></i>${HARI[d]}</span>`));
+  legend.push(`<span><i class="sw" style="background:none;border-top:2px dashed var(--muted);height:0;width:18px"></i>Shift 2 dst.</span>`);
+  // titik store
+  Object.values(visitDays).forEach(({ s, list }) => {
+    const days = [...new Set(list.map(x => x.t.day))];
+    let html;
+    if (mapDay === "all") { const col = days.length > 1 ? "#17201d" : dayColor(days[0]); html = `<div class="storepin" style="background:${col}"></div>`; }
+    else { const x = list[0]; html = `<div class="seqpin" style="background:${tripColor(x.t, x.i)}">${x.k + 1}</div>`; }
+    const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
+    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc(s.alamat || "")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
+  });
+  L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
+  if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);
+  $("#mapLegend").innerHTML = legend.join("");
+  if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+  // rute jalan (bertahap)
+  if (useRoad) {
+    for (const ln of lines) {
+      if (mapDrawn !== sig) return;
+      const g = await osrmRoute(ln.pts);
+      if (mapDrawn !== sig) return;
+      if (g) ln.pl.setLatLngs(g); else break;
+    }
+  }
+}
+
+/* ---------- Unduhan ---------- */
+let dlApi;
+async function saveFile(name, data, mime) {
+  if (window.claude && window.claude.use) {
+    if (dlApi === undefined) { try { dlApi = await window.claude.use("downloads"); } catch (e) { dlApi = null; } }
+    if (dlApi) { try { await dlApi.save({ filename: name, data }); return; } catch (e) { if (e && e.code === "declined") return; toast("Unduhan gagal: " + (e && e.message || e)); return; } }
+  }
+  const blob = data instanceof Blob ? data : new Blob([data], { type: mime || "application/octet-stream" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function stamp() { const d = new Date(); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
+function exportExcel() {
+  if (typeof XLSX === "undefined") { toast("Library Excel gagal dimuat."); return; }
+  if (!plan || planDirty) runPlan(true);
+  if (plan.error) { toast(plan.error); return; }
+  const wb = XLSX.utils.book_new();
+  const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
+  plan.trips.forEach(t => ring.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)]));
+  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Tiba", "Mulai bongkar/muat", "Selesai", "Jam buka", "Latitude", "Longitude"]];
+  plan.trips.forEach(t => t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])));
+  const gan = [["Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
+  plan.trips.forEach(t => t.segs.forEach(s => gan.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)])));
+  const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Aktif"]];
+  state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, v.aktif !== false ? "Ya" : "Tidak"]));
+  const sto = storeRows();
+  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Berlaku", "Masuk jam shift"]];
+  state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
+  par.push([], ["Jam istirahat", "Hari"]);
+  HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
+  if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
+  const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  add("Ringkasan Rit", ring, [9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
+  add("Detail Rute", det, [9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 8, 10, 8, 12, 11, 11]);
+  add("Gantt", gan, [9, 12, 12, 6, 44, 10, 8, 8, 10]);
+  add("Kendaraan", veh, [12, 14, 14, 14, 16, 14, 8]);
+  add("Store", sto, [8, 34, 22, 40, 11, 11, 8, 8, 10, 10, 9, 10, 18, 16]);
+  add("Parameter", par, [40, 18, 30, 14, 14]);
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveFile("Plan_Distribusi_" + stamp() + ".xlsx", new Uint8Array(out), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi", "Jenis antaran", "Jenis loading", "Hari tetap"];
+function storeRows() {
+  const rows = [STORE_HEAD];
+  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), +s.frek || 0, s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", (s.hariTetap || []).map(d => HARI3[d]).join(", ")]));
+  return rows;
+}
+function parseNum(v, coord) {
+  if (typeof v === "number") return v;
+  let s = String(v ?? "").trim().replace(/\s|kg/gi, ""); if (!s) return NaN;
+  if (coord) return parseFloat(s.replace(",", "."));
+  if (s.includes(".") && s.includes(",")) s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (s.includes(",")) s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  return parseFloat(s);
+}
+function importStores(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const wb = XLSX.read(new Uint8Array(rd.result), { type: "array" });
+      const sh = wb.SheetNames.find(n => /store/i.test(n)) || wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sh], { header: 1, raw: true, defval: "" });
+      if (!rows.length) throw new Error("file kosong");
+      const head = rows[0].map(h => String(h).toLowerCase());
+      const col = (...keys) => head.findIndex(h => keys.some(k => h.includes(k)));
+      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari") };
+      if (c.nama < 0) throw new Error("kolom \"Nama store\" tidak ditemukan");
+      const list = [];
+      for (const r of rows.slice(1)) {
+        const nama = String(r[c.nama] || "").trim(); if (!nama) continue;
+        const link = c.link >= 0 ? String(r[c.link] || "").trim() : "";
+        let lat = c.lat >= 0 ? parseNum(r[c.lat], true) : NaN, lng = c.lng >= 0 ? parseNum(r[c.lng], true) : NaN;
+        if ((isNaN(lat) || isNaN(lng)) && link) { const p = parseKoordinat(link); if (p && p.lat != null) { lat = p.lat; lng = p.lng; } }
+        const ant = c.antaran >= 0 && /orig/i.test(r[c.antaran]) ? "Origin" : "Tujuan";
+        const hari = c.hari >= 0 ? String(r[c.hari]).split(/[,;/ ]+/).map(x => HARI3.findIndex(h => x.toLowerCase().startsWith(h.toLowerCase()))).filter(i => i >= 0) : [];
+        const normT = v => { if (typeof v === "number" && v >= 0 && v < 1.0001) v = fmtJam(Math.min(1439, Math.round(v * 1440))); const m = toMin(v); return m == null ? "" : fmtJam(m); };
+        list.push({ id: uid("s"), aktif: c.aktif < 0 || !/^(tidak|no|0|false)$/i.test(String(r[c.aktif]).trim()), nama, alamat: c.alamat >= 0 ? String(r[c.alamat]) : "", link, lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, buka: normT(c.buka >= 0 ? r[c.buka] : "") || "08:00", tutup: normT(c.tutup >= 0 ? r[c.tutup] : "") || "21:00", beratKg: c.kg >= 0 ? parseNum(r[c.kg]) || 0 : 0, frek: c.frek >= 0 ? (String(r[c.frek]).trim() === "" ? 1 : (parseInt(r[c.frek]) || 0)) : 1, antaran: ant, loading: c.loading >= 0 && /naik|muat|pick/i.test(r[c.loading]) ? "Menaikkan" : "Menurunkan", hariTetap: hari });
+      }
+      if (!list.length) throw new Error("tidak ada baris store");
+      askConfirm(`Impor ${list.length} store dari "${esc(file.name)}"?`, [["Ganti semua store", () => { state.stores = list; done(); }], ["Tambahkan ke daftar", () => { state.stores = state.stores.concat(list); done(); }]]);
+      function done() { save(); setTab("store"); toast(list.length + " store diimpor"); }
+    } catch (e) { toast("Impor gagal: " + e.message, 4000); }
+  };
+  rd.readAsArrayBuffer(file);
+}
+function askConfirm(text, actions) {
+  const box = $("#confirmBox"); box.hidden = false;
+  box.innerHTML = `<div class="banner info confirm" style="margin-bottom:16px"><span>${text}</span>${actions.map((a, i) => `<button class="btn sm ${i === 0 ? "primary" : ""}" type="button" data-ci="${i}">${esc(a[0])}</button>`).join("")}<button class="btn sm ghost" type="button" data-ci="x">Batal</button></div>`;
+  box.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => { box.hidden = true; box.innerHTML = ""; if (b.dataset.ci !== "x") actions[+b.dataset.ci][1](); });
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- Menu ---------- */
+$("#btnMenu").onclick = e => { e.stopPropagation(); $("#menuPop").hidden = !$("#menuPop").hidden; };
+document.addEventListener("click", e => { if (!e.target.closest(".menu")) $("#menuPop").hidden = true; });
+$("#menuPop").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; $("#menuPop").hidden = true;
+  const a = b.dataset.act;
+  if (a === "excel") exportExcel();
+  if (a === "export") saveFile("Data_Input_Distribusi_" + stamp() + ".json", JSON.stringify(state, null, 1), "application/json");
+  if (a === "import") $("#fileJson").click();
+  if (a === "importStore") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); $("#fileStore").click(); }
+  if (a === "template") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet([STORE_HEAD, ["Ya", "Gudang Utama", "Jl. Contoh No. 1", "https://www.google.com/maps/place/.../@-5.1019978,119.4786111,17z", "", "", "06:00", "23:00", 0, "", 0, "Origin", "Menurunkan barang", ""], ["Ya", "Store A", "Jl. Contoh No. 2", "", -5.1631663, 119.4525599, "08:00", "21:00", 950, "", 2, "Tujuan", "Menurunkan barang", "Sen, Kam"], ["Ya", "Produksi", "", "", -5.1169668, 119.5093495, "07:00", "22:00", 1500, "", 5, "Tujuan", "Menaikkan barang", ""]]); ws["!cols"] = STORE_HEAD.map(() => ({ wch: 16 })); XLSX.utils.book_append_sheet(wb, ws, "Store"); saveFile("Template_Store.xlsx", new Uint8Array(XLSX.write(wb, { bookType: "xlsx", type: "array" }))); }
+  if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
+  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); runPlan(); renderTab(); }]]);
+  if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
+});
+$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); runPlan(true); renderTab(); toast("Data input dimuat"); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
+$("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStores(f); e.target.value = ""; };
+
+/* ---------- mulai ---------- */
+(function start() {
+  let t = location.hash.slice(1);
+  if (!document.getElementById("p-" + t)) { try { t = localStorage.getItem(LS_KEY + "-tab") || "plan"; } catch (e) { t = "plan"; } }
+  if (!document.getElementById("p-" + t)) t = "plan";
+  runPlan(true);
+  setTab(t);
+})();

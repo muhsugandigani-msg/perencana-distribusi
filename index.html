@@ -1,0 +1,1770 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}img{max-width:100%}</style></head><body><title>Perencana Distribusi Armada</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: url(images/marker-icon.png);
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+/* Layout: header berisi aksi utama, tab langkah 1-4 untuk input, tab hasil (Plan, Gantt, Peta). Nuansa rambu jalan + papan logistik. */
+:root {
+  --bg: #f3f5f4; --surface: #ffffff; --surface2: #eaeeec; --line: #d5dcd9; --fg: #17201d; --muted: #5b6a65;
+  --accent: #0b6e5f; --accent-fg: #ffffff; --accent-soft: #d9efe9; --sign: #f2b705;
+  --warn: #b45309; --warn-bg: #fdf1dc; --bad: #b42318; --bad-bg: #fde7e4; --ok: #157f3c;
+  --seg-act: #7b8a85; --seg-drive: #3b74d9; --seg-drop: #1f9d55; --seg-pick: #8e44c8; --seg-wait: #e3a008; --brk: rgba(23,32,29,.09);
+  --d0: #2563eb; --d1: #e11d48; --d2: #16a34a; --d3: #9333ea; --d4: #ea8c00; --d5: #0891b2; --d6: #64748b;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif; --f-body: "IBM Plex Sans", system-ui, sans-serif; --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #18211e; --surface2: #202b27; --line: #2f3c37; --fg: #e6ece9; --muted: #95a49f;
+  --accent: #3cc3a8; --accent-fg: #06201a; --accent-soft: #173a33; --sign: #f2b705;
+  --warn: #f0b35a; --warn-bg: #3a2a12; --bad: #ff8a7a; --bad-bg: #3d1b17; --ok: #5bd28a;
+  --seg-act: #8a9a95; --seg-drive: #5b8ff0; --seg-drop: #35b86c; --seg-pick: #b27ae0; --seg-wait: #f0b429; --brk: rgba(230,236,233,.08);
+  --d0: #5b8ff0; --d1: #fb6f8f; --d2: #3fcf73; --d3: #b27ae0; --d4: #f5a524; --d5: #2fc0dc; --d6: #94a3b8; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18211e; --surface2: #202b27; --line: #2f3c37; --fg: #e6ece9; --muted: #95a49f;
+  --accent: #3cc3a8; --accent-fg: #06201a; --accent-soft: #173a33; --sign: #f2b705;
+  --warn: #f0b35a; --warn-bg: #3a2a12; --bad: #ff8a7a; --bad-bg: #3d1b17; --ok: #5bd28a;
+  --seg-act: #8a9a95; --seg-drive: #5b8ff0; --seg-drop: #35b86c; --seg-pick: #b27ae0; --seg-wait: #f0b429; --brk: rgba(230,236,233,.08);
+  --d0: #5b8ff0; --d1: #fb6f8f; --d2: #3fcf73; --d3: #b27ae0; --d4: #f5a524; --d5: #2fc0dc; --d6: #94a3b8; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 1001; background: var(--surface); }
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; min-width: 0; }
+.brand .mark { width: 30px; height: 30px; background: var(--sign); color: #17201d; transform: rotate(45deg); border-radius: 4px; display: grid; place-items: center; flex: none; }
+.brand .mark span { transform: rotate(-45deg); font: 700 15px/1 var(--f-display); }
+.brand h1 { font: 700 22px/1 var(--f-display); letter-spacing: .02em; margin: 0; text-transform: uppercase; text-wrap: balance; }
+.brand small { display: block; font: 400 12px/1.2 var(--f-body); color: var(--muted); letter-spacing: 0; text-transform: none; margin-top: 2px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { appearance: none; border: 0; background: none; color: var(--muted); font: 600 15px/1 var(--f-display); letter-spacing: .04em; text-transform: uppercase; padding: 12px 14px 11px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+.tab .n { display: inline-grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: var(--surface2); color: var(--fg); font-size: 12px; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tab[aria-selected="true"] .n { background: var(--accent); color: var(--accent-fg); }
+.tab.sep { margin-left: 14px; }
+.btn { appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 500 13px/1 var(--f-body); padding: 9px 12px; border-radius: var(--r); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.sm { padding: 6px 9px; font-size: 12px; }
+.btn.icon { padding: 6px 8px; color: var(--muted); }
+.btn.icon:hover { color: var(--bad); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { padding-block: 20px 60px; }
+.panel { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.panel > *, .grid2 > *, .grid3 > *, .head > div { min-width: 0; }
+.head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.head h2 { font: 700 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; margin: 0; margin-right: auto; text-wrap: balance; }
+.head p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.card.pad { padding: 16px; }
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 12px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); }
+td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+.in { width: 100%; min-width: 0; border: 1px solid transparent; background: var(--surface2); color: var(--fg); border-radius: 4px; padding: 6px 7px; font: 400 13px/1.2 var(--f-body); }
+.in:hover { border-color: var(--line); }
+.in:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+.in.num { text-align: right; font-family: var(--f-mono); font-size: 12.5px; }
+.in.mono { font-family: var(--f-mono); font-size: 12px; }
+select.in { padding-right: 4px; }
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.sub { display: block; color: var(--muted); font: 400 11px/1.2 var(--f-mono); margin-top: 3px; text-align: right; }
+.hint { color: var(--muted); font-size: 12px; }
+.msg { font-size: 11px; margin-top: 3px; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.days { display: flex; gap: 3px; }
+.dchip { appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: 600 11px/1 var(--f-mono); padding: 5px 0; width: 34px; border-radius: 4px; cursor: pointer; }
+.dchip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.dchip.big { width: auto; padding: 8px 12px; font: 600 13px/1 var(--f-body); }
+.dchip:disabled { opacity: .45; cursor: not-allowed; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
+.field { display: grid; gap: 5px; }
+.field label { font: 600 12px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.field .row { display: flex; gap: 8px; align-items: center; }
+.field .in { font-size: 14px; padding: 8px 9px; }
+.daycard h3, .card h3 { font: 700 18px/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; margin: 0; }
+.daycard { padding: 14px; display: grid; gap: 10px; align-content: start; }
+.daycard .hrow { display: flex; align-items: center; gap: 8px; }
+.daycard .hrow h3 { margin-right: auto; }
+.brow { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 6px; align-items: center; }
+.off { color: var(--muted); font-size: 12px; font-style: italic; }
+.banner { border-radius: var(--r); padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.banner.warn { background: var(--warn-bg); color: var(--warn); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+.banner.info { background: var(--accent-soft); color: var(--fg); }
+.banner b { font-weight: 600; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.tile .k { font: 600 11px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.tile .v { font: 700 30px/1.1 var(--f-display); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.tile .v small { font: 500 14px var(--f-body); color: var(--muted); margin-left: 3px; }
+.tile.alert .v { color: var(--bad); }
+.dayblock { display: grid; gap: 10px; }
+.dayhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dayhead h3 { font: 700 22px/1 var(--f-display); text-transform: uppercase; margin: 0; letter-spacing: .03em; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/1 var(--f-body); padding: 4px 8px; border-radius: 99px; background: var(--surface2); color: var(--muted); white-space: nowrap; }
+.pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.warn { background: var(--warn-bg); color: var(--warn); } .pill.ok { background: var(--accent-soft); color: var(--accent); }
+.trip { overflow: hidden; }
+.trip-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--line); }
+.trip-h .veh { font: 700 17px/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; }
+.plate { font: 600 12px/1 var(--f-mono); border: 1.5px solid var(--fg); border-radius: 3px; padding: 3px 6px; background: var(--surface); }
+.trip-h .meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.trip-h .meta b { color: var(--fg); font-weight: 600; }
+.trip-h a { margin-left: auto; color: var(--accent); font-weight: 600; font-size: 12.5px; text-decoration: none; }
+.trip-h a:hover { text-decoration: underline; }
+.meter { width: 70px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 4px; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.tag { font: 600 10.5px/1 var(--f-body); text-transform: uppercase; letter-spacing: .05em; padding: 3px 6px; border-radius: 3px; white-space: nowrap; }
+.tag.drop { background: color-mix(in srgb, var(--seg-drop) 18%, transparent); color: var(--seg-drop); }
+.tag.pick { background: color-mix(in srgb, var(--seg-pick) 18%, transparent); color: var(--seg-pick); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+.gantt-wrap { overflow-x: auto; position: relative; }
+#gantt svg text { font-family: var(--f-body); }
+.tip { position: fixed; z-index: 2000; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 7px 9px; border-radius: 5px; max-width: 280px; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.tip b { font-weight: 600; }
+#map { height: min(72vh, 680px); min-height: 380px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface2); }
+.map-gray .leaflet-tile-pane { filter: grayscale(1) contrast(.95) brightness(1.04); }
+:root[data-theme="dark"] .map-gray .leaflet-tile-pane { filter: grayscale(1) invert(.9) contrast(.85); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-gray .leaflet-tile-pane { filter: grayscale(1) invert(.9) contrast(.85); } }
+.leaflet-container { font-family: var(--f-body); }
+.leaflet-popup-content { font-size: 12.5px; }
+.storepin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+.depotpin { width: 22px; height: 22px; background: #17201d; color: #f2b705; border: 2px solid #f2b705; transform: rotate(45deg); border-radius: 3px; display: grid; place-items: center; }
+.depotpin span { transform: rotate(-45deg); font: 700 11px/1 var(--f-display); }
+.seqpin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: 700 10px/14px var(--f-mono); text-align: center; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+.maptools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.maplist { display: grid; gap: 6px; }
+.maplist label { display: flex; gap: 8px; align-items: center; font-size: 12.5px; cursor: pointer; }
+.empty { padding: 30px; text-align: center; color: var(--muted); }
+.menu { position: relative; }
+.menu-pop { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 8px 24px rgba(0,0,0,.14); padding: 6px; display: grid; min-width: 230px; z-index: 1100; }
+.menu-pop button { appearance: none; background: none; border: 0; text-align: left; padding: 9px 10px; border-radius: 4px; font: 400 13px var(--f-body); color: var(--fg); cursor: pointer; }
+.menu-pop button:hover { background: var(--surface2); }
+.menu-pop hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 6px; z-index: 3000; font-size: 13px; max-width: calc(100vw - 32px); }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+details.adv summary { cursor: pointer; font: 600 15px var(--f-display); text-transform: uppercase; letter-spacing: .04em; padding: 2px 0; }
+details.adv[open] summary { margin-bottom: 12px; }
+@media (max-width: 640px) { .head h2 { font-size: 24px; } .brand small { display: none; } .tab.sep { margin-left: 6px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <div class="brand"><div class="mark"><span>PD</span></div><div><h1>Perencana Distribusi</h1><small id="brandSub">Plan mingguan, Gantt armada, dan peta rute</small></div></div>
+      <button class="btn primary" id="btnPlan" type="button">▶ Buat Plan</button>
+      <div class="menu">
+        <button class="btn" id="btnMenu" type="button" aria-haspopup="true">Data ▾</button>
+        <div class="menu-pop" id="menuPop" hidden>
+          <button type="button" data-act="excel">Unduh plan (Excel)</button>
+          <button type="button" data-act="export">Simpan data input (JSON)</button>
+          <button type="button" data-act="import">Buka data input (JSON)</button>
+          <button type="button" data-act="importStore">Impor store dari Excel/CSV</button>
+          <button type="button" data-act="template">Unduh template store (Excel)</button>
+          <hr>
+          <button type="button" data-act="html">Unduh aplikasi ini (HTML)</button>
+          <hr>
+          <button type="button" data-act="sample">Muat contoh data Lazuna</button>
+          <button type="button" data-act="clear">Kosongkan semua data</button>
+        </div>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="kendaraan"><span class="n">1</span>Kendaraan</button>
+      <button class="tab" role="tab" data-tab="store"><span class="n">2</span>Store</button>
+      <button class="tab" role="tab" data-tab="istirahat"><span class="n">3</span>Istirahat</button>
+      <button class="tab" role="tab" data-tab="parameter"><span class="n">4</span>Parameter</button>
+      <button class="tab sep" role="tab" data-tab="plan">Plan</button>
+      <button class="tab" role="tab" data-tab="gantt">Gantt</button>
+      <button class="tab" role="tab" data-tab="peta">Peta Rute</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="confirmBox" hidden></div>
+  <section class="panel" id="p-kendaraan" hidden></section>
+  <section class="panel" id="p-store" hidden></section>
+  <section class="panel" id="p-istirahat" hidden></section>
+  <section class="panel" id="p-parameter" hidden></section>
+  <section class="panel" id="p-plan" hidden></section>
+  <section class="panel" id="p-gantt" hidden></section>
+  <section class="panel" id="p-peta" hidden>
+    <div class="head"><div><h2>Peta Rute</h2><p>Peta dasar abu-abu, hanya rute dan titik store yang berwarna. Pilih semua hari (warna per hari) atau satu hari (warna per rit).</p></div></div>
+    <div class="maptools" id="mapTools"></div>
+    <div id="mapNote"></div>
+    <div id="map"></div>
+    <div class="legend" id="mapLegend"></div>
+  </section>
+</main>
+<input type="file" id="fileJson" accept=".json,application/json" hidden>
+<input type="file" id="fileStore" accept=".xlsx,.xls,.csv" hidden>
+<div class="tip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/*BOOT*/
+/* ===== Mesin perencanaan distribusi ===== */
+const HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+const HARI3 = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+function toMin(s) { if (s == null || s === "") return null; const m = String(s).match(/^(\d{1,2})[:.](\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function fmtJam(m) { if (m == null || !isFinite(m)) return "-"; m = Math.round(m); const d = Math.floor(m / 1440); m -= d * 1440; return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0") + (d > 0 ? " (+" + d + ")" : ""); }
+function hav(a, b) {
+  const R = 6371, r = Math.PI / 180;
+  const dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r;
+  const x = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+/* Ambil koordinat dari link Google Maps / teks */
+function parseKoordinat(txt) {
+  if (!txt) return null;
+  txt = String(txt).trim();
+  try { txt = decodeURIComponent(txt); } catch (e) {}
+  const num = "(-?\\d{1,3}\\.\\d+)";
+  const pats = [
+    new RegExp("!3d" + num + "!4d" + num),
+    new RegExp("@" + num + "," + num),
+    new RegExp("[?&](?:q|query|ll|destination|daddr|center|sll)=(?:loc:)?" + num + ",\\s*" + num),
+    new RegExp("/place/" + num + ",\\s*" + num),
+    new RegExp("/dir/[^/]*?" + num + ",\\s*" + num),
+    new RegExp("^" + num + "\\s*[, ]\\s*" + num + "$"),
+    new RegExp(num + ",\\s*" + num),
+  ];
+  for (const p of pats) {
+    const m = txt.match(p);
+    if (m) { const la = +m[1], lo = +m[2]; if (Math.abs(la) <= 90 && Math.abs(lo) <= 180) return { lat: la, lng: lo }; }
+  }
+  if (/goo\.gl|maps\.app/.test(txt)) return { short: true };
+  return null;
+}
+
+/* ---------- Model waktu ---------- */
+function makeCtx(state, day) {
+  const p = state.params, L = p.lalin;
+  const breaks = (state.breaks[day] || []).map(b => [toMin(b.mulai), toMin(b.selesai)]).filter(b => b[0] != null && b[1] != null && b[1] > b[0]).sort((a, b) => a[0] - b[0]);
+  const peaks = (L.jamSibuk || []).map(j => [toMin(j.mulai), toMin(j.selesai), +j.faktor || 1]).filter(j => j[0] != null && j[1] != null);
+  const pusat = L.pusat && L.pusat.lat != null ? [+L.pusat.lat, +L.pusat.lng] : null;
+  const rate = Math.max(0.01, +p.rasioKgMenit || 30);
+  function inCore(pt) { return pusat && +L.pusat.radiusKm > 0 && hav(pt, pusat) <= +L.pusat.radiusKm; }
+  function advance(t, dur) {
+    for (let guard = 0; guard < 100; guard++) {
+      for (const [a, b] of breaks) if (a <= t && t < b) t = b;
+      let nxt = Infinity; for (const [a] of breaks) if (a > t && a < nxt) nxt = a;
+      if (t + dur <= nxt) return t + dur;
+      dur -= nxt - t; t = nxt;
+    }
+    return t + dur;
+  }
+  function leg(a, b, t, speed) {
+    const h = hav(a, b);
+    if (h < 1e-6) return { km: 0, min: 0 };
+    const road = h * (+L.faktorJalan || 1.65);
+    let f;
+    if (h >= (+L.batasAntarKotaKm || 25)) f = +L.fAntarKota || 1;
+    else {
+      const ca = inCore(a), cb = inCore(b);
+      f = (ca && cb) ? (+L.fPusat || 1) : ((ca || cb) ? (+L.fPusatLuar || 1) : (+L.fPinggir || 1));
+      if (t != null) { const tm = ((t % 1440) + 1440) % 1440; for (const [s, e, x] of peaks) if (tm >= s && tm < e) { f *= x; break; } }
+    }
+    return { km: road, min: road / Math.max(1, speed) * 60 * f };
+  }
+  function overlap(t0, t1) { let s = 0; for (const [a, b] of breaks) s += Math.max(0, Math.min(b, t1) - Math.max(a, t0)); return s; }
+  const acts = (p.aktivitas || []).filter(a => a.hari && a.hari[day] && +a.durasi > 0);
+  return { day, breaks, advance, leg, overlap, rate, acts, H: (+p.jamShift || 8) * 60, start: toMin(p.jamMulai) ?? 480 };
+}
+
+/* Simulasi satu rit. stops: array store (pengantaran dulu, lalu penjemputan). */
+function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
+  const segs = [];
+  let t = t0, shiftStart = null;
+  const acts = ctx.acts.filter(a => a.berlaku !== "shift1" || shiftNo === 1);
+  for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
+  for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
+  t = ctx.advance(t, 0);
+  if (shiftStart == null) shiftStart = t;
+  const dep = t;
+  let pos = [depot.lat, depot.lng], km = 0, ok = true, why = "";
+  let kgDel = 0, kgPick = 0;
+  const out = [];
+  const speed = +veh.kecepatan > 0 ? +veh.kecepatan : 40;
+  for (const s of stops) {
+    const pt = [s.lat, s.lng];
+    const lg = ctx.leg(pos, pt, t, speed);
+    t = ctx.advance(t, 0); const ts = t; t = ctx.advance(t, lg.min); km += lg.km;
+    if (detail && lg.min > 0) segs.push({ type: "jalan", start: ts, end: t, label: "Perjalanan ke " + s.nama, km: lg.km });
+    const arr = t;
+    const buka = toMin(s.buka); let tutup = toMin(s.tutup);
+    if (buka != null && tutup != null && tutup <= buka) tutup += 1440; // tutup lewat tengah malam
+    if (buka != null && t < buka) { if (detail) segs.push({ type: "tunggu", start: t, end: buka, label: "Menunggu " + s.nama + " buka" }); t = buka; }
+    t = ctx.advance(t, 0);
+    const svc = (+s.beratKg || 0) / ctx.rate;
+    const st = t; t = ctx.advance(t, svc);
+    const pick = s.loading === "Menaikkan";
+    if (pick) kgPick += +s.beratKg || 0; else kgDel += +s.beratKg || 0;
+    if (tutup != null && t > tutup) { ok = false; why = "Tidak terkejar sebelum " + s.nama + " tutup (" + s.tutup + ")"; }
+    if (detail) segs.push({ type: pick ? "muat" : "bongkar", start: st, end: t, label: (pick ? "Menaikkan barang di " : "Menurunkan barang di ") + s.nama, kg: +s.beratKg || 0 });
+    out.push({ store: s, km: lg.km, drive: lg.min, arr, start: st, fin: t, wait: Math.max(0, st - arr - ctx.overlap(arr, st) * 0) });
+    pos = pt;
+  }
+  const back = ctx.leg(pos, [depot.lat, depot.lng], t, speed);
+  t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
+  if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
+  const cap = +veh.kapasitasKg || 0;
+  if (kgDel > cap + 1e-6) { ok = false; why = "Muatan melebihi kapasitas"; }
+  if (kgPick > cap + 1e-6) { ok = false; why = "Barang yang dinaikkan melebihi kapasitas"; }
+  if (stops.length && t - shiftStart > ctx.H + 1e-6) { ok = false; why = "Melebihi jam kerja shift"; }
+  if (t > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
+  return { ok, why, t0, shiftStart, dep, ret: t, dur: t - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km };
+}
+
+/* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
+function simFlex(ctx, depot, veh, t0, shiftNo, stops, detail) {
+  let r = simulate(ctx, depot, veh, t0, shiftNo, stops, false), t = t0;
+  for (let i = 0; i < 4 && r.stops.length; i++) {
+    const f = r.stops[0], w = f.start - f.arr - ctx.overlap(f.arr, f.start);
+    if (w <= 1) break;
+    t += w;
+    const r2 = simulate(ctx, depot, veh, t, shiftNo, stops, false);
+    if ((r2.ok && !r.ok) || (r2.ok === r.ok && r2.dur < r.dur - 0.5)) r = r2; else break;
+  }
+  return detail ? simulate(ctx, depot, veh, r.t0, shiftNo, stops, true) : r;
+}
+function orderStops(list) { // pengantaran dulu, penjemputan ("Menaikkan barang") selalu terakhir
+  return list.filter(s => s.loading !== "Menaikkan").concat(list.filter(s => s.loading === "Menaikkan"));
+}
+
+/* Bangun rute untuk satu hari */
+function routeDay(state, day, visits, depot, vehicles) {
+  const ctx = makeCtx(state, day);
+  const U = visits.slice();
+  const trips = [];
+  const avail = vehicles.map(() => ctx.start), used = vehicles.map(() => 0), done = vehicles.map(() => false);
+  const legDepot = s => ctx.leg([depot.lat, depot.lng], [s.lat, s.lng], null, 40).min;
+  for (let iter = 0; iter < 200 && U.length; iter++) {
+    // kendaraan yang paling awal tersedia
+    let vi = -1;
+    vehicles.forEach((v, i) => { if (!done[i] && used[i] < (+v.maksShift || 1) && (vi < 0 || avail[i] < avail[vi] - 1e-9 || (Math.abs(avail[i] - avail[vi]) < 1e-9 && +v.kapasitasKg > +vehicles[vi].kapasitasKg))) vi = i; });
+    if (vi < 0) break;
+    const v = vehicles[vi], sh = used[vi] + 1;
+    const sim = r => simFlex(ctx, depot, v, avail[vi], sh, orderStops(r), false);
+    // seed: titik terjauh yang layak sendirian
+    const cand = U.map(s => ({ s, d: legDepot(s) })).sort((a, b) => b.d - a.d);
+    let route = null;
+    for (const c of cand) { if (sim([c.s]).ok) { route = [c.s]; break; } }
+    if (!route) { done[vi] = true; continue; }
+    U.splice(U.indexOf(route[0]), 1);
+    // penyisipan termurah
+    for (;;) {
+      const base = sim(route).ret;
+      let best = null;
+      for (const s of U) {
+        if (route.some(r => r.id === s.id)) continue; // store sama tidak dua kali dalam satu rit
+        for (let k = 0; k <= route.length; k++) {
+          const r2 = route.slice(0, k).concat([s], route.slice(k));
+          const res = sim(r2);
+          if (res.ok) { const c = res.ret - base; if (!best || c < best.c) best = { c, r2, s }; }
+        }
+      }
+      if (!best) break;
+      route = best.r2; U.splice(U.indexOf(best.s), 1);
+    }
+    route = improve(route, sim);
+    const res = simFlex(ctx, depot, v, avail[vi], sh, orderStops(route), true);
+    trips.push(Object.assign(res, { day, vIdx: vi, veh: v, shift: sh }));
+    avail[vi] = res.ret; used[vi] = sh;
+  }
+  return { trips, left: U };
+}
+
+function improve(route, sim) { // 2-opt + relokasi sederhana
+  let cur = orderStops(route), best = sim(cur).ret, again = true, n = 0;
+  while (again && n++ < 50) {
+    again = false;
+    for (let i = 0; i < cur.length - 1; i++) for (let j = i + 1; j < cur.length; j++) {
+      const r2 = orderStops(cur.slice(0, i).concat(cur.slice(i, j + 1).reverse(), cur.slice(j + 1)));
+      const res = sim(r2); if (res.ok && res.ret < best - 0.01) { cur = r2; best = res.ret; again = true; }
+    }
+    for (let i = 0; i < cur.length; i++) for (let j = 0; j < cur.length; j++) {
+      if (i === j) continue;
+      const tmp = cur.slice(); const [x] = tmp.splice(i, 1); tmp.splice(j, 0, x);
+      const r2 = orderStops(tmp); const res = sim(r2); if (res.ok && res.ret < best - 0.01) { cur = r2; best = res.ret; again = true; }
+    }
+  }
+  return cur;
+}
+
+/* Perkiraan kapasitas menit kerja per hari */
+function dayCapacity(state, day, depot, vehicles) {
+  const ctx = makeCtx(state, day);
+  let tot = 0;
+  vehicles.forEach(v => {
+    let t = ctx.start;
+    for (let k = 1; k <= (+v.maksShift || 1); k++) {
+      const e = simulate(ctx, depot, v, t, k, [], false);
+      const end = Math.min(e.shiftStart + ctx.H, 24 * 60);
+      const work = Math.max(0, end - e.dep - ctx.overlap(e.dep, end));
+      tot += work; t = end;
+    }
+  });
+  return tot;
+}
+
+function buildPlan(state) {
+  const warn = [];
+  const days = state.params.hari.map((b, i) => b ? i : -1).filter(i => i >= 0);
+  const depot = state.stores.find(s => s.aktif !== false && s.antaran === "Origin" && s.lat != null && s.lng != null);
+  if (!depot) return { error: "Belum ada titik Origin (gudang) dengan koordinat. Tandai satu store sebagai Jenis Antaran \"Origin\"." };
+  const vehicles = state.vehicles.filter(v => v.aktif !== false && +v.kapasitasKg > 0);
+  if (!vehicles.length) return { error: "Belum ada kendaraan aktif." };
+  if (!days.length) return { error: "Pilih minimal satu hari distribusi." };
+  const stores = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
+  const noCoord = stores.filter(s => s.lat == null || s.lng == null || isNaN(s.lat) || isNaN(s.lng));
+  noCoord.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena belum ada koordinat."));
+  const zeroF = stores.filter(s => !noCoord.includes(s) && !(s.hariTetap && s.hariTetap.length) && !(+s.frek > 0));
+  zeroF.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena frekuensi 0."));
+  const valid = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s));
+  state.vehicles.filter(v => v.aktif !== false && !(+v.kapasitasKg > 0)).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena kapasitas kosong/0."));
+  vehicles.filter(v => !(+v.kecepatan > 0)).forEach(v => warn.push("Kecepatan " + (v.jenis || "") + " " + (v.plat || "") + " kosong, dipakai 40 km/jam."));
+  const maxCap = Math.max(...vehicles.map(v => +v.kapasitasKg));
+  valid.filter(s => +s.beratKg > maxCap).forEach(s => warn.push("\"" + s.nama + "\" " + Math.round(s.beratKg) + " kg melebihi kapasitas kendaraan terbesar (" + maxCap + " kg). Pecah menjadi 2 baris store atau tambah kendaraan lebih besar."));
+  const D = days.length;
+  const ctx0 = makeCtx(state, days[0]);
+  const work = s => (+s.beratKg || 0) / ctx0.rate + ctx0.leg([depot.lat, depot.lng], [s.lat, s.lng], null, 40).min * 0.9;
+  const cap = {}; days.forEach(d => cap[d] = dayCapacity(state, d, depot, vehicles));
+  const load = {}; days.forEach(d => load[d] = 0);
+  const perDay = {}; days.forEach(d => perDay[d] = []);
+  const fixedIds = new Set();
+  const multi = valid.filter(s => (s.hariTetap && s.hariTetap.length) || Math.round(+s.frek || 1) > 1).sort((a, b) => (+b.frek || 1) - (+a.frek || 1));
+  for (const s of multi) {
+    let ds;
+    if (s.hariTetap && s.hariTetap.length) {
+      ds = s.hariTetap.filter(d => days.includes(d));
+      if (ds.length < s.hariTetap.length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
+    } else {
+      const f = Math.min(D, Math.round(+s.frek));
+      if (+s.frek > D) warn.push("\"" + s.nama + "\": frekuensi " + s.frek + "x melebihi " + D + " hari distribusi, dibatasi " + D + "x.");
+      let best = null;
+      for (let o = 0; o < D; o++) {
+        const set = []; for (let i = 0; i < f; i++) set.push(days[(o + Math.round(i * D / f)) % D]);
+        const w = work(s);
+        const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
+        if (!best || score < best.score - 1e-9) best = { score, set };
+      }
+      ds = best.set;
+    }
+    ds.forEach(d => { perDay[d].push(s); load[d] += work(s); });
+    fixedIds.add(s.id);
+  }
+  // frekuensi 1x: sapuan sudut agar satu hari mengelompok secara geografis
+  const flex = valid.filter(s => !fixedIds.has(s.id)).map(s => ({ s, a: Math.atan2(s.lat - depot.lat, s.lng - depot.lng) })).sort((x, y) => x.a - y.a);
+  if (flex.length) {
+    let gi = 0, gap = -1; // mulai dari celah sudut terbesar
+    for (let i = 0; i < flex.length; i++) { const nx = flex[(i + 1) % flex.length]; let g = nx.a - flex[i].a; if (g <= 0) g += 2 * Math.PI; if (g > gap) { gap = g; gi = (i + 1) % flex.length; } }
+    const ordered = flex.slice(gi).concat(flex.slice(0, gi)).map(x => x.s);
+    const totalW = ordered.reduce((a, s) => a + work(s), 0) + days.reduce((a, d) => a + load[d], 0);
+    const capSum = days.reduce((a, d) => a + cap[d], 0) || 1;
+    let di = 0;
+    for (const s of ordered) {
+      while (di < D - 1 && load[days[di]] + work(s) / 2 > totalW * cap[days[di]] / capSum) di++;
+      perDay[days[di]].push(s); load[days[di]] += work(s);
+    }
+  }
+  // rute per hari + pindahkan sisa yang fleksibel ke hari lain
+  const res = {};
+  days.forEach(d => res[d] = routeDay(state, d, perDay[d], depot, vehicles));
+  const unserved = [];
+  for (let pass = 0; pass < 2; pass++) {
+    for (const d of days) {
+      const left = res[d].left.slice();
+      for (const s of left) {
+        if (fixedIds.has(s.id) && (s.hariTetap && s.hariTetap.length)) continue;
+        const others = days.filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
+        for (const o of others) {
+          const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles);
+          if (!trial.left.includes(s) && trial.left.length <= res[o].left.length) {
+            perDay[o].push(s); res[o] = trial; load[o] += work(s);
+            perDay[d] = perDay[d].filter(x => x !== s); res[d].left = res[d].left.filter(x => x !== s); load[d] -= work(s);
+            break;
+          }
+        }
+      }
+    }
+  }
+  days.forEach(d => res[d].left.forEach(s => {
+    const ctx = makeCtx(state, d);
+    let reason = "Waktu/kapasitas armada di hari ini sudah penuh";
+    if (+s.beratKg > maxCap) reason = "Berat melebihi kapasitas kendaraan terbesar";
+    else {
+      const tries = vehicles.map(v => simFlex(ctx, depot, v, ctx.start, 1, [s], false));
+      if (!tries.some(r => r.ok)) reason = (tries.find(r => +vehicles[tries.indexOf(r)].kapasitasKg >= +s.beratKg) || tries[0]).why || reason;
+    }
+    unserved.push({ day: d, store: s, reason });
+  }));
+  const trips = [];
+  days.forEach(d => res[d].trips.forEach(t => trips.push(t)));
+  trips.sort((a, b) => a.day - b.day || a.vIdx - b.vIdx || a.shift - b.shift);
+  return { depot, vehicles, days, trips, unserved, warn, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
+}
+
+if (typeof module !== "undefined" && module.exports) module.exports = { buildPlan, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+
+const SAMPLE = {"vehicles": [{"id": "v1", "aktif": true, "jenis": "CDD Box", "plat": "DD 0001 LZ", "kapasitasKg": 6000, "kecepatan": 40, "maksShift": 2}, {"id": "v2", "aktif": true, "jenis": "Traga Box", "plat": "DD 0002 LZ", "kapasitasKg": 3000, "kecepatan": 40, "maksShift": 1}], "stores": [{"id": "s0", "aktif": true, "nama": "Gudang PT Inti Lazuna Grup", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1019978,119.4786111", "lat": -5.1019978, "lng": 119.4786111, "buka": "06:00", "tutup": "23:59", "beratKg": 0, "frek": 0, "antaran": "Origin", "loading": "Menurunkan", "hariTetap": []}, {"id": "s1", "aktif": true, "nama": "PRODUKSI", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1169668,119.5093495", "lat": -5.1169668, "lng": 119.5093495, "buka": "07:00", "tutup": "22:00", "beratKg": 1500.0, "frek": 5, "antaran": "Tujuan", "loading": "Menaikkan", "hariTetap": [0, 1, 2, 3, 4]}, {"id": "s2", "aktif": true, "nama": "Lazuna Chicken Panakkukang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1631663,119.4525599", "lat": -5.1631663, "lng": 119.4525599, "buka": "07:00", "tutup": "22:00", "beratKg": 947.7, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s3", "aktif": true, "nama": "Lazuna Chicken Talasalapang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1823601,119.4453868", "lat": -5.1823601, "lng": 119.4453868, "buka": "07:00", "tutup": "22:00", "beratKg": 1658.1, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s4", "aktif": true, "nama": "Lazuna Chicken BTP Blok E", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1374438,119.5136457", "lat": -5.1374438, "lng": 119.5136457, "buka": "07:00", "tutup": "22:00", "beratKg": 1519.7, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s5", "aktif": true, "nama": "Lazuna Chicken Perintis VII", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.136437,119.4825193", "lat": -5.136437, "lng": 119.4825193, "buka": "07:00", "tutup": "22:00", "beratKg": 1149.8, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s6", "aktif": true, "nama": "Lazuna Chicken Perdos", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1411864,119.4955727", "lat": -5.1411864, "lng": 119.4955727, "buka": "07:00", "tutup": "22:00", "beratKg": 896.4, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s7", "aktif": true, "nama": "Lazuna Chicken Tamalate", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1679776,119.4477005", "lat": -5.1679776, "lng": 119.4477005, "buka": "07:00", "tutup": "22:00", "beratKg": 921.7, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [0, 3]}, {"id": "s8", "aktif": true, "nama": "Lazuna Chicken BTP", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1322714,119.5016939", "lat": -5.1322714, "lng": 119.5016939, "buka": "07:00", "tutup": "22:00", "beratKg": 724.3, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [1, 4]}, {"id": "s9", "aktif": true, "nama": "Lazuna Chicken Paccerakkang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1138766,119.5168249", "lat": -5.1138766, "lng": 119.5168249, "buka": "07:00", "tutup": "22:00", "beratKg": 1473.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s10", "aktif": true, "nama": "Lazuna Chicken Dg. Tata", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1858375,119.424292", "lat": -5.1858375, "lng": 119.424292, "buka": "07:00", "tutup": "22:00", "beratKg": 946.9, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s11", "aktif": true, "nama": "Lazuna Chicken Antang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1694069,119.4798616", "lat": -5.1694069, "lng": 119.4798616, "buka": "07:00", "tutup": "22:00", "beratKg": 2002.1, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s12", "aktif": true, "nama": "Lazuna Chicken Goa Ria", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.0898566,119.5285946", "lat": -5.0898566, "lng": 119.5285946, "buka": "07:00", "tutup": "22:00", "beratKg": 972.4, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s13", "aktif": true, "nama": "Lazuna Chicken Sunu", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1263022,119.4287397", "lat": -5.1263022, "lng": 119.4287397, "buka": "07:00", "tutup": "22:00", "beratKg": 1250.4, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [2, 5]}, {"id": "s14", "aktif": true, "nama": "Lazuna Chicken Mappaoddang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1697756,119.4174852", "lat": -5.1697756, "lng": 119.4174852, "buka": "07:00", "tutup": "22:00", "beratKg": 560.4, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [0, 3]}, {"id": "s15", "aktif": true, "nama": "Lazuna Chicken Abdesir", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1486494,119.439298", "lat": -5.1486494, "lng": 119.439298, "buka": "07:00", "tutup": "22:00", "beratKg": 1889.1, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s16", "aktif": true, "nama": "Lazuna Chicken Rappocini", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1576263,119.4324174", "lat": -5.1576263, "lng": 119.4324174, "buka": "07:00", "tutup": "22:00", "beratKg": 1084.8, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s17", "aktif": true, "nama": "Lazuna Chicken Tinumbu", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1229435,119.4198277", "lat": -5.1229435, "lng": 119.4198277, "buka": "07:00", "tutup": "22:00", "beratKg": 815.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s18", "aktif": true, "nama": "Lazuna Chicken Samata", "alamat": "Gowa", "link": "https://www.google.com/maps?q=-5.2022542,119.4963478", "lat": -5.2022542, "lng": 119.4963478, "buka": "07:00", "tutup": "22:00", "beratKg": 1699.6, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s19", "aktif": true, "nama": "Lazuna Chicken Agus Salim", "alamat": "Gowa", "link": "https://www.google.com/maps?q=-5.2017618,119.4572171", "lat": -5.2017618, "lng": 119.4572171, "buka": "07:00", "tutup": "22:00", "beratKg": 1507.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s20", "aktif": true, "nama": "Lazuna Chicken Baruga", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1563815,119.4817461", "lat": -5.1563815, "lng": 119.4817461, "buka": "07:00", "tutup": "22:00", "beratKg": 1079.4, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s21", "aktif": true, "nama": "Lazuna Chicken Cendrawasih", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.169139,119.4113906", "lat": -5.169139, "lng": 119.4113906, "buka": "07:00", "tutup": "22:00", "beratKg": 1439.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s22", "aktif": true, "nama": "Lazuna Chicken Urip", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1354857,119.4362772", "lat": -5.1354857, "lng": 119.4362772, "buka": "07:00", "tutup": "22:00", "beratKg": 909.7, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s23", "aktif": true, "nama": "Lazuna Chicken Pallangga (Zuper)", "alamat": "Gowa", "link": "https://www.google.com/maps?q=-5.2209106,119.44535", "lat": -5.2209106, "lng": 119.44535, "buka": "07:00", "tutup": "22:00", "beratKg": 1302.7, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s24", "aktif": true, "nama": "Lazuna Chicken Pettuadae (Zuper)", "alamat": "Maros", "link": "https://www.google.com/maps?q=-5.0137729,119.5733044", "lat": -5.0137729, "lng": 119.5733044, "buka": "07:00", "tutup": "22:00", "beratKg": 1008.0, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s25", "aktif": true, "nama": "Lazuna Chicken Bontoa", "alamat": "Maros", "link": "https://www.google.com/maps?q=-5.048903,119.5516553", "lat": -5.048903, "lng": 119.5516553, "buka": "07:00", "tutup": "22:00", "beratKg": 1057.5, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s26", "aktif": true, "nama": "Lazuna Chicken Urip 286", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1407254,119.4513953", "lat": -5.1407254, "lng": 119.4513953, "buka": "07:00", "tutup": "22:00", "beratKg": 1155.7, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [2, 5]}, {"id": "s27", "aktif": true, "nama": "Lazuna Chicken Villa Mutiara", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.0739644,119.4926582", "lat": -5.0739644, "lng": 119.4926582, "buka": "07:00", "tutup": "22:00", "beratKg": 773.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s28", "aktif": true, "nama": "Lazuna Chicken Mannuruki", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1752125,119.4297671", "lat": -5.1752125, "lng": 119.4297671, "buka": "07:00", "tutup": "22:00", "beratKg": 925.3, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s29", "aktif": true, "nama": "Lazuna Chicken Nipa-Nipa", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1627128,119.5022184", "lat": -5.1627128, "lng": 119.5022184, "buka": "07:00", "tutup": "22:00", "beratKg": 833.9, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s30", "aktif": true, "nama": "Lazuna Chicken Kerung-Kerung", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1400941,119.4274905", "lat": -5.1400941, "lng": 119.4274905, "buka": "07:00", "tutup": "22:00", "beratKg": 849.6, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s31", "aktif": true, "nama": "Lazuna Chicken Bung", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1423639,119.4873547", "lat": -5.1423639, "lng": 119.4873547, "buka": "07:00", "tutup": "22:00", "beratKg": 774.8, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s32", "aktif": true, "nama": "Lazuna Chicken Batua Raya", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1500071,119.4603294", "lat": -5.1500071, "lng": 119.4603294, "buka": "07:00", "tutup": "22:00", "beratKg": 1355.2, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s33", "aktif": true, "nama": "Lazuna Chicken Andi Djemma", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1651551,119.4258725", "lat": -5.1651551, "lng": 119.4258725, "buka": "07:00", "tutup": "22:00", "beratKg": 967.2, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s34", "aktif": false, "nama": "Lazuna Chicken Zuper Bulukumba", "alamat": "Bulukumba", "link": "https://www.google.com/maps?q=-5.5359682,120.1959424", "lat": -5.5359682, "lng": 120.1959424, "buka": "07:00", "tutup": "22:00", "beratKg": 2589.6, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s35", "aktif": true, "nama": "Lazuna Chicken Alauddin", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1851435,119.4412059", "lat": -5.1851435, "lng": 119.4412059, "buka": "07:00", "tutup": "22:00", "beratKg": 868.6, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s36", "aktif": false, "nama": "Lazuna Chicken Zuper Bantaeng", "alamat": "Bantaeng", "link": "https://www.google.com/maps?q=-5.5490215,119.950985", "lat": -5.5490215, "lng": 119.950985, "buka": "07:00", "tutup": "22:00", "beratKg": 1148.6, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s37", "aktif": true, "nama": "Lazuna Chicken Perintis Daya", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1162665,119.5123061", "lat": -5.1162665, "lng": 119.5123061, "buka": "07:00", "tutup": "22:00", "beratKg": 1067.1, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s38", "aktif": true, "nama": "Lazuna Chicken Sultan Hasanuddin", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1389444,119.4095859", "lat": -5.1389444, "lng": 119.4095859, "buka": "07:00", "tutup": "22:00", "beratKg": 1279.2, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s39", "aktif": true, "nama": "Lazuna Chicken Zuper Hertasning Aroepala", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1782174,119.4618899", "lat": -5.1782174, "lng": 119.4618899, "buka": "07:00", "tutup": "22:00", "beratKg": 1193.7, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s40", "aktif": true, "nama": "Lazuna Chicken Pajjaiang", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1026843,119.5289779", "lat": -5.1026843, "lng": 119.5289779, "buka": "07:00", "tutup": "22:00", "beratKg": 1055.8, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s41", "aktif": true, "nama": "Lazuna Chicken Tamalate 2", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1721955,119.4454488", "lat": -5.1721955, "lng": 119.4454488, "buka": "07:00", "tutup": "22:00", "beratKg": 1014.2, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}, {"id": "s42", "aktif": true, "nama": "Lazuna Chicken Hamzy (PK 3)", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.1415796,119.4776584", "lat": -5.1415796, "lng": 119.4776584, "buka": "07:00", "tutup": "22:00", "beratKg": 702.5, "frek": 2, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": [1, 4]}, {"id": "s43", "aktif": true, "nama": "Lazuna Chicken Antang 2", "alamat": "Makassar", "link": "https://www.google.com/maps?q=-5.162023,119.4765097", "lat": -5.162023, "lng": 119.4765097, "buka": "07:00", "tutup": "22:00", "beratKg": 1155.4, "frek": 1, "antaran": "Tujuan", "loading": "Menurunkan", "hariTetap": []}], "breaks": {"0": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "1": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "2": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "3": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "4": [{"mulai": "12:00", "selesai": "14:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "5": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}], "6": [{"mulai": "12:00", "selesai": "13:00"}, {"mulai": "15:00", "selesai": "15:30"}, {"mulai": "18:00", "selesai": "18:30"}, {"mulai": "19:00", "selesai": "20:00"}]}, "params": {"jamShift": 8, "jamMulai": "08:00", "rasioKgMenit": 30, "hari": [true, true, true, true, true, true, false], "aktivitas": [{"id": "a1", "nama": "Pembersihan kendaraan & gudang", "durasi": 240, "hari": [true, false, false, false, false, false, false], "berlaku": "shift1", "dihitung": false}, {"id": "a2", "nama": "Loading di gudang", "durasi": 60, "hari": [true, true, true, true, true, true, true], "berlaku": "semua", "dihitung": true}, {"id": "a3", "nama": "Antri BBM", "durasi": 60, "hari": [true, true, true, true, true, true, true], "berlaku": "shift1", "dihitung": true}], "lalin": {"faktorJalan": 1.65, "pusat": {"lat": -5.155, "lng": 119.435, "radiusKm": 5}, "fPusat": 2.0, "fPusatLuar": 1.7, "fPinggir": 1.4, "fAntarKota": 1.15, "batasAntarKotaKm": 25, "jamSibuk": [{"mulai": "16:00", "selesai": "19:00", "faktor": 1.25}]}}};
+</script>
+<script>
+const PRISTINE = "<!doctype html>\n" + document.documentElement.outerHTML; // diambil di sini agar seluruh dokumen sudah terbaca
+/* ===== Aplikasi ===== */
+const LS_KEY = "perencana-distribusi-v1";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = p => p + Math.random().toString(36).slice(2, 8);
+const fmtNum = (n, d = 0) => (+n || 0).toLocaleString("id-ID", { minimumFractionDigits: d, maximumFractionDigits: d });
+const ton = kg => fmtNum((+kg || 0) / 1000, 2) + " t";
+const dayColor = d => getComputedStyle(document.documentElement).getPropertyValue("--d" + d).trim() || "#2563eb";
+const JENIS = ["CDD Box", "CDD Bak", "CDE", "Traga Box", "Traga Bak", "Engkel", "Pickup", "Blind Van", "Fuso", "Wingbox", "Motor"];
+
+let state = loadState();
+let plan = null, planDirty = true;
+let tab = "kendaraan";
+
+function loadState() {
+  let ls = null;
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) ls = JSON.parse(raw); } catch (e) {}
+  if (window.INIT_STATE && !(ls && ls._stamp && ls._stamp === window.INIT_STATE._stamp)) return normalize(clone(window.INIT_STATE));
+  if (ls) return normalize(ls);
+  return normalize(clone(SAMPLE));
+}
+function normalize(s) {
+  s.vehicles = s.vehicles || []; s.stores = s.stores || []; s.breaks = s.breaks || {};
+  for (let d = 0; d < 7; d++) s.breaks[d] = s.breaks[d] || [];
+  s.params = Object.assign(clone(SAMPLE.params), s.params || {});
+  s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), s.params.lalin || {});
+  s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
+  s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
+  s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; });
+  return s;
+}
+let saveT = null;
+function save() {
+  planDirty = true; markDirty();
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }, 300);
+}
+function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
+
+/* ---------- binding generik ---------- */
+function getPath(path) { return path.split(".").reduce((o, k) => o == null ? o : o[k], state); }
+function setPath(path, val) { const ks = path.split("."); const last = ks.pop(); const o = ks.reduce((o, k) => o[k], state); o[last] = val; }
+document.addEventListener("input", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.k) return;
+  let v;
+  if (el.type === "checkbox") v = el.checked;
+  else if (el.dataset.t === "num") v = el.value === "" ? null : parseFloat(String(el.value).replace(",", "."));
+  else v = el.value;
+  setPath(el.dataset.k, v);
+  // tampilan turunan
+  if (el.dataset.ton) { const s = document.getElementById(el.dataset.ton); if (s) s.textContent = ton(v); }
+  if (el.dataset.link) onLink(el, v);
+  save();
+});
+document.addEventListener("change", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.k) return;
+  if (el.dataset.rerender) renderTab();
+});
+document.addEventListener("click", e => {
+  const chip = e.target.closest("[data-chip]");
+  if (chip) {
+    const [path, idx] = chip.dataset.chip.split("|"); const i = +idx;
+    if (chip.dataset.mode === "list") {
+      const arr = getPath(path); const at = arr.indexOf(i);
+      if (at >= 0) arr.splice(at, 1); else { arr.push(i); arr.sort((a, b) => a - b); }
+      chip.classList.toggle("on", arr.includes(i));
+    } else {
+      const arr = getPath(path); arr[i] = !arr[i]; chip.classList.toggle("on", !!arr[i]);
+    }
+    save(); if (chip.dataset.rerender) renderTab(); return;
+  }
+  const del = e.target.closest("[data-del]");
+  if (del) { const [path, idx] = del.dataset.del.split("|"); getPath(path).splice(+idx, 1); save(); renderTab(); return; }
+});
+
+function onLink(el, v) {
+  const i = +el.dataset.link; const s = state.stores[i]; const msg = document.getElementById("lm" + i);
+  const r = parseKoordinat(v);
+  if (r && r.lat != null) {
+    s.lat = r.lat; s.lng = r.lng;
+    const la = document.getElementById("lat" + i), lo = document.getElementById("lng" + i);
+    if (la) la.value = r.lat; if (lo) lo.value = r.lng;
+    if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat terbaca"; }
+  } else if (msg) {
+    if (!v) { msg.textContent = ""; }
+    else if (r && r.short) { msg.className = "msg bad"; msg.textContent = "Link pendek: buka link, lalu salin URL lengkap dari address bar"; }
+    else { msg.className = "msg bad"; msg.textContent = "Koordinat tidak ditemukan di link"; }
+  }
+}
+
+/* ---------- tab ---------- */
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"));
+  document.querySelectorAll("main > .panel").forEach(p => p.hidden = p.id !== "p-" + t);
+  try { localStorage.setItem(LS_KEY + "-tab", t); } catch (e) {}
+  if (["plan", "gantt", "peta"].includes(t) && (planDirty || !plan)) runPlan(true);
+  renderTab();
+  try { if (location.hash.slice(1) !== t) history.replaceState(null, "", "#" + t); } catch (e) {}
+}
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h && h !== tab && document.getElementById("p-" + h)) setTab(h); });
+
+function renderTab() {
+  ({ kendaraan: renderKendaraan, store: renderStore, istirahat: renderIstirahat, parameter: renderParameter, plan: renderPlan, gantt: renderGantt, peta: renderPeta })[tab]();
+}
+function markDirty() {
+  const b = document.getElementById("dirtyBanner"); if (b) b.hidden = !planDirty;
+}
+function dirtyBanner() { return `<div class="banner warn" id="dirtyBanner" ${planDirty ? "" : "hidden"}><b>Data input berubah.</b> Hasil di bawah memakai data lama. <button class="btn sm" type="button" onclick="runPlan();renderTab()">Buat ulang plan</button></div>`; }
+
+/* ---------- 1. Kendaraan ---------- */
+function renderKendaraan() {
+  const el = $("#p-kendaraan");
+  const rows = state.vehicles.map((v, i) => `<tr>
+    <td><input type="checkbox" data-k="vehicles.${i}.aktif" ${v.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
+    <td><input class="in" list="jenisList" data-k="vehicles.${i}.jenis" value="${esc(v.jenis)}" style="min-width:130px"></td>
+    <td><input class="in mono" data-k="vehicles.${i}.plat" value="${esc(v.plat)}" style="min-width:110px"></td>
+    <td><input class="in num" type="number" min="0" step="50" data-t="num" data-k="vehicles.${i}.kapasitasKg" data-ton="vt${i}" value="${v.kapasitasKg ?? ""}" style="min-width:90px"><span class="sub" id="vt${i}">${ton(v.kapasitasKg)}</span></td>
+    <td><input class="in num" type="number" min="1" step="1" data-t="num" data-k="vehicles.${i}.kecepatan" value="${v.kecepatan ?? ""}" style="min-width:70px"></td>
+    <td><input class="in num" type="number" min="1" max="4" step="1" data-t="num" data-k="vehicles.${i}.maksShift" value="${v.maksShift ?? 1}" style="min-width:60px"></td>
+    <td><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
+  const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
+  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari.</p></div>
+    <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
+    <div class="card tbl-wrap"><table>
+    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="7" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
+    <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
+    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
+  $("#addV").onclick = () => { state.vehicles.push({ id: uid("v"), aktif: true, jenis: "Pickup", plat: "", kapasitasKg: 1000, kecepatan: 40, maksShift: 1 }); save(); renderKendaraan(); };
+}
+
+/* ---------- 2. Store ---------- */
+let storeFilter = "";
+function renderStore() {
+  const el = $("#p-store");
+  const f = storeFilter.toLowerCase();
+  const list = state.stores.map((s, i) => [s, i]).filter(([s]) => !f || (s.nama || "").toLowerCase().includes(f) || (s.alamat || "").toLowerCase().includes(f));
+  const rows = list.map(([s, i]) => {
+    const origin = s.antaran === "Origin";
+    return `<tr>
+    <td><input type="checkbox" data-k="stores.${i}.aktif" ${s.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
+    <td><input class="in" data-k="stores.${i}.nama" value="${esc(s.nama)}" style="min-width:190px"></td>
+    <td><input class="in" data-k="stores.${i}.alamat" value="${esc(s.alamat)}" style="min-width:150px"></td>
+    <td><input class="in mono" data-k="stores.${i}.link" data-link="${i}" value="${esc(s.link)}" placeholder="Tempel link Google Maps" style="min-width:200px"><div class="msg" id="lm${i}"></div></td>
+    <td><input class="in num" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" style="min-width:95px"></td>
+    <td><input class="in num" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" style="min-width:100px"></td>
+    <td><input class="in mono" type="time" data-k="stores.${i}.buka" value="${esc(s.buka)}" style="min-width:86px"></td>
+    <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
+    <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
+    <td><input class="in num" type="number" min="0" max="7" step="1" data-t="num" data-k="stores.${i}.frek" value="${s.frek ?? 1}" ${origin ? "disabled" : ""} style="min-width:56px"></td>
+    <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
+    <td><select class="in" data-k="stores.${i}.loading" ${origin ? "disabled" : ""} style="min-width:150px"><option value="Menurunkan" ${s.loading !== "Menaikkan" ? "selected" : ""}>Menurunkan barang</option><option value="Menaikkan" ${s.loading === "Menaikkan" ? "selected" : ""}>Menaikkan barang</option></select></td>
+    <td>${origin ? '<span class="off">gudang</span>' : `<div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${s.hariTetap.includes(d) ? "on" : ""}" data-mode="list" data-chip="stores.${i}.hariTetap|${d}" title="${HARI[d]}" ${state.params.hari[d] ? "" : "disabled"}>${h}</button>`).join("")}</div>`}</td>
+    <td><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></td></tr>`;
+  }).join("");
+  const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
+  const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
+  const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps, koordinat terisi otomatis. Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Hari tetap</b> opsional; kosong = diatur otomatis sesuai frekuensi.</p></div>
+    <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
+    <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
+    ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
+    <div class="card tbl-wrap"><table>
+    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th class="num">Frek/mgg</th><th>Antaran</th><th>Jenis loading</th><th>Hari tetap</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="14" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
+    <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai menu <b>Data → Impor store dari Excel/CSV</b>.</p>`;
+  $("#addS").onclick = () => { state.stores.push({ id: uid("s"), aktif: true, nama: "Store baru", alamat: "", link: "", lat: null, lng: null, buka: "08:00", tutup: "21:00", beratKg: 500, frek: 1, antaran: "Tujuan", loading: "Menurunkan", hariTetap: [] }); storeFilter = ""; save(); renderStore(); };
+  const ss = $("#storeSearch"); ss.oninput = () => { storeFilter = ss.value; const pos = ss.selectionStart; renderStore(); const n = $("#storeSearch"); n.focus(); n.setSelectionRange(pos, pos); };
+}
+
+/* ---------- 3. Istirahat ---------- */
+function renderIstirahat() {
+  const el = $("#p-istirahat");
+  const cards = HARI.map((h, d) => {
+    const rows = state.breaks[d].map((b, i) => `<div class="brow"><input class="in mono" type="time" data-k="breaks.${d}.${i}.mulai" value="${esc(b.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="breaks.${d}.${i}.selesai" value="${esc(b.selesai)}"><button class="btn icon" type="button" data-del="breaks.${d}|${i}" aria-label="Hapus">✕</button></div>`).join("");
+    return `<div class="card daycard"><div class="hrow"><span class="dot" style="background:var(--d${d})"></span><h3>${h}</h3>${state.params.hari[d] ? "" : '<span class="pill">libur</span>'}</div>
+      ${rows || '<span class="off">Tanpa jam istirahat</span>'}
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-addb="${d}">＋ Tambah istirahat</button><button class="btn sm ghost" type="button" data-copyb="${d}">Salin ke semua hari</button></div></div>`;
+  }).join("");
+  el.innerHTML = `<div class="head"><div><h2>3 · Jam Istirahat</h2><p>Selama jam istirahat tidak ada loading, perjalanan, maupun bongkar/muat; aktivitas berhenti lalu dilanjutkan setelahnya. Tiap hari bisa punya jam istirahat berbeda (mis. Jumat istirahat siang lebih panjang).</p></div></div>
+    <div class="grid3">${cards}</div>`;
+  el.querySelectorAll("[data-addb]").forEach(b => b.onclick = () => { const arr = state.breaks[+b.dataset.addb]; const last = arr.reduce((m, x) => Math.max(m, toMin(x.selesai) ?? 0), 0); const st = arr.length ? Math.min(last + 60, 23 * 60) : 720; arr.push({ mulai: fmtJam(st), selesai: fmtJam(Math.min(st + 30, 1439)) }); save(); renderIstirahat(); });
+  el.querySelectorAll("[data-copyb]").forEach(b => b.onclick = () => { const src = state.breaks[+b.dataset.copyb]; for (let d = 0; d < 7; d++) state.breaks[d] = clone(src); save(); renderIstirahat(); toast("Jam istirahat " + HARI[+b.dataset.copyb] + " disalin ke semua hari"); });
+}
+
+/* ---------- 4. Parameter ---------- */
+function renderParameter() {
+  const el = $("#p-parameter"), p = state.params, L = p.lalin;
+  const acts = p.aktivitas.map((a, i) => `<tr>
+    <td><input class="in" data-k="params.aktivitas.${i}.nama" value="${esc(a.nama)}" style="min-width:190px"></td>
+    <td><input class="in num" type="number" min="0" step="5" data-t="num" data-k="params.aktivitas.${i}.durasi" value="${a.durasi ?? ""}" style="min-width:70px"></td>
+    <td><div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${a.hari[d] ? "on" : ""}" data-chip="params.aktivitas.${i}.hari|${d}" title="${HARI[d]}">${h}</button>`).join("")}</div></td>
+    <td><select class="in" data-k="params.aktivitas.${i}.berlaku" style="min-width:120px"><option value="semua" ${a.berlaku !== "shift1" ? "selected" : ""}>Setiap shift</option><option value="shift1" ${a.berlaku === "shift1" ? "selected" : ""}>Shift 1 saja</option></select></td>
+    <td style="text-align:center"><input type="checkbox" data-k="params.aktivitas.${i}.dihitung" ${a.dihitung ? "checked" : ""} aria-label="Masuk jam shift"></td>
+    <td><button class="btn icon" type="button" data-del="params.aktivitas|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
+  const peaks = L.jamSibuk.map((j, i) => `<div class="brow" style="grid-template-columns:1fr auto 1fr 80px auto"><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.mulai" value="${esc(j.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="params.lalin.jamSibuk.${i}.selesai" value="${esc(j.selesai)}"><input class="in num" type="number" step="0.05" min="1" data-t="num" data-k="params.lalin.jamSibuk.${i}.faktor" value="${j.faktor}" title="Faktor pengali waktu"><button class="btn icon" type="button" data-del="params.lalin.jamSibuk|${i}" aria-label="Hapus">✕</button></div>`).join("");
+  const num = (k, v, step = "0.05", extra = "") => `<input class="in num" type="number" step="${step}" data-t="num" data-k="${k}" value="${v ?? ""}" ${extra}>`;
+  el.innerHTML = `<div class="head"><div><h2>4 · Parameter</h2><p>Aturan shift, aktivitas harian, hari distribusi, dan kecepatan bongkar/muat.</p></div></div>
+  <div class="grid2">
+    <div class="card pad" style="display:grid;gap:14px;align-content:start">
+      <h3>Shift &amp; waktu</h3>
+      <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang.</span></div>
+      <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
+      <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
+    </div>
+    <div class="card pad" style="display:grid;gap:14px;align-content:start">
+      <h3>Hari distribusi</h3>
+      <div class="days" style="flex-wrap:wrap;gap:6px">${HARI.map((h, d) => `<button type="button" class="dchip big ${p.hari[d] ? "on" : ""}" data-chip="params.hari|${d}" data-rerender="1">${h}</button>`).join("")}</div>
+      <span class="hint">Hari yang tidak dipilih dianggap libur (contoh: Minggu). Frekuensi antar store dibagi rata ke hari yang dipilih.</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="head" style="padding:14px 16px 0"><div><h3>Aktivitas per hari</h3><p class="hint" style="margin-top:4px">Contoh: loading di gudang 60 menit, antri BBM 60 menit. Urutan dijalankan sebelum berangkat. Yang <b>tidak</b> masuk jam shift dijalankan lebih dulu (mis. pembersihan Senin pagi) dan menggeser jam mulai shift.</p></div><button class="btn" type="button" id="addA">＋ Tambah aktivitas</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Jenis aktivitas</th><th class="num">Durasi (menit)</th><th>Hari</th><th>Berlaku</th><th>Masuk jam shift</th><th></th></tr></thead><tbody>${acts || `<tr><td colspan="6" class="empty">Belum ada aktivitas.</td></tr>`}</tbody></table></div>
+  </div>
+  <div class="card pad">
+    <details class="adv"><summary>Lalu lintas &amp; jalan (lanjutan)</summary>
+      <div class="grid2">
+        <div style="display:grid;gap:12px;align-content:start">
+          <div class="field"><label>Faktor jarak jalan (tanpa tol)</label>${num("params.lalin.faktorJalan", L.faktorJalan)}<span class="hint">Jarak garis lurus × faktor ini = perkiraan jarak jalan. 1,65 dikalibrasi ke Google Maps "hindari tol" di Makassar.</span></div>
+          <div class="field"><label>Pusat kota (zona macet)</label><div class="row">${num("params.lalin.pusat.lat", L.pusat.lat, "any", 'placeholder="lat"')}${num("params.lalin.pusat.lng", L.pusat.lng, "any", 'placeholder="lng"')}${num("params.lalin.pusat.radiusKm", L.pusat.radiusKm, "0.5", 'title="Radius km" style="max-width:80px"')}<span>km</span></div></div>
+          <div class="field"><label>Batas antar kota</label><div class="row">${num("params.lalin.batasAntarKotaKm", L.batasAntarKotaKm, "1", 'style="max-width:110px"')}<span>km garis lurus</span></div></div>
+        </div>
+        <div style="display:grid;gap:12px;align-content:start">
+          <div class="field"><label>Faktor macet (pengali waktu tempuh)</label>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Dalam pusat kota</span>${num("params.lalin.fPusat", L.fPusat)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Masuk/keluar pusat kota</span>${num("params.lalin.fPusatLuar", L.fPusatLuar)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Pinggiran kota</span>${num("params.lalin.fPinggir", L.fPinggir)}</div>
+            <div class="brow" style="grid-template-columns:1fr 90px"><span>Antar kota</span>${num("params.lalin.fAntarKota", L.fAntarKota)}</div></div>
+          <div class="field"><label>Jam sibuk (faktor tambahan)</label>${peaks || '<span class="off">Tidak ada</span>'}<div><button class="btn sm" type="button" id="addPeak">＋ Tambah jam sibuk</button></div></div>
+        </div>
+      </div>
+    </details>
+  </div>`;
+  $("#addA").onclick = () => { p.aktivitas.push({ id: uid("a"), nama: "Aktivitas baru", durasi: 30, hari: [true, true, true, true, true, true, true], berlaku: "semua", dihitung: true }); save(); renderParameter(); };
+  $("#addPeak").onclick = () => { L.jamSibuk.push({ mulai: "07:00", selesai: "09:00", faktor: 1.2 }); save(); renderParameter(); $("details.adv").open = true; };
+}
+
+/* ---------- Plan ---------- */
+function runPlan(silent) {
+  try { plan = buildPlan(state); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
+  planDirty = false; mapDrawn = null;
+  if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
+}
+$("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
+
+function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
+function gmapsLink(t) {
+  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d.lat, d.lng]]);
+  return "https://www.google.com/maps/dir/" + pts.map(p => p[0] + "," + p[1]).join("/") + "/data=!4m4!4m3!2m1!2b1!3e0";
+}
+function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
+
+function renderPlan() {
+  const el = $("#p-plan");
+  if (!plan) { el.innerHTML = '<div class="empty">Klik "Buat Plan".</div>'; return; }
+  if (plan.error) { el.innerHTML = `<div class="head"><div><h2>Plan Distribusi</h2></div></div><div class="banner bad"><b>Plan belum bisa dibuat.</b> ${esc(plan.error)}</div>`; return; }
+  const T = plan.trips;
+  const kg = T.reduce((a, t) => a + t.kgDel, 0), pk = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0);
+  const capUsed = T.length ? T.reduce((a, t) => a + t.kgDel / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
+  const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
+  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Rute disusun otomatis (titik terjauh dulu lalu penyisipan termurah, dicek terhadap kapasitas, jam shift, jam istirahat, dan jam buka store).</p></div>
+    <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
+    ${dirtyBanner()}
+    <div class="tiles">
+      <div class="tile"><div class="k">Total rit</div><div class="v">${T.length}<small>rit/mgg</small></div></div>
+      <div class="tile"><div class="k">Kunjungan</div><div class="v">${nVisit}<small>titik</small></div></div>
+      <div class="tile"><div class="k">Muatan diantar</div><div class="v">${fmtNum(kg / 1000, 1)}<small>ton</small></div></div>
+      <div class="tile"><div class="k">Barang dinaikkan</div><div class="v">${fmtNum(pk / 1000, 1)}<small>ton</small></div></div>
+      <div class="tile"><div class="k">Jarak tempuh</div><div class="v">${fmtNum(km)}<small>km</small></div></div>
+      <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
+      <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
+    </div>`;
+  if (plan.unserved.length) html += `<div class="banner bad"><div><b>${plan.unserved.length} kunjungan tidak muat di jadwal.</b> <br>${plan.unserved.map(u => "• " + esc(u.store.nama) + " (" + HARI[u.day] + "): " + esc(u.reason)).join("<br>")}<br>Coba tambah kendaraan/shift, ubah hari tetap, atau perpanjang jam kerja shift.</div></div>`;
+  if (plan.warn.length) html += `<div class="banner warn"><div>${plan.warn.map(esc).join("<br>")}</div></div>`;
+  for (const d of plan.days) {
+    const td = T.filter(t => t.day === d);
+    const dkg = td.reduce((a, t) => a + t.kgDel, 0);
+    html += `<div class="dayblock"><div class="dayhead"><span class="dot" style="background:var(--d${d})"></span><h3>${HARI[d]}</h3><span class="pill">${td.length} rit</span><span class="pill">${ton(dkg)}</span><span class="pill">${fmtNum(td.reduce((a, t) => a + t.km, 0))} km</span><span class="hint">Istirahat: ${(state.breaks[d] || []).map(b => b.mulai + "–" + b.selesai).join(", ") || "-"}</span></div>`;
+    if (!td.length) html += `<div class="card empty">Tidak ada rit.</div>`;
+    for (const t of td) {
+      const pct = t.kgDel / (+t.veh.kapasitasKg || 1);
+      const over = t.dur > plan.H + 0.5;
+      html += `<div class="card trip"><div class="trip-h"><span class="veh">${esc(t.veh.jenis)}</span>${t.veh.plat ? `<span class="plate">${esc(t.veh.plat)}</span>` : ""}<span class="pill ok">Shift ${t.shift}</span>
+        <div class="meta"><span>Mulai shift <b>${fmtJam(t.shiftStart)}</b></span><span>Berangkat <b>${fmtJam(t.dep)}</b></span><span>Kembali <b>${fmtJam(t.ret)}</b></span><span>Durasi <b class="${over ? "" : ""}">${fmtNum(t.dur / 60, 1)} jam</b></span><span>Muatan <b>${fmtNum(t.kgDel)} kg</b> <span class="meter"><i style="width:${Math.min(100, pct * 100)}%"></i></span> ${fmtNum(pct * 100)}%</span>${t.kgPick ? `<span>Dinaikkan <b>${fmtNum(t.kgPick)} kg</b></span>` : ""}<span><b>${fmtNum(t.km, 1)}</b> km</span></div>
+        <a href="${gmapsLink(t)}" target="_blank" rel="noopener">Buka di Google Maps ↗</a></div>
+        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Store</th><th>Kegiatan</th><th class="num">Berat</th><th class="num">Jarak</th><th class="num">Tempuh</th><th class="num">Tiba</th><th class="num">Selesai</th><th>Jam buka</th></tr></thead><tbody>
+        ${t.stops.map((s, i) => `<tr><td class="mono">${i + 1}</td><td>${esc(s.store.nama)}</td><td>${s.store.loading === "Menaikkan" ? '<span class="tag pick">Menaikkan</span>' : '<span class="tag drop">Menurunkan</span>'}</td><td class="num mono">${fmtNum(s.store.beratKg)} kg</td><td class="num mono">${fmtNum(s.km, 1)} km</td><td class="num mono">${fmtNum(s.drive)} mnt</td><td class="num mono">${fmtJam(s.arr)}</td><td class="num mono">${fmtJam(s.fin)}</td><td class="mono">${esc(s.store.buka || "")}–${esc(s.store.tutup || "")}</td></tr>`).join("")}
+        <tr><td class="mono">↩</td><td colspan="3" class="hint">Kembali ke ${esc(plan.depot.nama)}</td><td class="num mono">${fmtNum(t.backKm, 1)} km</td><td></td><td class="num mono">${fmtJam(t.ret)}</td><td></td><td></td></tr>
+        </tbody></table></div></div>`;
+    }
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+/* ---------- Gantt ---------- */
+function renderGantt() {
+  const el = $("#p-gantt");
+  if (!plan || plan.error) { el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2></div></div><div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  const rows = [];
+  plan.days.forEach(d => plan.vehicles.forEach((v, vi) => rows.push({ d, v, vi, trips: plan.trips.filter(t => t.day === d && t.vIdx === vi) })));
+  let tMin = Infinity, tMax = -Infinity;
+  plan.trips.forEach(t => { t.segs.forEach(s => { tMin = Math.min(tMin, s.start); tMax = Math.max(tMax, s.end); }); });
+  if (!isFinite(tMin)) { tMin = 360; tMax = 1320; }
+  tMin = Math.floor(Math.min(tMin, toMin(state.params.jamMulai) ?? 480) / 60) * 60; tMax = Math.ceil(tMax / 60) * 60;
+  const LW = 190, PX = 64, RH = 30, TOP = 34;
+  const W = LW + (tMax - tMin) / 60 * PX + 130;
+  const H = TOP + rows.length * RH + 10;
+  const x = m => LW + (m - tMin) / 60 * PX;
+  const segCol = { aktivitas: "var(--seg-act)", jalan: "var(--seg-drive)", bongkar: "var(--seg-drop)", muat: "var(--seg-pick)", tunggu: "var(--seg-wait)" };
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gantt jadwal armada">`;
+  for (let m = tMin; m <= tMax; m += 60) svg += `<line x1="${x(m)}" x2="${x(m)}" y1="${TOP - 6}" y2="${H - 10}" stroke="var(--line)"/><text x="${x(m)}" y="${TOP - 12}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtJam(m)}</text>`;
+  let prevD = null;
+  rows.forEach((r, i) => {
+    const y = TOP + i * RH;
+    if (r.d !== prevD) { if (prevD !== null) svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-width="1"/>`; prevD = r.d; }
+    if (i % 2 === 0) svg += `<rect x="0" y="${y}" width="${W}" height="${RH}" fill="var(--surface2)" opacity=".5"/>`;
+    (plan.ctxBreaks[r.d] || []).forEach(([a, b]) => { if (b > tMin && a < tMax) svg += `<rect x="${x(Math.max(a, tMin))}" y="${y}" width="${(Math.min(b, tMax) - Math.max(a, tMin)) / 60 * PX}" height="${RH}" fill="var(--brk)" data-tip="${esc("<b>Istirahat</b><br>" + HARI[r.d] + " " + fmtJam(a) + "–" + fmtJam(b))}"/>`; });
+    const first = rows.findIndex(q => q.d === r.d) === i;
+    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 24))}</text>`;
+    r.trips.forEach(t => {
+      t.segs.forEach(s => {
+        // pecah segmen di jam istirahat agar bar tidak menutupi istirahat
+        const parts = splitByBreaks(s.start, s.end, plan.ctxBreaks[r.d] || []);
+        parts.forEach(([a, b]) => {
+          const w = Math.max(1, (b - a) / 60 * PX);
+          const tip = `<b>${esc(s.label)}</b><br>${HARI[r.d]} · Shift ${t.shift}<br>${fmtJam(s.start)}–${fmtJam(s.end)}${s.kg ? "<br>" + fmtNum(s.kg) + " kg" : ""}${s.km ? "<br>" + fmtNum(s.km, 1) + " km" : ""}`;
+          svg += `<rect x="${x(a)}" y="${y + 6}" width="${w}" height="${RH - 12}" rx="2" fill="${segCol[s.type]}" data-tip="${esc(tip)}"/>`;
+        });
+      });
+      if (t === r.trips[r.trips.length - 1]) svg += `<text x="${x(t.ret) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)">${r.trips.length} shift · selesai ${fmtJam(t.ret)}</text>`;
+      const lim = t.shiftStart + plan.H;
+      if (lim <= tMax) svg += `<line x1="${x(lim)}" x2="${x(lim)}" y1="${y + 3}" y2="${y + RH - 3}" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="2 2" data-tip="${esc("<b>Batas jam shift " + t.shift + "</b><br>" + fmtJam(lim))}"/>`;
+    });
+  });
+  svg += `</svg>`;
+  el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per hari. Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
+    ${dirtyBanner()}
+    <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
+    <div class="card gantt-wrap" id="gantt">${svg}</div>`;
+}
+function splitByBreaks(a, b, brs) {
+  let parts = [[a, b]];
+  for (const [x, y] of brs) { const np = []; for (const [p, q] of parts) { if (y <= p || x >= q) np.push([p, q]); else { if (x > p) np.push([p, x]); if (y < q) np.push([y, q]); } } parts = np; }
+  return parts.filter(([p, q]) => q - p > 0.01);
+}
+document.addEventListener("mousemove", e => {
+  const tg = e.target.closest && e.target.closest("[data-tip]"); const tip = $("#tip");
+  if (!tg) { tip.hidden = true; return; }
+  tip.innerHTML = tg.getAttribute("data-tip"); tip.hidden = false;
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(window.innerWidth - r.width - 8, e.clientX + 12) + "px";
+  tip.style.top = Math.min(window.innerHeight - r.height - 8, e.clientY + 14) + "px";
+});
+
+/* ---------- Peta ---------- */
+let map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
+const osrmCache = {};
+try { Object.assign(osrmCache, JSON.parse(localStorage.getItem(LS_KEY + "-osrm") || "{}")); } catch (e) {}
+function ensureMap() {
+  if (map || typeof L === "undefined") return;
+  const el = $("#map"); el.innerHTML = ""; el.classList.add("map-gray");
+  map = L.map(el, { preferCanvas: false, zoomControl: true }).setView([plan.depot.lat, plan.depot.lng], 12);
+  const tl = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }).addTo(map);
+  tl.on("tileload", () => { if (!tileOk) { tileOk = true; updateMapNote(); } });
+  tl.on("tileerror", () => { tileErr++; if (tileErr === 3) updateMapNote(); });
+  mapLayer = L.layerGroup().addTo(map);
+  setTimeout(updateMapNote, 4000);
+}
+function updateMapNote() {
+  const n = $("#mapNote"); if (!n) return;
+  if (!tileOk && tileErr >= 1) n.innerHTML = `<div class="banner info"><div><b>Peta dasar tidak bisa dimuat di halaman ini</b> (akses ke server peta dibatasi), jadi rute digambar sebagai garis lurus antar titik. Untuk peta dasar abu-abu dan rute mengikuti jalan, unduh aplikasi ini lewat <b>Data → Unduh aplikasi ini (HTML)</b> lalu buka file-nya di Chrome/Edge.</div></div>`;
+  else n.innerHTML = "";
+}
+async function osrmRoute(pts) {
+  const key = pts.map(p => p[0].toFixed(5) + "," + p[1].toFixed(5)).join(";");
+  if (osrmCache[key]) return osrmCache[key];
+  const url = "https://router.project-osrm.org/route/v1/driving/" + pts.map(p => p[1] + "," + p[0]).join(";") + "?overview=full&geometries=geojson";
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal }); const j = await r.json();
+    if (j.code !== "Ok") return null;
+    const g = j.routes[0].geometry.coordinates.map(c => [+c[1].toFixed(5), +c[0].toFixed(5)]);
+    osrmCache[key] = g;
+    try { localStorage.setItem(LS_KEY + "-osrm", JSON.stringify(osrmCache)); } catch (e) {}
+    return g;
+  } catch (e) { return null; } finally { clearTimeout(to); }
+}
+function renderPeta() {
+  if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
+  if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
+  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (OSRM)</label>`;
+  document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
+  $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
+  ensureMap();
+  setTimeout(() => map.invalidateSize(), 50);
+  const sig = mapDay + "|" + useRoad;
+  if (mapDrawn === sig) return;
+  mapDrawn = sig;
+  drawMap();
+}
+async function drawMap() {
+  const sig = mapDrawn;
+  mapLayer.clearLayers();
+  const d0 = plan.depot;
+  const trips = plan.trips.filter(t => mapDay === "all" || String(t.day) === mapDay);
+  const bounds = [[d0.lat, d0.lng]];
+  const legend = [];
+  const visitDays = {};
+  trips.forEach((t, i) => t.stops.forEach((s, k) => { (visitDays[s.store.id] = visitDays[s.store.id] || { s: s.store, list: [] }).list.push({ t, k, i }); }));
+  // garis rute
+  const lines = [];
+  trips.forEach((t, i) => {
+    const col = mapDay === "all" ? dayColor(t.day) : tripColor(t, i);
+    const pts = [[d0.lat, d0.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d0.lat, d0.lng]]);
+    pts.forEach(p => bounds.push(p));
+    const dash = t.shift > 1 ? "8 6" : null;
+    const pl = L.polyline(pts, { color: col, weight: mapDay === "all" ? 3 : 4, opacity: .85, dashArray: dash }).addTo(mapLayer);
+    pl.bindTooltip(`${HARI[t.day]} · ${esc(vehLabel(t.veh))} · Shift ${t.shift}`, { sticky: true });
+    lines.push({ pl, pts, t });
+    if (mapDay !== "all") legend.push(`<span><i class="sw" style="background:${col}"></i>${esc(vehLabel(t.veh))} · Shift ${t.shift} (${t.stops.length} titik, ${fmtNum(t.km, 1)} km)</span>`);
+  });
+  if (mapDay === "all") plan.days.forEach(d => legend.push(`<span><i class="sw" style="background:${dayColor(d)}"></i>${HARI[d]}</span>`));
+  legend.push(`<span><i class="sw" style="background:none;border-top:2px dashed var(--muted);height:0;width:18px"></i>Shift 2 dst.</span>`);
+  // titik store
+  Object.values(visitDays).forEach(({ s, list }) => {
+    const days = [...new Set(list.map(x => x.t.day))];
+    let html;
+    if (mapDay === "all") { const col = days.length > 1 ? "#17201d" : dayColor(days[0]); html = `<div class="storepin" style="background:${col}"></div>`; }
+    else { const x = list[0]; html = `<div class="seqpin" style="background:${tripColor(x.t, x.i)}">${x.k + 1}</div>`; }
+    const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
+    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc(s.alamat || "")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
+  });
+  L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
+  if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);
+  $("#mapLegend").innerHTML = legend.join("");
+  if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+  // rute jalan (bertahap)
+  if (useRoad) {
+    for (const ln of lines) {
+      if (mapDrawn !== sig) return;
+      const g = await osrmRoute(ln.pts);
+      if (mapDrawn !== sig) return;
+      if (g) ln.pl.setLatLngs(g); else break;
+    }
+  }
+}
+
+/* ---------- Unduhan ---------- */
+let dlApi;
+async function saveFile(name, data, mime) {
+  if (window.claude && window.claude.use) {
+    if (dlApi === undefined) { try { dlApi = await window.claude.use("downloads"); } catch (e) { dlApi = null; } }
+    if (dlApi) { try { await dlApi.save({ filename: name, data }); return; } catch (e) { if (e && e.code === "declined") return; toast("Unduhan gagal: " + (e && e.message || e)); return; } }
+  }
+  const blob = data instanceof Blob ? data : new Blob([data], { type: mime || "application/octet-stream" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function stamp() { const d = new Date(); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
+function exportExcel() {
+  if (typeof XLSX === "undefined") { toast("Library Excel gagal dimuat."); return; }
+  if (!plan || planDirty) runPlan(true);
+  if (plan.error) { toast(plan.error); return; }
+  const wb = XLSX.utils.book_new();
+  const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
+  plan.trips.forEach(t => ring.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)]));
+  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Tiba", "Mulai bongkar/muat", "Selesai", "Jam buka", "Latitude", "Longitude"]];
+  plan.trips.forEach(t => t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])));
+  const gan = [["Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
+  plan.trips.forEach(t => t.segs.forEach(s => gan.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)])));
+  const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Aktif"]];
+  state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, v.aktif !== false ? "Ya" : "Tidak"]));
+  const sto = storeRows();
+  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Berlaku", "Masuk jam shift"]];
+  state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
+  par.push([], ["Jam istirahat", "Hari"]);
+  HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
+  if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
+  const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  add("Ringkasan Rit", ring, [9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
+  add("Detail Rute", det, [9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 8, 10, 8, 12, 11, 11]);
+  add("Gantt", gan, [9, 12, 12, 6, 44, 10, 8, 8, 10]);
+  add("Kendaraan", veh, [12, 14, 14, 14, 16, 14, 8]);
+  add("Store", sto, [8, 34, 22, 40, 11, 11, 8, 8, 10, 10, 9, 10, 18, 16]);
+  add("Parameter", par, [40, 18, 30, 14, 14]);
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveFile("Plan_Distribusi_" + stamp() + ".xlsx", new Uint8Array(out), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi", "Jenis antaran", "Jenis loading", "Hari tetap"];
+function storeRows() {
+  const rows = [STORE_HEAD];
+  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), +s.frek || 0, s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", (s.hariTetap || []).map(d => HARI3[d]).join(", ")]));
+  return rows;
+}
+function parseNum(v, coord) {
+  if (typeof v === "number") return v;
+  let s = String(v ?? "").trim().replace(/\s|kg/gi, ""); if (!s) return NaN;
+  if (coord) return parseFloat(s.replace(",", "."));
+  if (s.includes(".") && s.includes(",")) s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  else if (s.includes(",")) s = /^\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  return parseFloat(s);
+}
+function importStores(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const wb = XLSX.read(new Uint8Array(rd.result), { type: "array" });
+      const sh = wb.SheetNames.find(n => /store/i.test(n)) || wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sh], { header: 1, raw: true, defval: "" });
+      if (!rows.length) throw new Error("file kosong");
+      const head = rows[0].map(h => String(h).toLowerCase());
+      const col = (...keys) => head.findIndex(h => keys.some(k => h.includes(k)));
+      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari") };
+      if (c.nama < 0) throw new Error("kolom \"Nama store\" tidak ditemukan");
+      const list = [];
+      for (const r of rows.slice(1)) {
+        const nama = String(r[c.nama] || "").trim(); if (!nama) continue;
+        const link = c.link >= 0 ? String(r[c.link] || "").trim() : "";
+        let lat = c.lat >= 0 ? parseNum(r[c.lat], true) : NaN, lng = c.lng >= 0 ? parseNum(r[c.lng], true) : NaN;
+        if ((isNaN(lat) || isNaN(lng)) && link) { const p = parseKoordinat(link); if (p && p.lat != null) { lat = p.lat; lng = p.lng; } }
+        const ant = c.antaran >= 0 && /orig/i.test(r[c.antaran]) ? "Origin" : "Tujuan";
+        const hari = c.hari >= 0 ? String(r[c.hari]).split(/[,;/ ]+/).map(x => HARI3.findIndex(h => x.toLowerCase().startsWith(h.toLowerCase()))).filter(i => i >= 0) : [];
+        const normT = v => { if (typeof v === "number" && v >= 0 && v < 1.0001) v = fmtJam(Math.min(1439, Math.round(v * 1440))); const m = toMin(v); return m == null ? "" : fmtJam(m); };
+        list.push({ id: uid("s"), aktif: c.aktif < 0 || !/^(tidak|no|0|false)$/i.test(String(r[c.aktif]).trim()), nama, alamat: c.alamat >= 0 ? String(r[c.alamat]) : "", link, lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, buka: normT(c.buka >= 0 ? r[c.buka] : "") || "08:00", tutup: normT(c.tutup >= 0 ? r[c.tutup] : "") || "21:00", beratKg: c.kg >= 0 ? parseNum(r[c.kg]) || 0 : 0, frek: c.frek >= 0 ? (String(r[c.frek]).trim() === "" ? 1 : (parseInt(r[c.frek]) || 0)) : 1, antaran: ant, loading: c.loading >= 0 && /naik|muat|pick/i.test(r[c.loading]) ? "Menaikkan" : "Menurunkan", hariTetap: hari });
+      }
+      if (!list.length) throw new Error("tidak ada baris store");
+      askConfirm(`Impor ${list.length} store dari "${esc(file.name)}"?`, [["Ganti semua store", () => { state.stores = list; done(); }], ["Tambahkan ke daftar", () => { state.stores = state.stores.concat(list); done(); }]]);
+      function done() { save(); setTab("store"); toast(list.length + " store diimpor"); }
+    } catch (e) { toast("Impor gagal: " + e.message, 4000); }
+  };
+  rd.readAsArrayBuffer(file);
+}
+function askConfirm(text, actions) {
+  const box = $("#confirmBox"); box.hidden = false;
+  box.innerHTML = `<div class="banner info confirm" style="margin-bottom:16px"><span>${text}</span>${actions.map((a, i) => `<button class="btn sm ${i === 0 ? "primary" : ""}" type="button" data-ci="${i}">${esc(a[0])}</button>`).join("")}<button class="btn sm ghost" type="button" data-ci="x">Batal</button></div>`;
+  box.querySelectorAll("[data-ci]").forEach(b => b.onclick = () => { box.hidden = true; box.innerHTML = ""; if (b.dataset.ci !== "x") actions[+b.dataset.ci][1](); });
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- Menu ---------- */
+$("#btnMenu").onclick = e => { e.stopPropagation(); $("#menuPop").hidden = !$("#menuPop").hidden; };
+document.addEventListener("click", e => { if (!e.target.closest(".menu")) $("#menuPop").hidden = true; });
+$("#menuPop").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return; $("#menuPop").hidden = true;
+  const a = b.dataset.act;
+  if (a === "excel") exportExcel();
+  if (a === "export") saveFile("Data_Input_Distribusi_" + stamp() + ".json", JSON.stringify(state, null, 1), "application/json");
+  if (a === "import") $("#fileJson").click();
+  if (a === "importStore") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); $("#fileStore").click(); }
+  if (a === "template") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet([STORE_HEAD, ["Ya", "Gudang Utama", "Jl. Contoh No. 1", "https://www.google.com/maps/place/.../@-5.1019978,119.4786111,17z", "", "", "06:00", "23:00", 0, "", 0, "Origin", "Menurunkan barang", ""], ["Ya", "Store A", "Jl. Contoh No. 2", "", -5.1631663, 119.4525599, "08:00", "21:00", 950, "", 2, "Tujuan", "Menurunkan barang", "Sen, Kam"], ["Ya", "Produksi", "", "", -5.1169668, 119.5093495, "07:00", "22:00", 1500, "", 5, "Tujuan", "Menaikkan barang", ""]]); ws["!cols"] = STORE_HEAD.map(() => ({ wch: 16 })); XLSX.utils.book_append_sheet(wb, ws, "Store"); saveFile("Template_Store.xlsx", new Uint8Array(XLSX.write(wb, { bookType: "xlsx", type: "array" }))); }
+  if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
+  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); runPlan(); renderTab(); }]]);
+  if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
+});
+$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); runPlan(true); renderTab(); toast("Data input dimuat"); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
+$("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStores(f); e.target.value = ""; };
+
+/* ---------- mulai ---------- */
+(function start() {
+  let t = location.hash.slice(1);
+  if (!document.getElementById("p-" + t)) { try { t = localStorage.getItem(LS_KEY + "-tab") || "plan"; } catch (e) { t = "plan"; } }
+  if (!document.getElementById("p-" + t)) t = "plan";
+  runPlan(true);
+  setTab(t);
+})();
+
+</script>
+</body></html>
