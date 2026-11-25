@@ -287,9 +287,8 @@ function renderPlan() {
       html += `<div class="card trip"><div class="trip-h"><span class="veh">${esc(t.veh.jenis)}</span>${t.veh.plat ? `<span class="plate">${esc(t.veh.plat)}</span>` : ""}<span class="pill ok">Shift ${t.shift}</span>
         <div class="meta"><span>Mulai shift <b>${fmtJam(t.shiftStart)}</b></span><span>Berangkat <b>${fmtJam(t.dep)}</b></span><span>Kembali <b>${fmtJam(t.ret)}</b></span><span>Durasi <b class="${over ? "" : ""}">${fmtNum(t.dur / 60, 1)} jam</b></span><span>Muatan <b>${fmtNum(t.kgDel)} kg</b> <span class="meter"><i style="width:${Math.min(100, pct * 100)}%"></i></span> ${fmtNum(pct * 100)}%</span>${t.kgPick ? `<span>Dinaikkan <b>${fmtNum(t.kgPick)} kg</b></span>` : ""}<span><b>${fmtNum(t.km, 1)}</b> km</span></div>
         <a href="${gmapsLink(t)}" target="_blank" rel="noopener">Buka di Google Maps ↗</a></div>
-        <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Store</th><th>Kegiatan</th><th class="num">Berat</th><th class="num">Jarak</th><th class="num">Tempuh</th><th class="num">Jam berangkat</th><th class="num">Jam tiba</th><th class="num">Mulai bongkar/muat</th><th class="num">Jam selesai</th><th class="num" title="Jam istirahat yang terpotong antara berangkat dan selesai">Istirahat</th><th>Jam buka</th></tr></thead><tbody>
-        ${t.stops.map((s, i) => `<tr><td class="mono">${i + 1}</td><td>${esc(s.store.nama)}</td><td>${s.store.loading === "Menaikkan" ? '<span class="tag pick">Menaikkan</span>' : '<span class="tag drop">Menurunkan</span>'}</td><td class="num mono">${fmtNum(s.store.beratKg)} kg</td><td class="num mono">${fmtNum(s.km, 1)} km</td><td class="num mono">${fmtNum(s.drive)} mnt</td><td class="num mono">${fmtJam(s.depart)}</td><td class="num mono">${fmtJam(s.arr)}</td><td class="num mono">${fmtJam(s.start)}${s.wait > 0.5 ? `<span class="sub">tunggu buka ${fmtNum(s.wait)} mnt</span>` : ""}</td><td class="num mono"><b>${fmtJam(s.fin)}</b></td><td class="num mono">${s.brk > 0.5 ? fmtNum(s.brk) + " mnt" : "–"}</td><td class="mono">${esc(s.store.buka || "")}–${esc(s.store.tutup || "")}</td></tr>`).join("")}
-        <tr><td class="mono">↩</td><td colspan="3" class="hint">Kembali ke ${esc(plan.depot.nama)}</td><td class="num mono">${fmtNum(t.backKm, 1)} km</td><td class="num mono">${fmtNum(t.backMin)} mnt</td><td class="num mono">${fmtJam(t.backDep)}</td><td class="num mono"><b>${fmtJam(t.ret)}</b></td><td></td><td></td><td class="num mono">${t.backBrk > 0.5 ? fmtNum(t.backBrk) + " mnt" : "–"}</td><td></td></tr>
+        <div class="tbl-wrap"><table class="steps"><thead><tr><th>#</th><th>Lokasi</th><th>Kegiatan</th><th class="num">Jam mulai</th><th class="num">Jam selesai</th><th class="num">Durasi</th><th class="num">Jarak</th><th class="num">Berat</th><th>Jam buka</th></tr></thead><tbody>
+        ${tripSteps(t).map((r, i) => `<tr class="st-${r.kind}"><td class="mono">${i + 1}</td><td>${r.seq ? `<span class="seq">${r.seq}</span>` : ""}${esc(r.lokasi)}</td><td>${r.tag ? `<span class="tag ${r.tag}">${esc(r.kegiatan)}</span>` : esc(r.kegiatan)}</td><td class="num mono">${fmtJam(r.mulai)}</td><td class="num mono">${r.selesai != null ? fmtJam(r.selesai) : ""}</td><td class="num mono">${r.selesai != null ? fmtNum(r.selesai - r.mulai) + " mnt" : ""}</td><td class="num mono">${r.km ? fmtNum(r.km, 1) + " km" : ""}</td><td class="num mono">${r.kg ? fmtNum(r.kg) + " kg" : ""}</td><td class="mono">${esc(r.buka || "")}</td></tr>`).join("")}
         </tbody></table></div></div>`;
     }
     html += `</div>`;
@@ -342,6 +341,31 @@ function renderGantt() {
     ${dirtyBanner()}
     <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
     <div class="card gantt-wrap" id="gantt">${svg}</div>`;
+}
+/* Langkah per rit: aktivitas gudang, perjalanan, bongkar/muat, istirahat (baris sendiri), kembali ke gudang */
+function tripSteps(t) {
+  const brs = (plan.ctxBreaks[t.day] || []);
+  const rows = [];
+  const label = s => s.type === "aktivitas" ? s.act : s.type === "jalan" ? (s.back ? "Kembali ke gudang" : "Perjalanan ke store") : s.type === "tunggu" ? "Menunggu store buka" : s.type === "muat" ? "Menaikkan barang" : "Menurunkan barang";
+  const tag = s => s.type === "muat" ? "pick" : s.type === "bongkar" ? "drop" : s.type === "jalan" ? "drive" : s.type === "aktivitas" ? "act" : "wait";
+  t.segs.forEach(s => {
+    const parts = splitByBreaks(s.start, s.end, brs);
+    parts.forEach(([p, q], k) => rows.push({ kind: s.type, mulai: p, selesai: q, lokasi: s.type === "jalan" ? s.from + " → " + s.to : s.loc, kegiatan: label(s) + (k > 0 ? " (lanjutan)" : ""), tag: tag(s), km: k === 0 ? s.km : 0, kg: k === 0 ? s.kg : 0, seq: s.seq && k === 0 ? s.seq : 0, buka: s.store && (s.type === "bongkar" || s.type === "muat") && k === 0 ? (s.store.buka || "") + "–" + (s.store.tutup || "") : "" }));
+  });
+  if (!rows.length) return rows;
+  const t0 = rows[0].mulai, t1 = t.ret;
+  brs.forEach(([b0, b1]) => {
+    const p = Math.max(b0, t0), q = Math.min(b1, t1);
+    if (q - p < 0.5) return;
+    const before = rows.filter(r => r.kind !== "istirahat" && r.selesai <= p + 0.01).pop();
+    const seg = t.segs.find(s => s.start < p && s.end > p);
+    let lok = before ? (before.kind === "jalan" ? before.lokasi.split(" → ")[1] : before.lokasi) : plan.depot.nama;
+    if (seg && seg.type === "jalan") lok = "Dalam perjalanan ke " + seg.to;
+    rows.push({ kind: "istirahat", mulai: p, selesai: q, lokasi: lok, kegiatan: "Istirahat", tag: "rest" });
+  });
+  rows.sort((x, y) => x.mulai - y.mulai || (x.kind === "istirahat" ? 1 : -1));
+  rows.push({ kind: "tiba", mulai: t.ret, selesai: null, lokasi: plan.depot.nama, kegiatan: "Tiba di gudang, rit selesai", tag: "" });
+  return rows;
 }
 function splitByBreaks(a, b, brs) {
   let parts = [[a, b]];
@@ -470,8 +494,8 @@ function exportExcel() {
   const wb = XLSX.utils.book_new();
   const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
   plan.trips.forEach(t => ring.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)]));
-  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Jam berangkat", "Jam tiba", "Mulai bongkar/muat", "Jam selesai", "Istirahat terpotong (menit)", "Tunggu buka (menit)", "Jam buka", "Latitude", "Longitude"]];
-  plan.trips.forEach(t => { t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", plan.depot.lat, plan.depot.lng]); });
+  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Langkah", "Lokasi", "Kegiatan", "Jam mulai", "Jam selesai", "Durasi (menit)", "Jarak (km)", "Berat (kg)", "Jam buka store"]];
+  plan.trips.forEach(t => tripSteps(t).forEach((r, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, (r.seq ? "[" + r.seq + "] " : "") + r.lokasi, r.kegiatan, fmtJam(r.mulai), r.selesai != null ? fmtJam(r.selesai) : "", r.selesai != null ? Math.round(r.selesai - r.mulai) : "", r.km ? +r.km.toFixed(1) : "", r.kg ? +r.kg : "", r.buka || ""])));
   const gan = [["Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
   plan.trips.forEach(t => t.segs.forEach(s => gan.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)])));
   const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Aktif"]];
@@ -484,7 +508,7 @@ function exportExcel() {
   if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
   add("Ringkasan Rit", ring, [9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
-  add("Detail Rute", det, [9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 12, 9, 12, 10, 12, 12, 12, 11, 11]);
+  add("Detail Rute", det, [9, 12, 12, 6, 8, 60, 28, 10, 10, 12, 10, 10, 14]);
   add("Gantt", gan, [9, 12, 12, 6, 44, 10, 8, 8, 10]);
   add("Kendaraan", veh, [12, 14, 14, 14, 16, 14, 8]);
   add("Store", sto, [8, 34, 22, 40, 11, 11, 8, 8, 10, 10, 9, 10, 18, 16]);
