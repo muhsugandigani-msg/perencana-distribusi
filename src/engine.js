@@ -74,12 +74,11 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   const segs = [];
   let t = t0, shiftStart = null;
   const acts = ctx.acts.filter(a => a.berlaku !== "shift1" || shiftNo === 1);
-  for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama, loc: depot.nama, act: a.nama }); }
-  for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama, loc: depot.nama, act: a.nama }); }
+  for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
+  for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   t = ctx.advance(t, 0);
   if (shiftStart == null) shiftStart = t;
   const dep = t;
-  let posName = depot.nama;
   let pos = [depot.lat, depot.lng], km = 0, ok = true, why = "";
   let kgDel = 0, kgPick = 0;
   const out = [];
@@ -88,24 +87,24 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
     const pt = [s.lat, s.lng];
     const lg = ctx.leg(pos, pt, t, speed);
     t = ctx.advance(t, 0); const ts = t; t = ctx.advance(t, lg.min); km += lg.km;
-    if (detail && lg.min > 0) segs.push({ type: "jalan", start: ts, end: t, label: "Perjalanan ke " + s.nama, km: lg.km, from: posName, to: s.nama, min: lg.min });
+    if (detail && lg.min > 0) segs.push({ type: "jalan", start: ts, end: t, label: "Perjalanan ke " + s.nama, km: lg.km });
     const arr = t;
     const buka = toMin(s.buka); let tutup = toMin(s.tutup);
     if (buka != null && tutup != null && tutup <= buka) tutup += 1440; // tutup lewat tengah malam
-    if (buka != null && t < buka) { if (detail) segs.push({ type: "tunggu", start: t, end: buka, label: "Menunggu " + s.nama + " buka", loc: s.nama, store: s }); t = buka; }
+    if (buka != null && t < buka) { if (detail) segs.push({ type: "tunggu", start: t, end: buka, label: "Menunggu " + s.nama + " buka" }); t = buka; }
     t = ctx.advance(t, 0);
     const svc = (+s.beratKg || 0) / ctx.rate;
     const st = t; t = ctx.advance(t, svc);
     const pick = s.loading === "Menaikkan";
     if (pick) kgPick += +s.beratKg || 0; else kgDel += +s.beratKg || 0;
     if (tutup != null && t > tutup) { ok = false; why = "Tidak terkejar sebelum " + s.nama + " tutup (" + s.tutup + ")"; }
-    if (detail) segs.push({ type: pick ? "muat" : "bongkar", start: st, end: t, label: (pick ? "Menaikkan barang di " : "Menurunkan barang di ") + s.nama, kg: +s.beratKg || 0, loc: s.nama, store: s, seq: out.length + 1 });
+    if (detail) segs.push({ type: pick ? "muat" : "bongkar", start: st, end: t, label: (pick ? "Menaikkan barang di " : "Menurunkan barang di ") + s.nama, kg: +s.beratKg || 0 });
     out.push({ store: s, km: lg.km, drive: lg.min, depart: ts, arr, start: st, fin: t, brk: ctx.overlap(ts, t), wait: buka != null && arr < buka ? buka - arr : 0 });
-    pos = pt; posName = s.nama;
+    pos = pt;
   }
   const back = ctx.leg(pos, [depot.lat, depot.lng], t, speed);
   t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
-  if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km, from: posName, to: depot.nama, min: back.min, back: true });
+  if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
   const cap = +veh.kapasitasKg || 0;
   if (kgDel > cap + 1e-6) { ok = false; why = "Muatan melebihi kapasitas"; }
   if (kgPick > cap + 1e-6) { ok = false; why = "Barang yang dinaikkan melebihi kapasitas"; }
