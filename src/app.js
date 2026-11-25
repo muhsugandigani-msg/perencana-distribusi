@@ -304,6 +304,7 @@ function optCard(plan) {
         ${row("Jarak tempuh", A.km, B.km, f0, "km")}
         ${row("Total jam kerja", A.jam, B.jam, f1, "jam")}
         ${row("Rata-rata isi muatan", A.isi, B.isi, fp, "%", false)}
+        ${row("Rata-rata jam kerja / shift", A.rit ? A.jam / A.rit : 0, B.rit ? B.jam / B.rit : 0, x => fmtNum(x, 1) + " jam (" + fmtNum(x / (plan.H / 60) * 100) + "%)", "", false)}
       </tbody></table></div>
       <div class="tbl-wrap"><table><thead><tr><th>Kendaraan</th><th class="num">Rit</th><th class="num">Hari kerja</th><th class="num">Jam terpakai / tersedia</th><th class="num">Jarak</th><th class="num">Isi rata-rata</th></tr></thead><tbody>${vrows}</tbody></table></div>
     </div>
@@ -318,6 +319,7 @@ function renderPlan() {
   const kg = T.reduce((a, t) => a + t.kgDel, 0), pk = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0);
   const capUsed = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
   const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
+  const avgDur = T.length ? T.reduce((a, t) => a + t.dur, 0) / T.length : 0, avgPct = avgDur / (plan.H || 480);
   let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Plan disusun dan dioptimasi otomatis: mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</p></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
@@ -327,6 +329,7 @@ function renderPlan() {
       <div class="tile"><div class="k">Muatan diantar</div><div class="v">${fmtNum(kg / 1000, 1)}<small>ton</small></div></div>
       <div class="tile"><div class="k">Barang dinaikkan</div><div class="v">${fmtNum(pk / 1000, 1)}<small>ton</small></div></div>
       <div class="tile"><div class="k">Jarak tempuh</div><div class="v">${fmtNum(km)}<small>km</small></div></div>
+      <div class="tile" title="Rata-rata durasi kerja per shift dibanding batas ${state.params.jamShift} jam per shift"><div class="k">Jam kerja / shift (dari ${fmtNum(+state.params.jamShift, 1)} jam)</div><div class="v">${fmtNum(avgPct * 100)}<small>% · ${fmtNum(avgDur / 60, 1)} jam</small></div></div>
       <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
       <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
     </div>`;
