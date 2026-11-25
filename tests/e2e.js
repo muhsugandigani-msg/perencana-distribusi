@@ -20,10 +20,10 @@ const log=(...a)=>console.log('•',...a);
   for(let i=0;i<links.length;i++){ await p.click('#addS'); await p.fill(`[data-k="stores.${i}.nama"]`, i?'Store '+i:'Gudang'); await p.fill(`[data-link="${i}"]`, links[i]); log('link',i, await p.inputValue('#lat'+i), await p.inputValue('#lng'+i), await p.textContent('#lm'+i)); }
   await p.selectOption('[data-k="stores.0.antaran"]','Origin'); await p.waitForTimeout(100);
   await p.fill('#lat3','-5.1374438'); await p.fill('#lng3','119.5136457');
-  await p.fill('[data-k="stores.1.beratKg"]','1200.5'); await p.fill('[data-k="stores.1.frek"]','2');
+  await p.fill('[data-k="stores.1.beratKg"]','1200.5'); await p.selectOption('[data-k="stores.1.frek"]','2');
   await p.fill('[data-k="stores.2.beratKg"]','800'); await p.fill('[data-k="stores.2.tutup"]','11:00');
   await p.fill('[data-k="stores.3.beratKg"]','2500'); await p.click('[data-chip="stores.3.hariTetap|2"]');
-  await p.selectOption('[data-k="stores.4.loading"]','Menaikkan'); await p.fill('[data-k="stores.4.beratKg"]','1500'); await p.fill('[data-k="stores.4.frek"]','5');
+  await p.selectOption('[data-k="stores.4.loading"]','Menaikkan'); await p.fill('[data-k="stores.4.beratKg"]','1500'); await p.selectOption('[data-k="stores.4.frek"]','5');
   // search + delete while filtered
   await p.click('#addS'); await p.fill('[data-k="stores.5.nama"]','Hapus Saya'); await p.fill('#storeSearch','hapus'); await p.waitForTimeout(100);
   await p.click('[data-del="stores|5"]'); await p.fill('#storeSearch','');

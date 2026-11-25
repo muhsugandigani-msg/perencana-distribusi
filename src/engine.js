@@ -216,8 +216,8 @@ function buildPlan(state) {
   const stores = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const noCoord = stores.filter(s => s.lat == null || s.lng == null || isNaN(s.lat) || isNaN(s.lng));
   noCoord.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena belum ada koordinat."));
-  const zeroF = stores.filter(s => !noCoord.includes(s) && !(s.hariTetap && s.hariTetap.length) && !(+s.frek > 0));
-  zeroF.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena frekuensi 0."));
+  const zeroF = stores.filter(s => !noCoord.includes(s) && !(s.hariTetap && s.hariTetap.length) && !(Math.round(+s.frek) > 0));
+  zeroF.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena frekuensi kirim belum diisi / tidak dikirim."));
   const valid = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s));
   state.vehicles.filter(v => v.aktif !== false && !(+v.kapasitasKg > 0)).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena kapasitas kosong/0."));
   vehicles.filter(v => !(+v.kecepatan > 0)).forEach(v => warn.push("Kecepatan " + (v.jenis || "") + " " + (v.plat || "") + " kosong, dipakai 40 km/jam."));
@@ -230,25 +230,36 @@ function buildPlan(state) {
   const load = {}; days.forEach(d => load[d] = 0);
   const perDay = {}; days.forEach(d => perDay[d] = []);
   const fixedIds = new Set();
-  const multi = valid.filter(s => (s.hariTetap && s.hariTetap.length) || Math.round(+s.frek || 1) > 1).sort((a, b) => (+b.frek || 1) - (+a.frek || 1));
+  // Frekuensi kirim (Nx seminggu) menentukan jumlah kunjungan; hari tetap (opsional) dipakai lebih dulu, sisanya diisi otomatis berjarak rata.
+  const freqOf = s => { const f = Math.round(+s.frek || 0); return f > 0 ? f : ((s.hariTetap || []).length || 0); };
+  const multi = valid.filter(s => (s.hariTetap && s.hariTetap.length) || freqOf(s) > 1).sort((a, b) => freqOf(b) - freqOf(a));
+  const circ = (a, b) => { const i = days.indexOf(a), j = days.indexOf(b); const x = Math.abs(i - j); return Math.min(x, D - x); };
   for (const s of multi) {
+    let f = freqOf(s);
+    if (f > D) { warn.push("\"" + s.nama + "\": frekuensi " + f + "x seminggu melebihi " + D + " hari distribusi, dibatasi " + D + "x."); f = D; }
+    let fixed = (s.hariTetap || []).filter(d => days.includes(d));
+    if (fixed.length < (s.hariTetap || []).length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
+    if (fixed.length > f) { warn.push("\"" + s.nama + "\": hari tetap (" + fixed.length + " hari) lebih banyak dari frekuensi " + f + "x seminggu, dipakai " + f + " hari pertama."); fixed = fixed.slice(0, f); }
+    const w = work(s);
     let ds;
-    if (s.hariTetap && s.hariTetap.length) {
-      ds = s.hariTetap.filter(d => days.includes(d));
-      if (ds.length < s.hariTetap.length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
-    } else {
-      const f = Math.min(D, Math.round(+s.frek));
-      if (+s.frek > D) warn.push("\"" + s.nama + "\": frekuensi " + s.frek + "x melebihi " + D + " hari distribusi, dibatasi " + D + "x.");
+    if (!fixed.length) {
       let best = null;
       for (let o = 0; o < D; o++) {
         const set = []; for (let i = 0; i < f; i++) set.push(days[(o + Math.round(i * D / f)) % D]);
-        const w = work(s);
         const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
         if (!best || score < best.score - 1e-9) best = { score, set };
       }
       ds = best.set;
+    } else {
+      ds = fixed.slice();
+      while (ds.length < f) {
+        let best = null;
+        for (const d of days) { if (ds.includes(d)) continue; const gap = Math.min(...ds.map(x => circ(x, d))); const r = (load[d] + w) / Math.max(1, cap[d]); if (!best || gap > best.gap || (gap === best.gap && r < best.r)) best = { d, gap, r }; }
+        ds.push(best.d);
+      }
     }
-    ds.forEach(d => { perDay[d].push(s); load[d] += work(s); });
+    ds.sort((a, b) => a - b);
+    ds.forEach(d => { perDay[d].push(s); load[d] += w; });
     fixedIds.add(s.id);
   }
   // frekuensi 1x: sapuan sudut agar satu hari mengelompok secara geografis
