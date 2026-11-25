@@ -30,7 +30,7 @@
   --d0: #5b8ff0; --d1: #fb6f8f; --d2: #3fcf73; --d3: #b27ae0; --d4: #f5a524; --d5: #2fc0dc; --d6: #94a3b8; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
 .wrap { max-width: 1320px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--line); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 1001; background: var(--surface); }
@@ -139,6 +139,16 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 .legend span { display: inline-flex; gap: 6px; align-items: center; }
 .sw { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
 .gantt-wrap { overflow-x: auto; position: relative; }
+/* Gantt & Peta: muat dalam satu layar, tanpa scroll halaman (scroll di dalam panel) */
+@media (min-width: 760px) and (min-height: 520px) {
+  body[data-tab="peta"], body[data-tab="gantt"] { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+  body[data-tab="peta"] > main, body[data-tab="gantt"] > main { flex: 1; min-height: 0; width: 100%; padding-block: 12px; display: flex; flex-direction: column; }
+  body[data-tab="peta"] > main > .panel:not([hidden]), body[data-tab="gantt"] > main > .panel:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  body[data-tab="peta"] .panel > .head p, body[data-tab="gantt"] .panel > .head p { font-size: 12.5px; margin-top: 2px; max-width: none; }
+  body[data-tab="peta"] .panel > .head h2, body[data-tab="gantt"] .panel > .head h2 { font-size: 22px; }
+  body[data-tab="peta"] #map { flex: 1; height: auto; min-height: 0; }
+  body[data-tab="gantt"] .gantt-wrap { flex: 1; min-height: 0; overflow: auto; }
+}
 #gantt svg text { font-family: var(--f-body); }
 .tip { position: fixed; z-index: 2000; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 12px; padding: 7px 9px; border-radius: 5px; max-width: 280px; line-height: 1.4; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 .tip b { font-weight: 600; }

@@ -92,6 +92,7 @@ function onLink(el, v) {
 /* ---------- tab ---------- */
 function setTab(t) {
   tab = t;
+  document.body.dataset.tab = t;
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"));
   document.querySelectorAll("main > .panel").forEach(p => p.hidden = p.id !== "p-" + t);
   try { localStorage.setItem(LS_KEY + "-tab", t); } catch (e) {}
@@ -423,6 +424,7 @@ function renderPeta() {
   $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
   ensureMap();
   setTimeout(() => map.invalidateSize(), 50);
+  if (!window._mapRs) { window._mapRs = 1; window.addEventListener("resize", () => { if (tab === "peta" && map) map.invalidateSize(); }); }
   const sig = mapDay + "|" + useRoad;
   if (mapDrawn === sig) return;
   mapDrawn = sig;
