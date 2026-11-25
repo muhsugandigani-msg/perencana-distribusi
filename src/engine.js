@@ -99,7 +99,7 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
     if (pick) kgPick += +s.beratKg || 0; else kgDel += +s.beratKg || 0;
     if (tutup != null && t > tutup) { ok = false; why = "Tidak terkejar sebelum " + s.nama + " tutup (" + s.tutup + ")"; }
     if (detail) segs.push({ type: pick ? "muat" : "bongkar", start: st, end: t, label: (pick ? "Menaikkan barang di " : "Menurunkan barang di ") + s.nama, kg: +s.beratKg || 0 });
-    out.push({ store: s, km: lg.km, drive: lg.min, arr, start: st, fin: t, wait: Math.max(0, st - arr - ctx.overlap(arr, st) * 0) });
+    out.push({ store: s, km: lg.km, drive: lg.min, depart: ts, arr, start: st, fin: t, brk: ctx.overlap(ts, t), wait: buka != null && arr < buka ? buka - arr : 0 });
     pos = pt;
   }
   const back = ctx.leg(pos, [depot.lat, depot.lng], t, speed);
@@ -110,7 +110,7 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   if (kgPick > cap + 1e-6) { ok = false; why = "Barang yang dinaikkan melebihi kapasitas"; }
   if (stops.length && t - shiftStart > ctx.H + 1e-6) { ok = false; why = "Melebihi jam kerja shift"; }
   if (t > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
-  return { ok, why, t0, shiftStart, dep, ret: t, dur: t - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km };
+  return { ok, why, t0, shiftStart, dep, ret: t, dur: t - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, t) };
 }
 
 /* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
