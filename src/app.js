@@ -29,6 +29,8 @@ function normalize(s) {
   s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
   // alamat lama "Makassar" pada store contoh -> pakai alamat hasil koordinat
   s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
+  // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
+  s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
   s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
@@ -85,34 +87,49 @@ document.addEventListener("click", e => {
 let geoLast = 0; const geoTimers = {};
 function fmtAlamat(ad) {
   if (!ad) return "";
-  const jalan = ad.road ? ad.road + (ad.house_number ? " No. " + ad.house_number : "") : (ad.commercial || ad.amenity || ad.neighbourhood || "");
-  const parts = [jalan, ad.suburb || ad.village || ad.hamlet, ad.city_district, ad.city || ad.town || ad.county || ad.regency || ad.municipality];
+  const jalan = ad.road ? ad.road + (ad.house_number ? " No. " + ad.house_number : "") : (ad.commercial || ad.industrial || ad.amenity || ad.neighbourhood || "");
+  const parts = [jalan, ad.suburb || ad.village || ad.hamlet, ad.city_district || ad.district || ad.municipality || ad.town || ad.village];
   return parts.filter((x, i, arr) => x && arr.indexOf(x) === i).join(", ");
+}
+// 98 kota (bukan kabupaten) di Indonesia; OSM kadang menandai ibu kota kabupaten sebagai "city"
+const KOTA_ID = new Set("banda aceh,langsa,lhokseumawe,sabang,subulussalam,binjai,gunungsitoli,medan,padangsidimpuan,pematangsiantar,sibolga,tanjungbalai,tebing tinggi,bukittinggi,padang,padang panjang,pariaman,payakumbuh,sawahlunto,solok,dumai,pekanbaru,batam,tanjungpinang,jambi,sungai penuh,bengkulu,lubuklinggau,pagar alam,palembang,prabumulih,pangkalpinang,bandar lampung,metro,cilegon,serang,tangerang,tangerang selatan,jakarta barat,jakarta pusat,jakarta selatan,jakarta timur,jakarta utara,bandung,banjar,bekasi,bogor,cimahi,cirebon,depok,sukabumi,tasikmalaya,magelang,pekalongan,salatiga,semarang,surakarta,solo,tegal,yogyakarta,batu,blitar,kediri,madiun,malang,mojokerto,pasuruan,probolinggo,surabaya,denpasar,bima,mataram,kupang,pontianak,singkawang,palangka raya,banjarbaru,banjarmasin,balikpapan,bontang,samarinda,tarakan,bitung,kotamobagu,manado,tomohon,gorontalo,palu,makassar,palopo,parepare,baubau,kendari,ambon,tual,ternate,tidore kepulauan,jayapura,sorong".split(","));
+function fmtKota(ad) {
+  if (!ad) return "";
+  const pre = (n, p) => /^(kota|kabupaten|kab\.)\s/i.test(n) ? n.replace(/^kab\.\s*/i, "Kabupaten ") : p + " " + n;
+  const kab = ad.county || ad.regency, kota = ad.city;
+  if (kab) return pre(kab, "Kabupaten");
+  if (kota) return pre(kota, KOTA_ID.has(kota.toLowerCase().replace(/^kota\s+/, "").trim()) ? "Kota" : "Kabupaten");
+  return "";
 }
 async function reverseGeocode(lat, lng) {
   const wait = 1100 - (Date.now() - geoLast); if (wait > 0) await new Promise(r => setTimeout(r, wait));
   geoLast = Date.now();
   try {
     const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=id&lat=" + lat + "&lon=" + lng);
-    if (r.ok) { const j = await r.json(); const s = fmtAlamat(j.address); if (s) return s; }
+    if (r.ok) { const j = await r.json(); const s = fmtAlamat(j.address); if (s) return { alamat: s, kota: fmtKota(j.address) }; }
   } catch (e) {}
   try { // cadangan: Photon (Komoot)
     const r = await fetch("https://photon.komoot.io/reverse?lat=" + lat + "&lon=" + lng);
     const p = (await r.json()).features[0].properties;
-    return [p.street || p.name, p.district || p.locality, p.city || p.county].filter(Boolean).join(", ");
-  } catch (e) { return ""; }
+    const al = [p.street || p.name, p.district || p.locality].filter(Boolean).join(", ");
+    return al ? { alamat: al, kota: p.county ? fmtKota({ county: p.county }) : fmtKota({ city: p.city }) } : null;
+  } catch (e) { return null; }
 }
 async function isiAlamat(s, i) {
   if (s.lat == null || s.lng == null) return false;
   const msg = document.getElementById("lm" + i);
   if (msg) { msg.className = "msg"; msg.textContent = "Mencari alamat…"; }
   const lat = s.lat, lng = s.lng;
-  const al = await reverseGeocode(lat, lng);
+  const g = await reverseGeocode(lat, lng);
   if (s.lat !== lat || s.lng !== lng) return false; // link sudah diganti lagi
+  const al = g && g.alamat;
   if (!al) { if (msg) { msg.className = "msg bad"; msg.textContent = "Koordinat terbaca, alamat tidak ditemukan (isi manual)"; } return false; }
-  s.alamat = al; s.alamatAuto = true; save();
-  const inp = document.querySelector(`[data-k="stores.${i}.alamat"]`); if (inp) { inp.value = al; inp.title = al; }
-  if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat & alamat terisi otomatis"; }
+  if (s.alamatAuto !== false || !s.alamat) { s.alamat = al; s.alamatAuto = true; }
+  if (g.kota) s.kota = g.kota;
+  save();
+  const inp = document.querySelector(`[data-k="stores.${i}.alamat"]`); if (inp) { inp.value = s.alamat; inp.title = s.alamat; }
+  const kt = document.getElementById("kt" + i); if (kt) { kt.value = s.kota || ""; kt.title = s.kota || ""; }
+  if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat, alamat & kota terisi otomatis"; }
   return true;
 }
 function onLink(el, v) {
@@ -194,13 +211,14 @@ let storeFilter = "";
 function renderStore() {
   const el = $("#p-store");
   const f = storeFilter.toLowerCase();
-  const list = state.stores.map((s, i) => [s, i]).filter(([s]) => !f || (s.nama || "").toLowerCase().includes(f) || (s.alamat || "").toLowerCase().includes(f));
+  const list = state.stores.map((s, i) => [s, i]).filter(([s]) => !f || (s.nama || "").toLowerCase().includes(f) || (s.alamat || "").toLowerCase().includes(f) || (s.kota || "").toLowerCase().includes(f));
   const rows = list.map(([s, i]) => {
     const origin = s.antaran === "Origin";
     return `<tr>
     <td><input type="checkbox" data-k="stores.${i}.aktif" ${s.aktif !== false ? "checked" : ""} aria-label="Aktif"></td>
     <td><input class="in" data-k="stores.${i}.nama" value="${esc(s.nama)}" style="min-width:190px"></td>
     <td><input class="in" data-k="stores.${i}.alamat" data-alamat="${i}" value="${esc(s.alamat)}" title="${esc(s.alamat || "")}" placeholder="Terisi otomatis dari link" style="min-width:240px"></td>
+    <td><input class="in auto" id="kt${i}" data-k="stores.${i}.kota" value="${esc(s.kota || "")}" title="${esc(s.kota || "Terisi otomatis dari link titik maps")}" placeholder="Otomatis" readonly tabindex="-1" style="min-width:150px"></td>
     <td><input class="in mono" data-k="stores.${i}.link" data-link="${i}" value="${esc(s.link)}" placeholder="Tempel link Google Maps" style="min-width:200px"><div class="msg" id="lm${i}"></div></td>
     <td><input class="in num auto" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" readonly tabindex="-1" title="Terisi otomatis dari link titik maps" style="min-width:118px"></td>
     <td><input class="in num auto" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" readonly tabindex="-1" title="Terisi otomatis dari link titik maps" style="min-width:128px"></td>
@@ -217,19 +235,19 @@ function renderStore() {
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
   const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
-  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</details></div>
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, kota/kabupaten, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</details></div>
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
     <button class="btn" type="button" id="geoAll" title="Isi alamat semua store dari koordinatnya">⟳ Isi alamat otomatis</button>
     <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
     ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
     <div class="card tbl-wrap lock pin2"><table>
-    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th>Frekuensi kirim</th><th title="Hari kirim yang dibentuk otomatis saat Buat Plan">Jadwal hasil plan</th><th>Antaran</th><th>Jenis loading</th><th>Hari tetap (opsional)</th><th></th></tr></thead>
+    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Kota/Kabupaten</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th>Frekuensi kirim</th><th title="Hari kirim yang dibentuk otomatis saat Buat Plan">Jadwal hasil plan</th><th>Antaran</th><th>Jenis loading</th><th>Hari tetap (opsional)</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="15" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
     <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai menu <b>Data → Impor store dari Excel/CSV</b>.</p>`;
   $("#addS").onclick = () => { state.stores.push({ id: uid("s"), aktif: true, nama: "Store baru", alamat: "", link: "", lat: null, lng: null, buka: "08:00", tutup: "21:00", beratKg: 500, frek: 1, antaran: "Tujuan", loading: "Menurunkan", hariTetap: [] }); storeFilter = ""; save(); renderStore(); };
   $("#geoAll").onclick = async () => {
     const b = $("#geoAll"); if (b.disabled) return;
-    const todo = state.stores.map((s, i) => [s, i]).filter(([s]) => s.lat != null && s.lng != null && (!s.alamat || s.alamatAuto !== false));
+    const todo = state.stores.map((s, i) => [s, i]).filter(([s]) => s.lat != null && s.lng != null && (!s.alamat || !s.kota || s.alamatAuto !== false));
     if (!todo.length) { toast("Tidak ada store yang perlu diisi alamatnya"); return; }
     b.disabled = true; let ok = 0, n = 0;
     for (const [s, i] of todo) { n++; b.textContent = "Mengisi alamat " + n + "/" + todo.length + "…"; if (await isiAlamat(s, i)) ok++; }
@@ -624,7 +642,7 @@ async function drawMap() {
     if (mapDay === "all") { const col = days.length > 1 ? "#17201d" : dayColor(days[0]); html = `<div class="storepin" style="background:${col}"></div>`; }
     else { const x = list[0]; html = `<div class="seqpin" style="background:${tripColor(x.t, x.i)}">${x.k + 1}</div>`; }
     const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
-    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc(s.alamat || "")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
+    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
   });
   L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
   if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);
@@ -660,8 +678,8 @@ function exportExcel() {
   const wb = XLSX.utils.book_new();
   const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
   plan.trips.forEach(t => ring.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)]));
-  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Jam berangkat", "Jam tiba", "Mulai bongkar/muat", "Jam selesai", "Istirahat terpotong (menit)", "Tunggu buka (menit)", "Jam buka", "Latitude", "Longitude"]];
-  plan.trips.forEach(t => { t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", plan.depot.lat, plan.depot.lng]); });
+  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kota/Kabupaten", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Jam berangkat", "Jam tiba", "Mulai bongkar/muat", "Jam selesai", "Istirahat terpotong (menit)", "Tunggu buka (menit)", "Jam buka", "Latitude", "Longitude"]];
+  plan.trips.forEach(t => { t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.kota || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", plan.depot.lat, plan.depot.lng]); });
   const gan = [["Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
   plan.trips.forEach(t => t.segs.forEach(s => gan.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)])));
   const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Aktif"]];
@@ -690,10 +708,10 @@ function exportExcel() {
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveFile("Plan_Distribusi_" + stamp() + ".xlsx", new Uint8Array(out), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
-const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari tetap"];
+const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Kota/Kabupaten", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari tetap"];
 function storeRows() {
   const rows = [STORE_HEAD];
-  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (+s.frek > 0 ? Math.round(+s.frek) + "x seminggu" : (s.antaran === "Origin" ? "" : "Tidak dikirim")), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", (s.hariTetap || []).map(d => HARI3[d]).join(", ")]));
+  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.kota || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (+s.frek > 0 ? Math.round(+s.frek) + "x seminggu" : (s.antaran === "Origin" ? "" : "Tidak dikirim")), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", (s.hariTetap || []).map(d => HARI3[d]).join(", ")]));
   return rows;
 }
 function parseNum(v, coord) {
@@ -715,7 +733,7 @@ function importStores(file) {
       if (!rows.length) throw new Error("file kosong");
       const head = rows[0].map(h => String(h).toLowerCase());
       const col = (...keys) => head.findIndex(h => keys.some(k => h.includes(k)));
-      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari") };
+      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), kota: col("kota", "kabupaten"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari") };
       if (c.nama < 0) throw new Error("kolom \"Nama store\" tidak ditemukan");
       const list = [];
       for (const r of rows.slice(1)) {
@@ -726,7 +744,7 @@ function importStores(file) {
         const ant = c.antaran >= 0 && /orig/i.test(r[c.antaran]) ? "Origin" : "Tujuan";
         const hari = c.hari >= 0 ? String(r[c.hari]).split(/[,;/ ]+/).map(x => HARI3.findIndex(h => x.toLowerCase().startsWith(h.toLowerCase()))).filter(i => i >= 0) : [];
         const normT = v => { if (typeof v === "number" && v >= 0 && v < 1.0001) v = fmtJam(Math.min(1439, Math.round(v * 1440))); const m = toMin(v); return m == null ? "" : fmtJam(m); };
-        list.push({ id: uid("s"), aktif: c.aktif < 0 || !/^(tidak|no|0|false)$/i.test(String(r[c.aktif]).trim()), nama, alamat: c.alamat >= 0 ? String(r[c.alamat]) : "", link, lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, buka: normT(c.buka >= 0 ? r[c.buka] : "") || "08:00", tutup: normT(c.tutup >= 0 ? r[c.tutup] : "") || "21:00", beratKg: c.kg >= 0 ? parseNum(r[c.kg]) || 0 : 0, frek: c.frek >= 0 ? (String(r[c.frek]).trim() === "" ? (ant === "Origin" ? 0 : 1) : (parseInt(r[c.frek]) || 0)) : (ant === "Origin" ? 0 : 1), antaran: ant, loading: c.loading >= 0 && /naik|muat|pick/i.test(r[c.loading]) ? "Menaikkan" : "Menurunkan", hariTetap: hari });
+        list.push({ id: uid("s"), aktif: c.aktif < 0 || !/^(tidak|no|0|false)$/i.test(String(r[c.aktif]).trim()), nama, alamat: c.alamat >= 0 ? String(r[c.alamat]) : "", kota: c.kota >= 0 ? String(r[c.kota]) : "", link, lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, buka: normT(c.buka >= 0 ? r[c.buka] : "") || "08:00", tutup: normT(c.tutup >= 0 ? r[c.tutup] : "") || "21:00", beratKg: c.kg >= 0 ? parseNum(r[c.kg]) || 0 : 0, frek: c.frek >= 0 ? (String(r[c.frek]).trim() === "" ? (ant === "Origin" ? 0 : 1) : (parseInt(r[c.frek]) || 0)) : (ant === "Origin" ? 0 : 1), antaran: ant, loading: c.loading >= 0 && /naik|muat|pick/i.test(r[c.loading]) ? "Menaikkan" : "Menurunkan", hariTetap: hari });
       }
       if (!list.length) throw new Error("tidak ada baris store");
       askConfirm(`Impor ${list.length} store dari "${esc(file.name)}"?`, [["Ganti semua store", () => { state.stores = list; done(); }], ["Tambahkan ke daftar", () => { state.stores = state.stores.concat(list); done(); }]]);
