@@ -279,15 +279,46 @@ function gmapsLink(t) {
 }
 function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
 
+function optCard(plan) {
+  const A = plan.opt.awal, B = plan.opt.akhir;
+  const row = (lbl, a, b, fmt, unit, lowerBetter = true) => {
+    const ch = a ? (b - a) / a * 100 : 0; const good = lowerBetter ? b < a - 1e-9 : b > a + 1e-9; const bad = lowerBetter ? b > a + 1e-9 : b < a - 1e-9;
+    return `<tr><td>${lbl}</td><td class="num mono">${fmt(a)} ${unit}</td><td class="num mono"><b>${fmt(b)} ${unit}</b></td><td class="num mono" style="color:${good ? "var(--ok)" : bad ? "var(--bad)" : "var(--muted)"}">${Math.abs(ch) < 0.05 ? "–" : (ch > 0 ? "+" : "") + fmtNum(ch, 1) + "%"}</td></tr>`;
+  };
+  const f0 = x => fmtNum(x), f1 = x => fmtNum(x, 1), fp = x => fmtNum(x * 100);
+  // utilisasi per kendaraan
+  const days = plan.days.length, H = plan.H;
+  const vrows = plan.vehicles.map((v, vi) => {
+    const T = plan.trips.filter(t => t.vIdx === vi);
+    const jam = T.reduce((a, t) => a + t.dur, 0) / 60, avail = days * (+v.maksShift || 1) * H / 60;
+    const isi = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+v.kapasitasKg || 1), 0) / T.length : 0;
+    const hk = new Set(T.map(t => t.day)).size;
+    return `<tr><td>${esc(v.jenis)} <span class="hint">${esc(v.plat || "")}</span></td><td class="num mono">${T.length}</td><td class="num mono">${hk}</td><td class="num mono">${fmtNum(jam, 1)} / ${fmtNum(avail, 0)} jam <span class="meter"><i style="width:${Math.min(100, jam / Math.max(1, avail) * 100)}%"></i></span></td><td class="num mono">${fmtNum(T.reduce((a, t) => a + t.km, 0))} km</td><td class="num mono">${fmtNum(isi * 100)}%</td></tr>`;
+  }).join("");
+  return `<div class="card pad" style="display:grid;gap:12px">
+    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${plan.opt.starts} variasi dalam ${fmtNum(plan.opt.ms / 1000, 1)} detik. Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
+    <div class="grid2">
+      <div class="tbl-wrap"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
+        ${row("Belum terlayani", A.unserved, B.unserved, f0, "kunjungan")}
+        ${row("Jumlah rit", A.rit, B.rit, f0, "rit")}
+        ${row("Jarak tempuh", A.km, B.km, f0, "km")}
+        ${row("Total jam kerja", A.jam, B.jam, f1, "jam")}
+        ${row("Rata-rata isi muatan", A.isi, B.isi, fp, "%", false)}
+      </tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Kendaraan</th><th class="num">Rit</th><th class="num">Hari kerja</th><th class="num">Jam terpakai / tersedia</th><th class="num">Jarak</th><th class="num">Isi rata-rata</th></tr></thead><tbody>${vrows}</tbody></table></div>
+    </div>
+  </div>`;
+}
+
 function renderPlan() {
   const el = $("#p-plan");
   if (!plan) { el.innerHTML = '<div class="empty">Klik "Buat Plan".</div>'; return; }
   if (plan.error) { el.innerHTML = `<div class="head"><div><h2>Plan Distribusi</h2></div></div><div class="banner bad"><b>Plan belum bisa dibuat.</b> ${esc(plan.error)}</div>`; return; }
   const T = plan.trips;
   const kg = T.reduce((a, t) => a + t.kgDel, 0), pk = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0);
-  const capUsed = T.length ? T.reduce((a, t) => a + t.kgDel / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
+  const capUsed = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
   const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
-  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Rute disusun otomatis (titik terjauh dulu lalu penyisipan termurah, dicek terhadap kapasitas, jam shift, jam istirahat, dan jam buka store).</p></div>
+  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Plan disusun dan dioptimasi otomatis: mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</p></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
     <div class="tiles">
@@ -299,6 +330,7 @@ function renderPlan() {
       <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
       <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
     </div>`;
+  if (plan.opt) html += optCard(plan);
   if (plan.unserved.length) html += `<div class="banner bad"><div><b>${plan.unserved.length} kunjungan tidak muat di jadwal.</b> <br>${plan.unserved.map(u => "• " + esc(u.store.nama) + " (" + HARI[u.day] + "): " + esc(u.reason)).join("<br>")}<br>Coba tambah kendaraan/shift, ubah hari tetap, atau perpanjang jam kerja shift.</div></div>`;
   if (plan.warn.length) html += `<div class="banner warn"><div>${plan.warn.map(esc).join("<br>")}</div></div>`;
   for (const d of plan.days) {

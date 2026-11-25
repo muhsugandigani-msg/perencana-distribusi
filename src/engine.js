@@ -143,7 +143,7 @@ function orderStops(list) { // pengantaran dulu, penjemputan ("Menaikkan barang"
 }
 
 /* Bangun rute untuk satu hari */
-function routeDay(state, day, visits, depot, vehicles) {
+function routeDay(state, day, visits, depot, vehicles, rnd) {
   const ctx = makeCtx(state, day);
   const U = visits.slice();
   const trips = [];
@@ -159,7 +159,8 @@ function routeDay(state, day, visits, depot, vehicles) {
     // seed: titik terjauh yang layak sendirian
     const cand = U.map(s => ({ s, d: legDepot(s) })).sort((a, b) => b.d - a.d);
     let route = null;
-    for (const c of cand) { if (sim([c.s]).ok) { route = [c.s]; break; } }
+    const okc = []; for (const c of cand) { if (sim([c.s]).ok) { okc.push(c.s); if (!rnd || okc.length >= 3) break; } }
+    if (okc.length) route = [okc[rnd ? Math.floor(rnd() * okc.length) : 0]];
     if (!route) { done[vi] = true; continue; }
     U.splice(U.indexOf(route[0]), 1);
     // penyisipan termurah
@@ -218,6 +219,10 @@ function dayCapacity(state, day, depot, vehicles) {
   return tot;
 }
 
+/* Bobot fungsi tujuan (dalam "menit setara"): belum terlayani >> jumlah rit > jam kerja > km */
+const W = { unserved: 10000, rit: 60, km: 2 };
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
 function buildPlan(state) {
   const warn = [];
   const days = state.params.hari.map((b, i) => b ? i : -1).filter(i => i >= 0);
@@ -238,78 +243,251 @@ function buildPlan(state) {
   valid.filter(s => +s.beratKg > maxCap).forEach(s => warn.push("\"" + s.nama + "\" " + Math.round(s.beratKg) + " kg melebihi kapasitas kendaraan terbesar (" + maxCap + " kg). Pecah menjadi 2 baris store atau tambah kendaraan lebih besar."));
   const D = days.length;
   const ctx0 = makeCtx(state, days[0]);
+  const ctxOf = {}; days.forEach(d => ctxOf[d] = makeCtx(state, d));
   const work = s => (+s.beratKg || 0) / ctx0.rate + ctx0.leg([depot.lat, depot.lng], [s.lat, s.lng], null, 40).min * 0.9;
   const cap = {}; days.forEach(d => cap[d] = dayCapacity(state, d, depot, vehicles));
-  const load = {}; days.forEach(d => load[d] = 0);
-  const perDay = {}; days.forEach(d => perDay[d] = []);
-  const fixedIds = new Set();
   // Frekuensi kirim (Nx seminggu) menentukan jumlah kunjungan; hari tetap (opsional) dipakai lebih dulu, sisanya diisi otomatis berjarak rata.
   const freqOf = s => { const f = Math.round(+s.frek || 0); return f > 0 ? f : ((s.hariTetap || []).length || 0); };
   const multi = valid.filter(s => (s.hariTetap && s.hariTetap.length) || freqOf(s) > 1).sort((a, b) => freqOf(b) - freqOf(a));
   const circ = (a, b) => { const i = days.indexOf(a), j = days.indexOf(b); const x = Math.abs(i - j); return Math.min(x, D - x); };
-  for (const s of multi) {
-    let f = freqOf(s);
-    if (f > D) { warn.push("\"" + s.nama + "\": frekuensi " + f + "x seminggu melebihi " + D + " hari distribusi, dibatasi " + D + "x."); f = D; }
-    let fixed = (s.hariTetap || []).filter(d => days.includes(d));
-    if (fixed.length < (s.hariTetap || []).length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
-    if (fixed.length > f) { warn.push("\"" + s.nama + "\": hari tetap (" + fixed.length + " hari) lebih banyak dari frekuensi " + f + "x seminggu, dipakai " + f + " hari pertama."); fixed = fixed.slice(0, f); }
-    const w = work(s);
-    let ds;
-    if (!fixed.length) {
-      let best = null;
-      for (let o = 0; o < D; o++) {
-        const set = []; for (let i = 0; i < f; i++) set.push(days[(o + Math.round(i * D / f)) % D]);
-        const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
-        if (!best || score < best.score - 1e-9) best = { score, set };
+  const fixedIds = new Set(multi.map(s => s.id));
+  const pinned = s => !!(s.hariTetap && s.hariTetap.length); // punya hari tetap: tidak dipindah
+  let warned = false;
+  // tetangga terdekat tiap store (membatasi pencarian agar cepat untuk ratusan store)
+  const NB = {};
+  valid.forEach(s => { NB[s.id] = new Set(valid.filter(u => u.id !== s.id).map(u => ({ id: u.id, d: hav([s.lat, s.lng], [u.lat, u.lng]) })).sort((a, b) => a.d - b.d).slice(0, 10).map(x => x.id)); });
+  const near = (s, route) => route.some(x => NB[s.id] && NB[s.id].has(x.id));
+  let evals = 0; const EVAL_MAX = 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
+
+  /* 1) Pembagian kunjungan ke hari. rnd = null -> deterministik (solusi awal); rnd -> variasi untuk multi-start */
+  function assign(rnd) {
+    const load = {}, perDay = {}; days.forEach(d => { load[d] = 0; perDay[d] = []; });
+    for (const s of multi) {
+      let f = freqOf(s);
+      if (f > D) { if (!warned) warn.push("\"" + s.nama + "\": frekuensi " + f + "x seminggu melebihi " + D + " hari distribusi, dibatasi " + D + "x."); f = D; }
+      let fixed = (s.hariTetap || []).filter(d => days.includes(d));
+      if (!warned && fixed.length < (s.hariTetap || []).length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
+      if (fixed.length > f) { if (!warned) warn.push("\"" + s.nama + "\": hari tetap (" + fixed.length + " hari) lebih banyak dari frekuensi " + f + "x seminggu, dipakai " + f + " hari pertama."); fixed = fixed.slice(0, f); }
+      const w = work(s);
+      let ds;
+      if (!fixed.length) {
+        const opts = [];
+        for (let o = 0; o < D; o++) {
+          const set = []; for (let i = 0; i < f; i++) set.push(days[(o + Math.round(i * D / f)) % D]);
+          if (opts.some(x => x.set.join() === set.slice().sort((a, b) => a - b).join())) continue;
+          const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
+          opts.push({ score, set: set.slice().sort((a, b) => a - b) });
+        }
+        opts.sort((a, b) => a.score - b.score);
+        let pick = opts[0];
+        if (rnd) { const near = opts.filter(x => x.score <= opts[0].score * 1.15 + 1e-9); pick = near[Math.floor(rnd() * near.length)]; }
+        ds = pick.set;
+      } else {
+        ds = fixed.slice();
+        while (ds.length < f) {
+          let best = null;
+          for (const d of days) { if (ds.includes(d)) continue; const gap = Math.min(...ds.map(x => circ(x, d))); const r = (load[d] + w) / Math.max(1, cap[d]); if (!best || gap > best.gap || (gap === best.gap && r < best.r)) best = { d, gap, r }; }
+          ds.push(best.d);
+        }
       }
-      ds = best.set;
-    } else {
-      ds = fixed.slice();
-      while (ds.length < f) {
-        let best = null;
-        for (const d of days) { if (ds.includes(d)) continue; const gap = Math.min(...ds.map(x => circ(x, d))); const r = (load[d] + w) / Math.max(1, cap[d]); if (!best || gap > best.gap || (gap === best.gap && r < best.r)) best = { d, gap, r }; }
-        ds.push(best.d);
+      ds.sort((a, b) => a - b);
+      ds.forEach(d => { perDay[d].push(s); load[d] += w; });
+    }
+    warned = true;
+    // frekuensi 1x: sapuan sudut agar satu hari mengelompok secara geografis
+    const flex = valid.filter(s => !fixedIds.has(s.id)).map(s => ({ s, a: Math.atan2(s.lat - depot.lat, s.lng - depot.lng) })).sort((x, y) => x.a - y.a);
+    if (flex.length) {
+      let gi = 0, gap = -1; // mulai dari celah sudut terbesar
+      for (let i = 0; i < flex.length; i++) { const nx = flex[(i + 1) % flex.length]; let g = nx.a - flex[i].a; if (g <= 0) g += 2 * Math.PI; if (g > gap) { gap = g; gi = (i + 1) % flex.length; } }
+      if (rnd) gi = (gi + Math.floor(rnd() * flex.length)) % flex.length;
+      const ordered = flex.slice(gi).concat(flex.slice(0, gi)).map(x => x.s);
+      const totalW = ordered.reduce((a, s) => a + work(s), 0) + days.reduce((a, d) => a + load[d], 0);
+      const capSum = days.reduce((a, d) => a + cap[d], 0) || 1;
+      const jit = rnd ? 0.25 + rnd() * 0.5 : 0.5;
+      let di = 0;
+      for (const s of ordered) {
+        while (di < D - 1 && load[days[di]] + work(s) * jit > totalW * cap[days[di]] / capSum) di++;
+        perDay[days[di]].push(s); load[days[di]] += work(s);
       }
     }
-    ds.sort((a, b) => a - b);
-    ds.forEach(d => { perDay[d].push(s); load[d] += w; });
-    fixedIds.add(s.id);
+    return { perDay, load };
   }
-  // frekuensi 1x: sapuan sudut agar satu hari mengelompok secara geografis
-  const flex = valid.filter(s => !fixedIds.has(s.id)).map(s => ({ s, a: Math.atan2(s.lat - depot.lat, s.lng - depot.lng) })).sort((x, y) => x.a - y.a);
-  if (flex.length) {
-    let gi = 0, gap = -1; // mulai dari celah sudut terbesar
-    for (let i = 0; i < flex.length; i++) { const nx = flex[(i + 1) % flex.length]; let g = nx.a - flex[i].a; if (g <= 0) g += 2 * Math.PI; if (g > gap) { gap = g; gi = (i + 1) % flex.length; } }
-    const ordered = flex.slice(gi).concat(flex.slice(0, gi)).map(x => x.s);
-    const totalW = ordered.reduce((a, s) => a + work(s), 0) + days.reduce((a, d) => a + load[d], 0);
-    const capSum = days.reduce((a, d) => a + cap[d], 0) || 1;
-    let di = 0;
-    for (const s of ordered) {
-      while (di < D - 1 && load[days[di]] + work(s) / 2 > totalW * cap[days[di]] / capSum) di++;
-      perDay[days[di]].push(s); load[days[di]] += work(s);
-    }
-  }
-  // rute per hari + pindahkan sisa yang fleksibel ke hari lain
-  const res = {};
-  days.forEach(d => res[d] = routeDay(state, d, perDay[d], depot, vehicles));
-  const unserved = [];
-  for (let pass = 0; pass < 2; pass++) {
-    for (const d of days) {
-      const left = res[d].left.slice();
-      for (const s of left) {
-        if (fixedIds.has(s.id) && (s.hariTetap && s.hariTetap.length)) continue;
-        const others = days.filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
-        for (const o of others) {
-          const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles);
-          if (!trial.left.includes(s) && trial.left.length <= res[o].left.length) {
-            perDay[o].push(s); res[o] = trial; load[o] += work(s);
-            perDay[d] = perDay[d].filter(x => x !== s); res[d].left = res[d].left.filter(x => x !== s); load[d] -= work(s);
-            break;
+
+  /* 2) Rute per hari + pindahkan kunjungan yang tidak muat ke hari lain */
+  function construct(A, rnd) {
+    const { perDay, load } = A, res = {};
+    days.forEach(d => res[d] = routeDay(state, d, perDay[d], depot, vehicles, rnd));
+    for (let pass = 0; pass < 2; pass++) {
+      for (const d of days) {
+        const left = res[d].left.slice();
+        for (const s of left) {
+          if (pinned(s)) continue;
+          const others = days.filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
+          for (const o of others) {
+            const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles, rnd);
+            if (!trial.left.includes(s) && trial.left.length <= res[o].left.length) {
+              perDay[o].push(s); res[o] = trial; load[o] += work(s);
+              perDay[d] = perDay[d].filter(x => x !== s); res[d].left = res[d].left.filter(x => x !== s); load[d] -= work(s);
+              break;
+            }
           }
         }
       }
     }
+    const sol = {};
+    days.forEach(d => sol[d] = toDaySol(d, res[d].trips, res[d].left));
+    return sol;
   }
+
+  /* --- representasi solusi harian: R[vi] = daftar rit (array store) berurutan shift --- */
+  function vehEval(d, vi, list, detail) {
+    const ctx = ctxOf[d], v = vehicles[vi]; evals++;
+    let t = ctx.start, sh = 0, cost = 0; const trips = [];
+    for (const stops of list) {
+      if (!stops.length) continue;
+      sh++; if (sh > (+v.maksShift || 1)) return null;
+      const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), detail);
+      if (!r.ok) return null;
+      cost += W.rit + r.dur + W.km * r.km;
+      if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: sh }));
+      t = r.end;
+    }
+    return { cost, trips };
+  }
+  function toDaySol(d, trips, left) {
+    const R = vehicles.map(() => []);
+    trips.slice().sort((a, b) => a.vIdx - b.vIdx || a.shift - b.shift).forEach(t => R[t.vIdx].push(t.stops.map(x => x.store)));
+    const vc = R.map((L, vi) => vehEval(d, vi, L, false).cost);
+    return { R, left: left.slice(), vc };
+  }
+  const dayCost = S => S.vc.reduce((a, b) => a + b, 0) + W.unserved * S.left.length;
+  const solCost = sol => days.reduce((a, d) => a + dayCost(sol[d]), 0);
+
+  /* 3) Pencarian lokal per hari: sisipkan yang belum terlayani, pindah & tukar store antar rit/kendaraan, rapikan urutan */
+  function dayLS(d, S) {
+    const R = S.R.map(L => L.map(r => r.slice())), vc = S.vc.slice(), left = S.left.slice();
+    const slots = vi => { const L = R[vi].filter(r => r.length); return L.length < (+vehicles[vi].maksShift || 1) ? [...R[vi].map((r, i) => i).filter(i => R[vi][i].length), -1] : R[vi].map((r, i) => i).filter(i => R[vi][i].length); };
+    const tryVeh = (vi, L) => { const r = vehEval(d, vi, L, false); return r ? r.cost : null; };
+    const withRoute = (vi, ri, stops) => { const L = R[vi].map(r => r.slice()); if (ri === -1) L.push(stops); else L[ri] = stops; return L; };
+    let improved = true, rounds = 0;
+    while (improved && rounds++ < 25 && evals < EVAL_MAX) {
+      improved = false;
+      // (a) sisipkan store yang belum terlayani
+      for (let k = left.length - 1; k >= 0; k--) {
+        const s = left[k]; let best = null;
+        for (let vi = 0; vi < vehicles.length; vi++) for (const ri of slots(vi)) {
+          const base = ri === -1 ? [] : R[vi][ri];
+          if (base.some(x => x.id === s.id)) continue;
+          for (let p = 0; p <= base.length; p++) {
+            const L = withRoute(vi, ri, base.slice(0, p).concat([s], base.slice(p)));
+            const c = tryVeh(vi, L); if (c == null) continue;
+            const delta = c - vc[vi];
+            if (!best || delta < best.delta) best = { delta, vi, L, c };
+          }
+        }
+        if (best) { R[best.vi] = best.L.filter(r => r.length); vc[best.vi] = best.c; left.splice(k, 1); improved = true; }
+      }
+      // (b) pindahkan satu store ke rit lain (boleh kendaraan lain / rit baru)
+      for (let va = 0; va < vehicles.length; va++) for (let ra = 0; ra < R[va].length; ra++) for (let i = 0; i < (R[va][ra] || []).length; i++) {
+        const s = R[va][ra][i];
+        const La = R[va].map(r => r.slice()); La[ra].splice(i, 1);
+        const ca = tryVeh(va, La); if (ca == null) continue;
+        let best = null;
+        for (let vb = 0; vb < vehicles.length; vb++) for (const rb of slots(vb)) {
+          if (vb === va && rb === ra) continue;
+          const Lb0 = vb === va ? La : R[vb];
+          const base = rb === -1 ? [] : Lb0[rb];
+          if (base.some(x => x.id === s.id)) continue;
+          if (rb !== -1 && !near(s, base)) continue;
+          for (let p = 0; p <= base.length; p++) {
+            const Lb = Lb0.map(r => r.slice()); const nr = base.slice(0, p).concat([s], base.slice(p)); if (rb === -1) Lb.push(nr); else Lb[rb] = nr;
+            const cb = tryVeh(vb, Lb); if (cb == null) continue;
+            const delta = vb === va ? cb - vc[va] : (ca - vc[va]) + (cb - vc[vb]);
+            if (delta < -0.5 && (!best || delta < best.delta)) best = { delta, vb, Lb, cb, ca };
+          }
+        }
+        if (best) {
+          if (best.vb === va) { R[va] = best.Lb.filter(r => r.length); vc[va] = best.cb; }
+          else { R[va] = La.filter(r => r.length); vc[va] = best.ca; R[best.vb] = best.Lb.filter(r => r.length); vc[best.vb] = best.cb; }
+          improved = true; i = 1e9; ra = 1e9;
+        }
+      }
+      // (c) tukar dua store antar rit
+      for (let va = 0; va < vehicles.length; va++) for (let ra = 0; ra < R[va].length; ra++) for (let i = 0; i < R[va][ra].length; i++)
+        for (let vb = va; vb < vehicles.length; vb++) for (let rb = 0; rb < R[vb].length; rb++) {
+          if (vb === va && rb <= ra) continue;
+          for (let j = 0; j < R[vb][rb].length; j++) {
+            const s = R[va][ra][i], u = R[vb][rb][j];
+            if (s.id === u.id || R[va][ra].some(x => x.id === u.id) || R[vb][rb].some(x => x.id === s.id)) continue;
+            if (!near(s, R[vb][rb]) || !near(u, R[va][ra])) continue;
+            const La = R[va].map(r => r.slice()); La[ra][i] = u;
+            if (vb === va) { La[rb][j] = s; const c = tryVeh(va, La); if (c != null && c < vc[va] - 0.5) { R[va] = La; vc[va] = c; improved = true; } continue; }
+            const Lb = R[vb].map(r => r.slice()); Lb[rb][j] = s;
+            const ca = tryVeh(va, La); if (ca == null) continue; const cb = tryVeh(vb, Lb); if (cb == null) continue;
+            if (ca + cb < vc[va] + vc[vb] - 0.5) { R[va] = La; R[vb] = Lb; vc[va] = ca; vc[vb] = cb; improved = true; }
+          }
+        }
+      // (d) rapikan urutan tiap rit (2-opt + relokasi dalam rit)
+      for (let vi = 0; vi < vehicles.length; vi++) for (let ri = 0; ri < R[vi].length; ri++) {
+        const simR = st => { const L = R[vi].map(r => r.slice()); L[ri] = st; const c = tryVeh(vi, L); return c == null ? { ok: false } : { ok: true, ret: c }; };
+        const nr = improve(R[vi][ri], simR); const L = R[vi].map(r => r.slice()); L[ri] = nr; const c = tryVeh(vi, L);
+        if (c != null && c < vc[vi] - 0.5) { R[vi] = L; vc[vi] = c; improved = true; }
+      }
+    }
+    return { R, left, vc };
+  }
+
+  /* 4) Pindahkan store frekuensi 1x ke hari lain bila total lebih baik */
+  function interDay(sol) {
+    let moved = 0;
+    for (const d of days) {
+      for (let vi = 0; vi < vehicles.length; vi++) for (let ri = 0; ri < (sol[d].R[vi] || []).length; ri++) for (let i = 0; i < ((sol[d].R[vi] || [])[ri] || []).length; i++) {
+        const s = sol[d].R[vi][ri][i]; if (fixedIds.has(s.id) || evals > EVAL_MAX * 1.6) continue;
+        const Sd = { R: sol[d].R.map(L => L.map(r => r.slice())), left: sol[d].left.slice(), vc: sol[d].vc.slice() };
+        Sd.R[vi][ri].splice(i, 1); Sd.R[vi] = Sd.R[vi].filter(r => r.length);
+        const cv = vehEval(d, vi, Sd.R[vi], false); if (!cv) continue; Sd.vc[vi] = cv.cost;
+        const before = dayCost(sol[d]);
+        let best = null;
+        for (const o of days) {
+          if (o === d || sol[o].R.some(L => L.some(r => r.some(x => x.id === s.id))) || sol[o].left.some(x => x.id === s.id)) continue;
+          const So = dayLS(o, { R: sol[o].R, left: sol[o].left.concat([s]), vc: sol[o].vc });
+          if (So.left.some(x => x.id === s.id)) continue;
+          const delta = dayCost(So) - dayCost(sol[o]) + dayCost(Sd) - before;
+          if (delta < -1 && (!best || delta < best.delta)) best = { delta, o, So };
+        }
+        if (best) { sol[d] = dayLS(d, Sd); sol[best.o] = best.So; moved++; i = 1e9; ri = 1e9; vi = 1e9; }
+      }
+    }
+    return moved;
+  }
+
+  /* --- jalankan: solusi awal (seperti sebelumnya) lalu multi-start + pencarian lokal --- */
+  const t0 = Date.now();
+  const initial = construct(assign(null), null);
+  const metric = sol => {
+    let rit = 0, km = 0, dur = 0, kg = 0, capu = 0, un = 0;
+    days.forEach(d => { const S = sol[d]; un += S.left.length; S.R.forEach((L, vi) => { const r = vehEval(d, vi, L, true); if (!r) return; r.trips.forEach(t => { rit++; km += t.km; dur += t.dur; kg += Math.max(t.kgDel, t.kgPick) / (+vehicles[vi].kapasitasKg || 1); capu += 1; }); }); });
+    return { rit, km, jam: dur / 60, isi: capu ? kg / capu : 0, unserved: un };
+  };
+  const mInit = metric(initial);
+  let best = null, bestCost = Infinity, starts = 0;
+  const nStart = Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  for (let k = 0; k < nStart; k++) {
+    const rnd = k === 0 ? null : mulberry32(1000 + k * 7919);
+    const sol = k === 0 ? initial : construct(assign(rnd), rnd);
+    days.forEach(d => sol[d] = dayLS(d, sol[d]));
+    starts++;
+    const c = solCost(sol);
+    if (c < bestCost - 1e-6) { bestCost = c; best = sol; }
+    if (evals > EVAL_MAX) break; // batas kerja
+  }
+  for (let r = 0; r < 3 && interDay(best); r++) {}
+  bestCost = solCost(best);
+  const res = {};
+  days.forEach(d => { const S = best[d]; const trips = []; S.R.forEach((L, vi) => { const r = vehEval(d, vi, L, true); if (r) trips.push(...r.trips); }); res[d] = { trips, left: S.left }; });
+  const mBest = metric(best);
+  const opt = { awal: mInit, akhir: mBest, starts, ms: Date.now() - t0, bobot: W };
+  const unserved = [];
   days.forEach(d => res[d].left.forEach(s => {
     const ctx = makeCtx(state, d);
     let reason = "Waktu/kapasitas armada di hari ini sudah penuh";
@@ -323,7 +501,7 @@ function buildPlan(state) {
   const trips = [];
   days.forEach(d => res[d].trips.forEach(t => trips.push(t)));
   trips.sort((a, b) => a.day - b.day || a.vIdx - b.vIdx || a.shift - b.shift);
-  return { depot, vehicles, days, trips, unserved, warn, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
+  return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
 }
 
 if (typeof module !== "undefined") module.exports = { buildPlan, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
