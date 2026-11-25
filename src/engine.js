@@ -62,7 +62,18 @@ function makeCtx(state, day) {
     return { km: road, min: road / Math.max(1, speed) * 60 * f };
   }
   function overlap(t0, t1) { let s = 0; for (const [a, b] of breaks) s += Math.max(0, Math.min(b, t1) - Math.max(a, t0)); return s; }
-  const acts = (p.aktivitas || []).filter(a => a.hari && a.hari[day] && +a.durasi > 0);
+  const hariOn = (p.hari || []).map((x, i) => x ? i : -1).filter(i => i >= 0);
+  const firstDay = hariOn.length ? hariOn[0] : -1, lastDay = hariOn.length ? hariOn[hariOn.length - 1] : -1;
+  const pagiHariPertama = p.loadingHariPertama === "pagi";
+  const acts = [];
+  (p.aktivitas || []).filter(a => a.hari && a.hari[day] && +a.durasi > 0).forEach(a => {
+    if (a.waktu !== "setelah") { acts.push(Object.assign({}, a, { waktu: "sebelum" })); return; }
+    // aktivitas "setelah kembali" = persiapan rit berikutnya (shift berikutnya / esok hari)
+    if (pagiHariPertama && day === firstDay) acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "shift1", pagi: true }));
+    // hari terakhir (mode pagi): tidak perlu menyiapkan esok hari; rit ke-2 dst. tetap disiapkan (dijalankan sebelum berangkat rit itu)
+    if (pagiHariPertama && day === lastDay) { if (a.berlaku !== "shift1") acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "lanjut" })); }
+    else acts.push(Object.assign({}, a, { waktu: "setelah" }));
+  });
   return { day, breaks, advance, leg, overlap, rate, acts, H: (+p.jamShift || 8) * 60, start: toMin(p.jamMulai) ?? 480 };
 }
 
@@ -70,7 +81,8 @@ function makeCtx(state, day) {
 function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   const segs = [];
   let t = t0, shiftStart = null;
-  const acts = ctx.acts.filter(a => a.berlaku !== "shift1" || shiftNo === 1);
+  const all = ctx.acts.filter(a => a.berlaku === "shift1" ? shiftNo === 1 : a.berlaku === "lanjut" ? shiftNo > 1 : true);
+  const acts = all.filter(a => a.waktu !== "setelah"), after = all.filter(a => a.waktu === "setelah");
   for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   t = ctx.advance(t, 0);
@@ -102,12 +114,16 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   const back = ctx.leg(pos, [depot.lat, depot.lng], t, speed);
   t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
   if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
+  const ret = t;
+  let end = t, endCounted = t;
+  for (const a of after) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama + " (untuk rit berikutnya)", after: true }); if (a.dihitung) endCounted = t; }
+  end = t;
   const cap = +veh.kapasitasKg || 0;
   if (kgDel > cap + 1e-6) { ok = false; why = "Muatan melebihi kapasitas"; }
   if (kgPick > cap + 1e-6) { ok = false; why = "Barang yang dinaikkan melebihi kapasitas"; }
-  if (stops.length && t - shiftStart > ctx.H + 1e-6) { ok = false; why = "Melebihi jam kerja shift"; }
-  if (t > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
-  return { ok, why, t0, shiftStart, dep, ret: t, dur: t - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, t) };
+  if (stops.length && endCounted - shiftStart > ctx.H + 1e-6) { ok = false; why = "Melebihi jam kerja shift"; }
+  if (end > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
+  return { ok, why, t0, shiftStart, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
 /* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
@@ -164,7 +180,7 @@ function routeDay(state, day, visits, depot, vehicles) {
     route = improve(route, sim);
     const res = simFlex(ctx, depot, v, avail[vi], sh, orderStops(route), true);
     trips.push(Object.assign(res, { day, vIdx: vi, veh: v, shift: sh }));
-    avail[vi] = res.ret; used[vi] = sh;
+    avail[vi] = res.end; used[vi] = sh;
   }
   return { trips, left: U };
 }
