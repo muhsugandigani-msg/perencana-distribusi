@@ -164,8 +164,8 @@ function renderStore() {
     <td><input class="in" data-k="stores.${i}.nama" value="${esc(s.nama)}" style="min-width:190px"></td>
     <td><input class="in" data-k="stores.${i}.alamat" value="${esc(s.alamat)}" style="min-width:150px"></td>
     <td><input class="in mono" data-k="stores.${i}.link" data-link="${i}" value="${esc(s.link)}" placeholder="Tempel link Google Maps" style="min-width:200px"><div class="msg" id="lm${i}"></div></td>
-    <td><input class="in num" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" style="min-width:95px"></td>
-    <td><input class="in num" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" style="min-width:100px"></td>
+    <td><input class="in num" id="lat${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lat" value="${s.lat ?? ""}" style="min-width:118px"></td>
+    <td><input class="in num" id="lng${i}" type="number" step="any" data-t="num" data-k="stores.${i}.lng" value="${s.lng ?? ""}" style="min-width:128px"></td>
     <td><input class="in mono" type="time" data-k="stores.${i}.buka" value="${esc(s.buka)}" style="min-width:86px"></td>
     <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
     <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
@@ -179,7 +179,7 @@ function renderStore() {
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
   const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
-  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps, koordinat terisi otomatis. Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</p></div>
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps, koordinat terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari tetap</b> opsional untuk mengunci hari tertentu; sisa frekuensi diisi otomatis.</details></div>
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
     <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
     ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
@@ -196,7 +196,7 @@ function renderIstirahat() {
   const el = $("#p-istirahat");
   const cards = HARI.map((h, d) => {
     const rows = state.breaks[d].map((b, i) => `<div class="brow"><input class="in mono" type="time" data-k="breaks.${d}.${i}.mulai" value="${esc(b.mulai)}"><span class="hint">s/d</span><input class="in mono" type="time" data-k="breaks.${d}.${i}.selesai" value="${esc(b.selesai)}"><button class="btn icon" type="button" data-del="breaks.${d}|${i}" aria-label="Hapus">✕</button></div>`).join("");
-    return `<div class="card daycard"><div class="hrow"><span class="dot" style="background:var(--d${d})"></span><h3>${h}</h3>${state.params.hari[d] ? "" : '<span class="pill">libur</span>'}</div>
+    return `<div class="card daycard ${state.params.hari[d] ? "" : "off"}"><div class="hrow"><span class="dot" style="background:var(--d${d})"></span><h3>${h}</h3>${state.params.hari[d] ? "" : '<span class="pill">libur</span>'}</div>
       ${rows || '<span class="off">Tanpa jam istirahat</span>'}
       <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-addb="${d}">＋ Tambah istirahat</button><button class="btn sm ghost" type="button" data-copyb="${d}">Salin ke semua hari</button></div></div>`;
   }).join("");
@@ -333,7 +333,7 @@ function renderPlan() {
   const capUsed = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
   const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
   const avgDur = T.length ? T.reduce((a, t) => a + t.dur, 0) / T.length : 0, avgPct = avgDur / (plan.H || 480);
-  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Plan disusun dan dioptimasi otomatis: mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</p></div>
+  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
     <div class="tiles">
@@ -391,6 +391,7 @@ function renderGantt() {
   tMin = Math.floor(Math.min(tMin, toMin(state.params.jamMulai) ?? 480) / 60) * 60; tMax = Math.ceil(tMax / 60) * 60;
   const LW = 250, PX = 64, RH = 30, TOP = 34;
   const W = LW + (tMax - tMin) / 60 * PX + 200;
+  let labels = "";
   const H = TOP + rows.length * RH + 10;
   const x = m => LW + (m - tMin) / 60 * PX;
   const segCol = { aktivitas: "var(--seg-act)", jalan: "var(--seg-drive)", bongkar: "var(--seg-drop)", muat: "var(--seg-pick)", tunggu: "var(--seg-wait)" };
@@ -405,7 +406,7 @@ function renderGantt() {
     if (!r.firstOfVeh) svg += `<line x1="${LW - 8}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 3"/>`;
     (plan.ctxBreaks[r.d] || []).forEach(([a, b]) => { if (b > tMin && a < tMax) svg += `<rect x="${x(Math.max(a, tMin))}" y="${y}" width="${(Math.min(b, tMax) - Math.max(a, tMin)) / 60 * PX}" height="${RH}" fill="var(--brk)" data-tip="${esc("<b>Istirahat</b><br>" + HARI[r.d] + " " + fmtJam(a) + "–" + fmtJam(b))}"/>`; });
     const first = rows.findIndex(q => q.d === r.d) === i;
-    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${r.firstOfVeh ? esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22)) : `<tspan fill="transparent">${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22))}</tspan>`}</text><rect x="${LW - 62}" y="${y + 7}" width="50" height="16" rx="8" fill="${r.trips.length ? "var(--accent-soft)" : "var(--surface2)"}"/><text x="${LW - 37}" y="${y + RH / 2 + 4}" font-size="10.5" font-weight="600" text-anchor="middle" fill="${r.trips.length ? "var(--accent)" : "var(--muted)"}">Shift ${r.sh}</text>`;
+    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${r.firstOfVeh ? esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22)) : `<tspan fill="transparent">${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22))}</tspan>`}</text><rect x="${LW - 62}" y="${y + 7}" width="50" height="16" rx="8" fill="${r.trips.length ? "var(--sel)" : "none"}" stroke="${r.trips.length ? "none" : "var(--line)"}"/><text x="${LW - 37}" y="${y + RH / 2 + 4}" font-size="10.5" font-weight="600" text-anchor="middle" fill="${r.trips.length ? "var(--sel-fg)" : "var(--muted)"}">Shift ${r.sh}</text>${r.trips.length ? "" : `<text x="${LW + 6}" y="${y + RH / 2 + 4}" font-size="11" fill="var(--muted)" font-style="italic">tidak ada rit</text>`}`;
     r.trips.forEach(t => {
       t.segs.forEach(s => {
         // pecah segmen di jam istirahat agar bar tidak menutupi istirahat
@@ -416,12 +417,12 @@ function renderGantt() {
           svg += `<rect x="${x(a)}" y="${y + 6}" width="${w}" height="${RH - 12}" rx="2" fill="${segCol[s.type]}" data-tip="${esc(tip)}"/>`;
         });
       });
-      if (t === r.trips[r.trips.length - 1]) svg += `<text x="${x(t.end) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)">Shift ${t.shift} · ${fmtJam(t.shiftStart)}–${fmtJam(t.endShift)} (${fmtNum(t.dur / 60, 1)} jam)</text>`;
+      if (t === r.trips[r.trips.length - 1]) labels += `<text x="${x(t.end) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)" paint-order="stroke" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round">Shift ${t.shift} · ${fmtJam(t.shiftStart)}–${fmtJam(t.endShift)} (${fmtNum(t.dur / 60, 1)} jam)</text>`;
       const lim = t.shiftStart + plan.H;
       if (lim <= tMax) svg += `<line x1="${x(lim)}" x2="${x(lim)}" y1="${y + 3}" y2="${y + RH - 3}" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="2 2" data-tip="${esc("<b>Batas jam shift " + t.shift + "</b><br>" + fmtJam(lim))}"/>`;
     });
   });
-  svg += `</svg>`;
+  svg += labels + `</svg>`;
   el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per shift per hari (Shift 1 dan Shift 2 terpisah). Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
     ${dirtyBanner()}
     <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
