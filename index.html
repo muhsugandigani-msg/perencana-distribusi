@@ -1528,13 +1528,20 @@ function renderGantt() {
   const el = $("#p-gantt");
   if (!plan || plan.error) { el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2></div></div><div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
   const rows = [];
-  plan.days.forEach(d => plan.vehicles.forEach((v, vi) => rows.push({ d, v, vi, trips: plan.trips.filter(t => t.day === d && t.vIdx === vi) })));
+  // satu baris per hari × kendaraan × shift
+  let grp = 0;
+  plan.days.forEach(d => plan.vehicles.forEach((v, vi) => {
+    const tv = plan.trips.filter(t => t.day === d && t.vIdx === vi);
+    const nSh = Math.max(1, ...tv.map(t => t.shift));
+    for (let sh = 1; sh <= nSh; sh++) rows.push({ d, v, vi, sh, grp, firstOfVeh: sh === 1, trips: tv.filter(t => t.shift === sh) });
+    grp++;
+  }));
   let tMin = Infinity, tMax = -Infinity;
   plan.trips.forEach(t => { t.segs.forEach(s => { tMin = Math.min(tMin, s.start); tMax = Math.max(tMax, s.end); }); });
   if (!isFinite(tMin)) { tMin = 360; tMax = 1320; }
   tMin = Math.floor(Math.min(tMin, toMin(state.params.jamMulai) ?? 480) / 60) * 60; tMax = Math.ceil(tMax / 60) * 60;
-  const LW = 190, PX = 64, RH = 30, TOP = 34;
-  const W = LW + (tMax - tMin) / 60 * PX + 130;
+  const LW = 250, PX = 64, RH = 30, TOP = 34;
+  const W = LW + (tMax - tMin) / 60 * PX + 200;
   const H = TOP + rows.length * RH + 10;
   const x = m => LW + (m - tMin) / 60 * PX;
   const segCol = { aktivitas: "var(--seg-act)", jalan: "var(--seg-drive)", bongkar: "var(--seg-drop)", muat: "var(--seg-pick)", tunggu: "var(--seg-wait)" };
@@ -1544,10 +1551,12 @@ function renderGantt() {
   rows.forEach((r, i) => {
     const y = TOP + i * RH;
     if (r.d !== prevD) { if (prevD !== null) svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--muted)" stroke-width="1"/>`; prevD = r.d; }
-    if (i % 2 === 0) svg += `<rect x="0" y="${y}" width="${W}" height="${RH}" fill="var(--surface2)" opacity=".5"/>`;
+    if (r.grp % 2 === 0) svg += `<rect x="0" y="${y}" width="${W}" height="${RH}" fill="var(--surface2)" opacity=".5"/>`;
+    if (r.firstOfVeh && i > 0 && rows[i - 1].d === r.d) svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+    if (!r.firstOfVeh) svg += `<line x1="${LW - 8}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 3"/>`;
     (plan.ctxBreaks[r.d] || []).forEach(([a, b]) => { if (b > tMin && a < tMax) svg += `<rect x="${x(Math.max(a, tMin))}" y="${y}" width="${(Math.min(b, tMax) - Math.max(a, tMin)) / 60 * PX}" height="${RH}" fill="var(--brk)" data-tip="${esc("<b>Istirahat</b><br>" + HARI[r.d] + " " + fmtJam(a) + "–" + fmtJam(b))}"/>`; });
     const first = rows.findIndex(q => q.d === r.d) === i;
-    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 24))}</text>`;
+    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${r.firstOfVeh ? esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22)) : `<tspan fill="transparent">${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22))}</tspan>`}</text><rect x="${LW - 62}" y="${y + 7}" width="50" height="16" rx="8" fill="${r.trips.length ? "var(--accent-soft)" : "var(--surface2)"}"/><text x="${LW - 37}" y="${y + RH / 2 + 4}" font-size="10.5" font-weight="600" text-anchor="middle" fill="${r.trips.length ? "var(--accent)" : "var(--muted)"}">Shift ${r.sh}</text>`;
     r.trips.forEach(t => {
       t.segs.forEach(s => {
         // pecah segmen di jam istirahat agar bar tidak menutupi istirahat
@@ -1558,13 +1567,13 @@ function renderGantt() {
           svg += `<rect x="${x(a)}" y="${y + 6}" width="${w}" height="${RH - 12}" rx="2" fill="${segCol[s.type]}" data-tip="${esc(tip)}"/>`;
         });
       });
-      if (t === r.trips[r.trips.length - 1]) svg += `<text x="${x(t.ret) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)">${r.trips.length} shift · selesai ${fmtJam(t.ret)}</text>`;
+      if (t === r.trips[r.trips.length - 1]) svg += `<text x="${x(t.ret) + 5}" y="${y + RH / 2 + 4}" font-size="10.5" fill="var(--muted)">Shift ${t.shift} · ${fmtJam(t.shiftStart)}–${fmtJam(t.ret)} (${fmtNum(t.dur / 60, 1)} jam)</text>`;
       const lim = t.shiftStart + plan.H;
       if (lim <= tMax) svg += `<line x1="${x(lim)}" x2="${x(lim)}" y1="${y + 3}" y2="${y + RH - 3}" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="2 2" data-tip="${esc("<b>Batas jam shift " + t.shift + "</b><br>" + fmtJam(lim))}"/>`;
     });
   });
   svg += `</svg>`;
-  el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per hari. Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
+  el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per shift per hari (Shift 1 dan Shift 2 terpisah). Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
     ${dirtyBanner()}
     <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
     <div class="card gantt-wrap" id="gantt">${svg}</div>`;
