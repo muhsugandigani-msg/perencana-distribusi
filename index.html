@@ -727,6 +727,11 @@ main { padding-block: 20px 60px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
 .card.pad { padding: 16px; }
 .tbl-wrap { overflow-x: auto; }
+/* tabel input: header kolom terkunci saat scroll (tabel punya area scroll sendiri) */
+.tbl-wrap.lock { max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); overflow: auto; overscroll-behavior: contain; }
+.tbl-wrap.lock thead th { position: sticky; top: 0; z-index: 3; box-shadow: inset 0 -1px 0 var(--line); }
+.tbl-wrap.lock.pin2 th:nth-child(2), .tbl-wrap.lock.pin2 td:nth-child(2) { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: inset -1px 0 0 var(--line); }
+.tbl-wrap.lock.pin2 thead th:nth-child(2) { z-index: 4; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th { text-align: left; font: 600 12px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); }
 td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -1319,7 +1324,7 @@ function renderKendaraan() {
   const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
   el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari.</p></div>
     <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
-    <div class="card tbl-wrap"><table>
+    <div class="card tbl-wrap lock"><table>
     <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="7" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
     <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
@@ -1346,7 +1351,7 @@ function renderStore() {
     <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
     <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
     <td><input class="in num" type="number" min="0" max="7" step="1" data-t="num" data-k="stores.${i}.frek" value="${s.frek ?? 1}" ${origin ? "disabled" : ""} style="min-width:56px"></td>
-    <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
+    <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1" style="min-width:96px"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
     <td><select class="in" data-k="stores.${i}.loading" ${origin ? "disabled" : ""} style="min-width:150px"><option value="Menurunkan" ${s.loading !== "Menaikkan" ? "selected" : ""}>Menurunkan barang</option><option value="Menaikkan" ${s.loading === "Menaikkan" ? "selected" : ""}>Menaikkan barang</option></select></td>
     <td>${origin ? '<span class="off">gudang</span>' : `<div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${s.hariTetap.includes(d) ? "on" : ""}" data-mode="list" data-chip="stores.${i}.hariTetap|${d}" title="${HARI[d]}" ${state.params.hari[d] ? "" : "disabled"}>${h}</button>`).join("")}</div>`}</td>
     <td><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></td></tr>`;
@@ -1358,7 +1363,7 @@ function renderStore() {
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
     <button class="btn" type="button" id="addS">＋ Tambah store</button></div>
     ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
-    <div class="card tbl-wrap"><table>
+    <div class="card tbl-wrap lock pin2"><table>
     <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th class="num">Frek/mgg</th><th>Antaran</th><th>Jenis loading</th><th>Hari tetap</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="14" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
     <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai menu <b>Data → Impor store dari Excel/CSV</b>.</p>`;
@@ -1409,7 +1414,7 @@ function renderParameter() {
   </div>
   <div class="card">
     <div class="head" style="padding:14px 16px 0"><div><h3>Aktivitas per hari</h3><p class="hint" style="margin-top:4px">Contoh: loading di gudang 60 menit, antri BBM 60 menit. Urutan dijalankan sebelum berangkat. Yang <b>tidak</b> masuk jam shift dijalankan lebih dulu (mis. pembersihan Senin pagi) dan menggeser jam mulai shift.</p></div><button class="btn" type="button" id="addA">＋ Tambah aktivitas</button></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Jenis aktivitas</th><th class="num">Durasi (menit)</th><th>Hari</th><th>Berlaku</th><th>Masuk jam shift</th><th></th></tr></thead><tbody>${acts || `<tr><td colspan="6" class="empty">Belum ada aktivitas.</td></tr>`}</tbody></table></div>
+    <div class="tbl-wrap lock"><table><thead><tr><th>Jenis aktivitas</th><th class="num">Durasi (menit)</th><th>Hari</th><th>Berlaku</th><th>Masuk jam shift</th><th></th></tr></thead><tbody>${acts || `<tr><td colspan="6" class="empty">Belum ada aktivitas.</td></tr>`}</tbody></table></div>
   </div>
   <div class="card pad">
     <details class="adv"><summary>Lalu lintas &amp; jalan (lanjutan)</summary>

@@ -66,6 +66,11 @@ main { padding-block: 20px 60px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
 .card.pad { padding: 16px; }
 .tbl-wrap { overflow-x: auto; }
+/* tabel input: header kolom terkunci saat scroll (tabel punya area scroll sendiri) */
+.tbl-wrap.lock { max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); overflow: auto; overscroll-behavior: contain; }
+.tbl-wrap.lock thead th { position: sticky; top: 0; z-index: 3; box-shadow: inset 0 -1px 0 var(--line); }
+.tbl-wrap.lock.pin2 th:nth-child(2), .tbl-wrap.lock.pin2 td:nth-child(2) { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: inset -1px 0 0 var(--line); }
+.tbl-wrap.lock.pin2 thead th:nth-child(2) { z-index: 4; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 th { text-align: left; font: 600 12px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--surface); }
 td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
