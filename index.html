@@ -1691,6 +1691,29 @@ function gmapsLink(t) {
 }
 function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
 
+/* Ringkasan per kendaraan (dipakai tab Plan & Excel) */
+function vehSummary(plan) {
+  const H = plan.H || 480;
+  const sum = T => {
+    const rit = T.length, kunj = T.reduce((a, t) => a + t.stops.length, 0), del = T.reduce((a, t) => a + t.kgDel, 0), pick = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0), dur = T.reduce((a, t) => a + t.dur, 0);
+    const jamPct = rit ? dur / (rit * H) : 0;
+    const muatPct = rit ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+t.veh.kapasitasKg || 1), 0) / rit : 0;
+    return { rit, kunj, del, pick, km, jam: dur / 60, jamPct, muatPct };
+  };
+  const rows = plan.vehicles.map((v, vi) => Object.assign({ v }, sum(plan.trips.filter(t => t.vIdx === vi))));
+  return { rows, total: sum(plan.trips) };
+}
+function vehTable(plan) {
+  const S = vehSummary(plan);
+  const pctCell = p => `<td class="num mono">${fmtNum(p * 100)}% <span class="meter"><i style="width:${Math.min(100, p * 100)}%"></i></span></td>`;
+  const tr = (lbl, r, b) => `<tr${b ? ' style="font-weight:700;background:var(--surface2)"' : ""}><td>${lbl}</td><td class="num mono">${r.rit}</td><td class="num mono">${r.kunj}</td><td class="num mono">${fmtNum(r.del)} kg <span class="sub">${ton(r.del)}</span></td><td class="num mono">${fmtNum(r.pick)} kg <span class="sub">${ton(r.pick)}</span></td><td class="num mono">${fmtNum(r.km, 1)} km</td>${pctCell(r.jamPct)}${pctCell(r.muatPct)}</tr>`;
+  return `<div class="card"><div class="head" style="padding:14px 16px 0"><div><h3>Ringkasan per kendaraan</h3><p class="hint" style="margin-top:4px">% jam kerja = rata-rata durasi per shift dibanding ${fmtNum(+state.params.jamShift, +state.params.jamShift % 1 ? 1 : 0)} jam kerja per shift. % muatan = rata-rata isi per rit dibanding kapasitas kendaraan (muatan diantar atau dinaikkan, yang lebih besar).</p></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Kendaraan</th><th class="num">Total rit</th><th class="num">Total kunjungan</th><th class="num">Muatan diantar</th><th class="num">Muatan dinaikkan</th><th class="num">Jarak tempuh</th><th class="num">% jam kerja</th><th class="num">% muatan</th></tr></thead><tbody>
+    ${S.rows.map(r => tr(`<b>${esc(r.v.jenis)}</b> ${r.v.plat ? `<span class="plate">${esc(r.v.plat)}</span>` : ""}`, r)).join("")}
+    ${S.rows.length > 1 ? tr("Total", S.total, true) : ""}
+    </tbody></table></div></div>`;
+}
+
 function optCard(plan) {
   const A = plan.opt.awal, B = plan.opt.akhir;
   const row = (lbl, a, b, fmt, unit, lowerBetter = true) => {
@@ -1698,19 +1721,10 @@ function optCard(plan) {
     return `<tr><td>${lbl}</td><td class="num mono">${fmt(a)} ${unit}</td><td class="num mono"><b>${fmt(b)} ${unit}</b></td><td class="num mono" style="color:${good ? "var(--ok)" : bad ? "var(--bad)" : "var(--muted)"}">${Math.abs(ch) < 0.05 ? "–" : (ch > 0 ? "+" : "") + fmtNum(ch, 1) + "%"}</td></tr>`;
   };
   const f0 = x => fmtNum(x), f1 = x => fmtNum(x, 1), fp = x => fmtNum(x * 100);
-  // utilisasi per kendaraan
-  const days = plan.days.length, H = plan.H;
-  const vrows = plan.vehicles.map((v, vi) => {
-    const T = plan.trips.filter(t => t.vIdx === vi);
-    const jam = T.reduce((a, t) => a + t.dur, 0) / 60, avail = days * (+v.maksShift || 1) * H / 60;
-    const isi = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+v.kapasitasKg || 1), 0) / T.length : 0;
-    const hk = new Set(T.map(t => t.day)).size;
-    return `<tr><td>${esc(v.jenis)} <span class="hint">${esc(v.plat || "")}</span></td><td class="num mono">${T.length}</td><td class="num mono">${hk}</td><td class="num mono">${fmtNum(jam, 1)} / ${fmtNum(avail, 0)} jam <span class="meter"><i style="width:${Math.min(100, jam / Math.max(1, avail) * 100)}%"></i></span></td><td class="num mono">${fmtNum(T.reduce((a, t) => a + t.km, 0))} km</td><td class="num mono">${fmtNum(isi * 100)}%</td></tr>`;
-  }).join("");
   return `<div class="card pad" style="display:grid;gap:12px">
     <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${plan.opt.starts} variasi dalam ${fmtNum(plan.opt.ms / 1000, 1)} detik. Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
-    <div class="grid2">
-      <div class="tbl-wrap"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
+    <div>
+      <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
         ${row("Belum terlayani", A.unserved, B.unserved, f0, "kunjungan")}
         ${row("Jumlah rit", A.rit, B.rit, f0, "rit")}
         ${row("Jarak tempuh", A.km, B.km, f0, "km")}
@@ -1718,7 +1732,6 @@ function optCard(plan) {
         ${row("Rata-rata isi muatan", A.isi, B.isi, fp, "%", false)}
         ${row("Rata-rata jam kerja / shift", A.rit ? A.jam / A.rit : 0, B.rit ? B.jam / B.rit : 0, x => fmtNum(x, 1) + " jam (" + fmtNum(x / (plan.H / 60) * 100) + "%)", "", false)}
       </tbody></table></div>
-      <div class="tbl-wrap"><table><thead><tr><th>Kendaraan</th><th class="num">Rit</th><th class="num">Hari kerja</th><th class="num">Jam terpakai / tersedia</th><th class="num">Jarak</th><th class="num">Isi rata-rata</th></tr></thead><tbody>${vrows}</tbody></table></div>
     </div>
   </div>`;
 }
@@ -1745,6 +1758,7 @@ function renderPlan() {
       <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
       <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
     </div>`;
+  html += vehTable(plan);
   if (plan.opt) html += optCard(plan);
   if (plan.unserved.length) html += `<div class="banner bad"><div><b>${plan.unserved.length} kunjungan tidak muat di jadwal.</b> <br>${plan.unserved.map(u => "• " + esc(u.store.nama) + " (" + HARI[u.day] + "): " + esc(u.reason)).join("<br>")}<br>Coba tambah kendaraan/shift, ubah hari tetap, atau perpanjang jam kerja shift.</div></div>`;
   if (plan.warn.length) html += `<div class="banner warn"><div>${plan.warn.map(esc).join("<br>")}</div></div>`;
@@ -2024,7 +2038,13 @@ function exportExcel() {
   par.push([], ["Jam istirahat", "Hari"]);
   HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
   if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
+  const VS = vehSummary(plan);
+  const vs = [["Jenis kendaraan", "Plat", "Total rit", "Total kunjungan", "Muatan diantar (kg)", "Muatan diantar (ton)", "Muatan dinaikkan (kg)", "Muatan dinaikkan (ton)", "Jarak tempuh (km)", "Total jam kerja", "% jam kerja (thd " + state.params.jamShift + " jam/shift)", "% muatan"]];
+  const vsRow = (j, p, r) => [j, p, r.rit, r.kunj, Math.round(r.del), +(r.del / 1000).toFixed(2), Math.round(r.pick), +(r.pick / 1000).toFixed(2), +r.km.toFixed(1), +r.jam.toFixed(2), Math.round(r.jamPct * 100), Math.round(r.muatPct * 100)];
+  VS.rows.forEach(r => vs.push(vsRow(r.v.jenis, r.v.plat, r)));
+  vs.push(vsRow("TOTAL", "", VS.total));
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  add("Ringkasan Kendaraan", vs, [16, 12, 9, 13, 16, 16, 18, 18, 15, 13, 22, 10]);
   add("Ringkasan Rit", ring, [9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
   add("Detail Rute", det, [9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 12, 9, 12, 10, 12, 12, 12, 11, 11]);
   add("Gantt", gan, [9, 12, 12, 6, 44, 10, 8, 8, 10]);
