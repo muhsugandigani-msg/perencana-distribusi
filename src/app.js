@@ -583,7 +583,6 @@ function renderParameter() {
       <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang, termasuk aktivitas "setelah kembali" yang dicentang masuk jam shift.</span></div>
       <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
       <div class="field" ${p.aktivitas.some(a => a.waktu === "setelah") ? "" : "hidden"}><label for="pHari1">Hari distribusi pertama dalam minggu (untuk aktivitas "setelah kembali")</label><select id="pHari1" class="in" data-k="params.loadingHariPertama" style="max-width:480px"><option value="malam" ${p.loadingHariPertama !== "pagi" ? "selected" : ""}>Disiapkan di akhir hari terakhir minggu lalu (mis. Sabtu sore)</option><option value="pagi" ${p.loadingHariPertama === "pagi" ? "selected" : ""}>Dilakukan pagi hari, sebelum berangkat</option></select><span class="hint">Jika pilih pagi hari, hari distribusi terakhir (mis. Sabtu) tidak perlu loading sore untuk esok hari.</span></div>
-      <div class="field"><label for="pMgg">Minggu 1 siklus dimulai</label><input id="pMgg" class="in mono" type="date" data-k="params.mingguMulai" value="${esc(p.mingguMulai || "")}" style="max-width:170px"><span class="hint">Dipakai bila ada store 1x per 2–5 minggu: plan dibuat per minggu (Minggu 1, 2, …) dan label tanggalnya dihitung dari hari ini. Pilih hari Senin.</span></div>
       <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
     </div>
   </div>
@@ -665,12 +664,7 @@ function* deepWeeks() { // optimasi mendalam: rute dasar store mingguan dioptima
   return r.value;
 }
 function weeksTotal(W) { const T = { rit: 0, km: 0, jam: 0, kunj: 0, un: 0 }; (W || []).forEach(P => { if (!P || P.error) return; T.rit += P.trips.length; T.km += P.trips.reduce((a, t) => a + t.km, 0); T.jam += P.trips.reduce((a, t) => a + t.dur, 0) / 60; T.kunj += P.trips.reduce((a, t) => a + t.stops.length, 0); T.un += P.unserved.length; }); return T; }
-function weekDate(w, d) { const m = String(state.params.mingguMulai || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return null; return new Date(+m[1], +m[2] - 1, +m[3] + w * 7 + (d || 0)); }
-function weekLabel(w, short) {
-  const a = weekDate(w, 0), lastD = Math.max(0, ...state.params.hari.map((x, i) => x ? i : 0)), b = weekDate(w, lastD);
-  const f = x => x.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-  return "Minggu " + (w + 1) + (a && !short ? " · " + f(a) + "–" + f(b) : "");
-}
+function weekLabel(w) { return "Minggu " + (w + 1); } // tanpa tanggal: rute dipakai permanen berulang sampai plan baru
 function weekBarHtml() {
   if (!planWeeks || planWeeks.length < 2) return "";
   return `<div class="weekbar" role="tablist" aria-label="Pilih minggu">${planWeeks.map((P, w) => `<button type="button" class="dchip big ${w === weekSel ? "on" : ""}" data-week="${w}" title="${esc(weekLabel(w))}">${esc(weekLabel(w))}${P && !P.error ? ` <span class="hint">${P.trips.length} rit</span>` : ""}</button>`).join("")}</div>`;
@@ -693,7 +687,7 @@ function weeksCard() {
   if (!planWeeks || planWeeks.length < 2) return "";
   const T = weeksTotal(planWeeks), M = weekCache.meta || {};
   const rows = planWeeks.map((P, w) => { const t = weeksTotal([P]); return `<tr class="${w === weekSel ? "sel" : ""}"><td><button type="button" class="btn sm ghost" data-week="${w}">${esc(weekLabel(w))}</button></td><td class="num mono">${t.rit}</td><td class="num mono">${t.kunj}</td><td class="num mono">${fmtNum(t.km)} km</td><td class="num mono">${fmtNum(t.jam, 1)} jam</td><td class="num mono" style="${t.un ? "color:var(--bad);font-weight:600" : ""}">${t.un}</td></tr>`; }).join("");
-  return `<div class="card pad" style="display:grid;gap:10px"><div><h3>Siklus ${planWeeks.length} minggu</h3><p class="hint" style="margin-top:4px">Ada store dengan frekuensi 1x per 2–5 minggu, jadi plan dibuat per minggu dan berulang setiap ${planWeeks.length} minggu${M.exact === false ? " (kombinasi periode terlalu panjang, siklus dipotong " + planWeeks.length + " minggu)" : ""}. Rute store mingguan (hari, kendaraan, rit dan urutan) sama setiap minggu; store 1x per 2–5 minggu disisipkan ke rute itu pada minggu kirimnya, dengan rit tambahan bila tidak muat. Minggu kirim store dibagi rata otomatis agar beban tiap minggu seimbang; bisa dikunci di tab Store (kolom Minggu ke). Minggu 1 dimulai ${esc((weekDate(0) || new Date()).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))} (ubah di Parameter).</p></div>
+  return `<div class="card pad" style="display:grid;gap:10px"><div><h3>Siklus ${planWeeks.length} minggu</h3><p class="hint" style="margin-top:4px">Ada store dengan frekuensi 1x per 2–5 minggu, jadi plan dibuat per minggu dan berulang setiap ${planWeeks.length} minggu${M.exact === false ? " (kombinasi periode terlalu panjang, siklus dipotong " + planWeeks.length + " minggu)" : ""}. Rute store mingguan (hari, kendaraan, rit dan urutan) sama setiap minggu; store 1x per 2–5 minggu disisipkan ke rute itu pada minggu kirimnya, dengan rit tambahan bila tidak muat. Minggu kirim store dibagi rata otomatis agar beban tiap minggu seimbang; bisa dikunci di tab Store (kolom Minggu ke). Rute ini dipakai permanen dan berulang (Minggu 1, Minggu 2, …) sampai plan baru dibuat.</p></div>
     <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Minggu</th><th class="num">Rit</th><th class="num">Kunjungan</th><th class="num">Jarak</th><th class="num">Jam kerja</th><th class="num">Belum terlayani</th></tr></thead><tbody>${rows}<tr class="tot"><td><b>Total siklus</b></td><td class="num mono"><b>${T.rit}</b></td><td class="num mono"><b>${T.kunj}</b></td><td class="num mono"><b>${fmtNum(T.km)} km</b></td><td class="num mono"><b>${fmtNum(T.jam, 1)} jam</b></td><td class="num mono"><b>${T.un}</b></td></tr></tbody></table></div></div>`;
 }
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
@@ -1166,8 +1160,8 @@ function exportExcel() {
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
   HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
-  if (multi) par.push([], ["Siklus (minggu)", WK.length], ["Minggu 1 dimulai", state.params.mingguMulai]);
-  const UN = WK.flatMap(P => P.unserved.map(u => [u.store.nama, (multi ? weekLabel(P.week, true) + " · " : "") + HARI[u.day], u.reason]));
+  if (multi) par.push([], ["Siklus (minggu)", WK.length]);
+  const UN = WK.flatMap(P => P.unserved.map(u => [u.store.nama, (multi ? weekLabel(P.week) + " · " : "") + HARI[u.day], u.reason]));
   if (UN.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); UN.forEach(r => par.push(r)); }
   const VS = vehSummary(multi ? Object.assign({}, plan, { trips: WK.flatMap(P => P.trips) }) : plan);
   const vs = [["Jenis kendaraan", "Plat", "Total rit", "Total kunjungan", "Muatan diantar (kg)", "Muatan diantar (ton)", "Muatan dinaikkan (kg)", "Muatan dinaikkan (ton)", "Jarak tempuh (km)", "Total jam kerja", "% jam kerja (thd " + state.params.jamShift + " jam/shift)", "% muatan"]];
