@@ -7,7 +7,7 @@
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
    "kecepatan": 40,
-   "maksShift": 1,
+   "maksShift": 2,
    "bbm": "Solar"
   },
   {
@@ -1453,7 +1453,7 @@
    "kota": "Kota Makassar"
   }
  },
- "_savedAt": 1795704426135,
+ "_savedAt": 1795704771540,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3399,8 +3399,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795704426135,
-  "sig": "1x98yoa:20243",
+  "at": 1795704771540,
+  "sig": "s5ezsb:20243",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3446,7 +3446,7 @@
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
        "kecepatan": 40,
-       "maksShift": 1,
+       "maksShift": 2,
        "bbm": "Solar"
       }
      },
@@ -3748,7 +3748,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -4341,7 +4341,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -5025,7 +5025,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -5716,7 +5716,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6347,7 +6347,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6770,7 +6770,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
