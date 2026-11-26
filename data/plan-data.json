@@ -1353,7 +1353,7 @@
    {
     "id": "a1",
     "nama": "Pembersihan kendaraan & gudang",
-    "durasi": 240,
+    "durasi": 120,
     "hari": [
      true,
      false,
@@ -1439,7 +1439,7 @@
   "posLoadingGudang": 1,
   "tingkatOptimasi": "tinggi"
  },
- "_savedAt": 1795731361211,
+ "_savedAt": 1795731374810,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3385,8 +3385,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795731361211,
-  "sig": "1dm7r83:20189",
+  "at": 1795731374810,
+  "sig": "9kq31s:20189",
   "weekSel": 0,
   "meta": {
    "H": 1,
