@@ -1363,6 +1363,7 @@
   "prioritasSolar": {
    "aktif": true,
    "tingkat": "sedang"
-  }
+  },
+  "optimasiMendalam": true
  }
 }

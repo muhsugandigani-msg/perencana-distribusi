@@ -61,6 +61,7 @@ function normalize(s) {
    Dengan token GitHub, data juga disimpan ke repo agar semua orang yang membuka link melihat data yang sama. */
 let unsaved = false, saving = false;
 function save() { // dipanggil di setiap perubahan input
+  if (deepJob.run) stopDeep();
   planDirty = true; markDirty();
   unsaved = true; saveStatus();
 }
@@ -323,6 +324,8 @@ function tugasCard(p) {
   const nB = state.vehicles.filter(v => v.aktif !== false && v.bbm === "Bensin").length, nS = state.vehicles.filter(v => v.aktif !== false && v.bbm !== "Bensin").length;
   return `<div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Pembagian tugas kendaraan</h3>
+      <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
+        <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius, solar, fairness) tetap dipatuhi.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.prioritasSolar.aktif" ${PS.aktif !== false ? "checked" : ""} data-rerender="1"> <b>Utamakan kendaraan solar</b></label>
         <p class="hint">Tugas lebih banyak diberikan ke kendaraan berbahan bakar solar; kendaraan bensin dipakai bila perlu. Saat ini: ${nS} solar, ${nB} bensin (atur di tab Kendaraan).${nB && nS ? "" : " <i>Belum berpengaruh karena semua kendaraan aktif berbahan bakar sama.</i>"}</p>
         ${PS.aktif !== false ? `<div class="row"><span class="hint" style="min-width:80px">Tingkat</span>${lvl("params.prioritasSolar.tingkat", PS.tingkat)}</div>` : ""}</div>
@@ -510,9 +513,46 @@ function renderParameter() {
 }
 
 /* ---------- Plan ---------- */
+/* Optimasi mendalam: plan biasa tampil langsung, lalu versi mendalam dihitung bertahap di latar (layar tetap responsif). */
+const deepJob = { id: 0, run: false, k: 0, n: 0, fase: "", g: null };
+function stopDeep() { if (deepJob.g) { try { deepJob.g.return(); } catch (e) {} } deepJob.g = null; deepJob.run = false; deepJob.id++; deepNote(); }
+function startDeep() {
+  stopDeep(); if (!plan || plan.error || state.params.optimasiMendalam === false) return;
+  const id = deepJob.id, base = plan.opt ? plan.opt.akhir : null;
+  let g; try { g = planGen(state, { mendalam: true }); } catch (e) { return; }
+  Object.assign(deepJob, { run: true, k: 0, n: 0, fase: "variasi", g }); deepNote();
+  const step = () => {
+    if (id !== deepJob.id) return;
+    const t = Date.now(); let r;
+    try { do { r = g.next(); if (!r.done) Object.assign(deepJob, r.value); } while (!r.done && Date.now() - t < 60); }
+    catch (e) { console.error(e); deepJob.g = null; deepJob.run = false; deepNote(); return; }
+    if (!r.done) { deepNote(); setTimeout(step, 0); return; }
+    deepJob.g = null; deepJob.run = false;
+    const P = r.value; if (!P || P.error) { deepNote(); return; }
+    if (P.opt) P.opt.biasa = base;
+    plan = P; mapDrawn = null;
+    if (["plan", "gantt", "peta"].includes(tab)) renderTab(); else deepNote();
+    if (base) toast("Optimasi mendalam selesai: " + P.trips.length + " rit, " + fmtNum(P.trips.reduce((a, x) => a + x.km, 0)) + " km (plan biasa: " + base.rit + " rit, " + fmtNum(base.km) + " km).", 5000);
+  };
+  setTimeout(step, 30);
+}
+function deepNoteHtml() {
+  if (!deepJob.run) return "";
+  const pct = deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0;
+  return `<div class="banner info"><span class="spin" aria-hidden="true"></span><div><b>Optimasi mendalam berjalan… <span id="deepPct">${pct}% (${esc(deepJob.fase)})</span></b>. Plan di bawah adalah hasil cepat; akan diganti otomatis bila ditemukan yang lebih efisien.</div><button class="btn sm" type="button" id="btnStopDeep">Hentikan</button></div>`;
+}
+function deepNote() {
+  const el = document.getElementById("deepNote"), pc = document.getElementById("deepPct");
+  if (el && deepJob.run && pc) pc.textContent = (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "% (" + deepJob.fase + ")"; // perbarui teks saja, tombol tidak dibuat ulang
+  else if (el) el.innerHTML = deepNoteHtml();
+  const sb = document.getElementById("btnStopDeep"); if (sb && !sb.onclick) sb.onclick = () => { stopDeep(); toast("Optimasi mendalam dihentikan. Plan cepat tetap dipakai."); };
+  const bp = document.getElementById("btnPlan"); if (bp) bp.textContent = deepJob.run ? "⏳ Mengoptimasi " + (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "%" : "▶ Buat Plan";
+}
 function runPlan(silent) {
-  try { plan = buildPlan(state); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
+  stopDeep();
+  try { plan = buildPlan(state, { mendalam: false }); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
   planDirty = false; mapDrawn = null;
+  if (!plan.error && state.params.optimasiMendalam !== false) startDeep();
   if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
   setTimeout(maybeHitungJarak, 0);
 }
@@ -557,7 +597,7 @@ function optCard(plan) {
   };
   const f0 = x => fmtNum(x), f1 = x => fmtNum(x, 1), fp = x => fmtNum(x * 100);
   return `<div class="card pad" style="display:grid;gap:12px">
-    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${plan.opt.starts} variasi dalam ${fmtNum(plan.opt.ms / 1000, 1)} detik. Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
+    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${plan.opt.starts} variasi${plan.opt.mendalam ? " + " + plan.opt.rr + " kali susun ulang (optimasi mendalam)" : ""} dalam ${fmtNum(plan.opt.ms / 1000, 1)} detik.${plan.opt.biasa ? " Dibanding plan cepat: " + plan.opt.biasa.rit + " → " + plan.opt.akhir.rit + " rit, " + fmtNum(plan.opt.biasa.km) + " → " + fmtNum(plan.opt.akhir.km) + " km, " + fmtNum(plan.opt.biasa.jam, 1) + " → " + fmtNum(plan.opt.akhir.jam, 1) + " jam kerja." : ""} Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
     <div>
       <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
         ${row("Belum terlayani", A.unserved, B.unserved, f0, "kunjungan")}
@@ -598,6 +638,7 @@ function renderPlan() {
   let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
+    <div id="deepNote">${deepNoteHtml()}</div>
     <div id="roadNote">${roadNoteHtml()}</div>
     <div class="tiles">
       <div class="tile"><div class="k">Total rit</div><div class="v">${T.length}<small>rit/mgg</small></div></div>
@@ -633,7 +674,7 @@ function renderPlan() {
     }
     html += `</div>`;
   }
-  el.innerHTML = html; roadNote();
+  el.innerHTML = html; roadNote(); deepNote();
 }
 
 /* ---------- Gantt ---------- */

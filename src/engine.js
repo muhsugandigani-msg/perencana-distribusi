@@ -260,9 +260,13 @@ function dayCapacity(state, day, depot, vehicles) {
 const W = { unserved: 10000, rit: 60, km: 2 };
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-function buildPlan(state) {
+function buildPlan(state, opts) { // sinkron (dipakai tes & mode biasa)
+  const g = planGen(state, opts); let r; do { r = g.next(); } while (!r.done); return r.value;
+}
+/* Generator: menghasilkan progres {fase, k, n} selama optimasi mendalam agar layar bisa diperbarui. */
+function* planGen(state, opts) {
   try { Object.defineProperty(state, "_roadT", { value: roadTable(state), configurable: true, enumerable: false, writable: true }); } catch (e) {}
-  try { const P = buildPlanCore(state); if (P && !P.error) P.jarak = jarakInfo(state, P); return P; }
+  try { const P = yield* buildPlanCore(state, opts || {}); if (P && !P.error) P.jarak = jarakInfo(state, P); return P; }
   finally { try { delete state._roadT; } catch (e) {} }
 }
 function jarakInfo(state, P) { // berapa kaki perjalanan di plan final yang memakai jarak jalan sebenarnya
@@ -271,7 +275,7 @@ function jarakInfo(state, P) { // berapa kaki perjalanan di plan final yang mema
   P.trips.forEach(t => { const q = pts(t); for (let i = 1; i < q.length; i++) { if (hav(q[i - 1], q[i]) < 1e-6) continue; if (RT && RT(q[i - 1], q[i]) != null) real++; else est++; } });
   return { real, est, mode: !est ? "jalan" : !real ? "perkiraan" : "campuran" };
 }
-function buildPlanCore(state) {
+function* buildPlanCore(state, opts) {
   const warn = [];
   const days = state.params.hari.map((b, i) => b ? i : -1).filter(i => i >= 0);
   const depot = state.stores.find(s => s.aktif !== false && s.antaran === "Origin" && s.lat != null && s.lng != null);
@@ -312,7 +316,8 @@ function buildPlanCore(state) {
   const NB = {};
   valid.forEach(s => { NB[s.id] = new Set(valid.filter(u => u.id !== s.id).map(u => ({ id: u.id, d: hav([s.lat, s.lng], [u.lat, u.lng]) })).sort((a, b) => a.d - b.d).slice(0, 10).map(x => x.id)); });
   const near = (s, route) => route.some(x => NB[s.id] && NB[s.id].has(x.id));
-  let evals = 0; const EVAL_MAX = 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
+  const deep = opts.mendalam != null ? !!opts.mendalam : state.params.optimasiMendalam === true;
+  let evals = 0, EVAL_MAX = deep ? 1500000 : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
 
   /* 1) Pembagian kunjungan ke hari. rnd = null -> deterministik (solusi awal); rnd -> variasi untuk multi-start */
   function assign(rnd) {
@@ -618,25 +623,52 @@ function buildPlanCore(state) {
     return { rit, km, jam: dur / 60, isi: capu ? kg / capu : 0, unserved: un };
   };
   const mInit = metric(initial);
-  let best = null, bestCost = Infinity, starts = 0;
-  const nStart = Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  let best = null, bestCost = Infinity, starts = 0, rr = 0, rrOk = 0;
+  const nStart = deep ? Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  const nRR = deep ? Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) : 0;
+  const cloneSol = sol => { const o = {}; days.forEach(d => o[d] = { R: sol[d].R.map(L => L.map(r => r.slice())), left: sol[d].left.slice(), vc: sol[d].vc.slice() }); return o; };
   for (let k = 0; k < nStart; k++) {
     const rnd = k === 0 ? null : mulberry32(1000 + k * 7919);
     const sol = k === 0 ? initial : construct(assign(rnd), rnd);
-    days.forEach(d => sol[d] = dayLS(d, sol[d]));
+    for (const d of days) { sol[d] = dayLS(d, sol[d]); if (deep) yield { fase: "variasi", k: k + 0.5, n: nStart + nRR }; }
+    if (deep) for (let r = 0; r < 2 && interDay(sol); r++) yield { fase: "variasi", k: k + 0.8, n: nStart + nRR }; // mode mendalam: tiap variasi juga dipindah antar hari
     starts++;
     const c = solCost(sol);
     if (c < bestCost - 1e-6) { bestCost = c; best = sol; }
+    if (deep) yield { fase: "variasi", k: k + 1, n: nStart + nRR };
     if (evals > EVAL_MAX) break; // batas kerja
   }
   for (let r = 0; r < 3 && interDay(best); r++) {}
   bestCost = solCost(best);
+  // mode mendalam: "bongkar & susun ulang" — keluarkan sebagian store dari satu hari lalu sisipkan ulang dengan pencarian lokal
+  if (deep && best) {
+    const rnd = mulberry32(424242); EVAL_MAX = evals + 1200000; // anggaran kerja sendiri untuk tahap ini
+    for (let it = 0; it < nRR && evals < EVAL_MAX; it++) {
+      const cand = cloneSol(best), d = days[Math.floor(rnd() * days.length)], S = cand[d];
+      const all = []; S.R.forEach((L, vi) => L.forEach((r, ri) => r.forEach((st, i) => all.push([vi, ri, st]))));
+      if (all.length < 3) continue;
+      const m = Math.max(2, Math.round(all.length * (0.15 + rnd() * 0.2)));
+      // pilih titik acak lalu tetangga terdekatnya (keluarkan satu kelompok yang berdekatan)
+      const c0 = all[Math.floor(rnd() * all.length)][2];
+      const pick = new Set(all.map(x => x[2]).sort((a, b) => hav([a.lat, a.lng], [c0.lat, c0.lng]) - hav([b.lat, b.lng], [c0.lat, c0.lng])).slice(0, m).map(x => x.id));
+      const removed = [];
+      S.R = S.R.map(L => L.map(r => r.filter(st => { if (pick.has(st.id)) { removed.push(st); return false; } return true; })).filter(r => r.length));
+      S.left = S.left.concat(removed);
+      S.vc = S.R.map((L, vi) => { const r = vehEval(d, vi, L, false); return r ? r.cost : Infinity; });
+      cand[d] = dayLS(d, S); rr++;
+      const c = solCost(cand);
+      if (c < bestCost - 1e-6) { best = cand; bestCost = c; rrOk++; }
+      yield { fase: "susun ulang", k: nStart + it + 1, n: nStart + nRR };
+    }
+    for (let r = 0; r < 2 && interDay(best); r++) {}
+    bestCost = solCost(best);
+  }
   const mNoFair = fairOn ? metric(best) : null; const TnoFair = fairOn ? totals(best) : null;
   if (fairOn) fairLS(best);
   const res = {};
   days.forEach(d => { const S = best[d]; const trips = []; S.R.forEach((L, vi) => { const r = vehEval(d, vi, L, true); if (r) trips.push(...r.trips); }); res[d] = { trips, left: S.left }; });
   const mBest = metric(best);
-  const opt = { awal: mInit, akhir: mBest, starts, ms: Date.now() - t0, bobot: W };
+  const opt = { awal: mInit, akhir: mBest, starts, ms: Date.now() - t0, bobot: W, mendalam: deep, rr, rrOk, cost: Math.round(bestCost) };
   opt.solar = { aktif: psOn && fuelF.some(f => f > 1) && fuelF.some(f => f === 1), tingkat: PS.tingkat || "sedang" };
   if (fairOn) { opt.fair = { kriteria: fKeys, tingkat: FP.tingkat || "sedang", sebelum: TnoFair, sesudah: totals(best), mSebelum: mNoFair, cap: capV, kgRelatif: FP.kgRelatif !== false }; }
   const unserved = [];
@@ -656,4 +688,4 @@ function buildPlanCore(state) {
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
 }
 
-if (typeof module !== "undefined") module.exports = { buildPlan, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { buildPlan, planGen, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
