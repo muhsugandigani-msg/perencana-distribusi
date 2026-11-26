@@ -1439,7 +1439,7 @@
   "posLoadingGudang": 1,
   "tingkatOptimasi": "tinggi"
  },
- "_savedAt": 1795731035525,
+ "_savedAt": 1795731361211,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3385,7 +3385,7 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795731035525,
+  "at": 1795731361211,
   "sig": "1dm7r83:20189",
   "weekSel": 0,
   "meta": {
