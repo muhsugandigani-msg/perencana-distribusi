@@ -815,6 +815,12 @@ function* buildPlanCore(state, opts) {
   }));
   const trips = [];
   days.forEach(d => res[d].trips.forEach(t => trips.push(t)));
+  // Fairness aktif: semua unit aktif harus kebagian distribusi; beri tahu bila ada yang menganggur dan kenapa
+  if (fairOn) vehicles.forEach((v, vi) => {
+    if (trips.some(t => t.vIdx === vi)) return;
+    const vj = normJenis(v.jenis), bisa = valid.filter(s => aksesOk(s, vj) && simFlex(ctxOf[days[0]], depot, v, ctxOf[days[0]].start, 1, [s], false).ok).length;
+    warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit minggu ini" + (bisa ? " (beban sudah habis terbagi ke unit lain; naikkan tingkat fairness bila perlu)." : " karena tidak ada store yang bisa dilayaninya (cek akses kendaraan, radius/maks km, atau kapasitas)."));
+  });
   trips.sort((a, b) => a.day - b.day || a.vIdx - b.vIdx || a.shift - b.shift);
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
   }
