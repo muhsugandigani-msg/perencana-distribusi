@@ -2496,7 +2496,7 @@ const dayColor = d => getComputedStyle(document.documentElement).getPropertyValu
 const JENIS = ["CDD Box", "CDD Bak", "CDE", "Traga Box", "Traga Bak", "Engkel", "Pickup", "Blind Van", "Fuso", "Wingbox", "Motor"];
 
 let state = loadState();
-let plan = null, planDirty = true;
+let plan = null, planDirty = true, ganttRs = null, ganttW = 0;
 let tab = "kendaraan";
 
 function loadState() {
@@ -3367,7 +3367,6 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   runPlan(true);
   setTab(t);
 })();
-let ganttRs = null, ganttW = 0;
 window.addEventListener("resize", () => { clearTimeout(ganttRs); ganttRs = setTimeout(() => { const w = $("#p-gantt").clientWidth; if (tab === "gantt" && plan && Math.abs(w - ganttW) > 40) renderGantt(); }, 200); });
 
 </script>

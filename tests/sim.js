@@ -7,6 +7,8 @@ const { chromium } = require('playwright'); const fs = require('fs');
   p.on('console', m => { if (m.type() === 'error' && !/TUNNEL|Failed to load|ERR_/.test(m.text())) errs.push('CONSOLE ' + m.text()); });
   await p.goto('file://' + __dirname + '/local.html'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(400);
   const tabs = await p.$$eval('[data-tab]', e => e.map(x => x.dataset.tab));
+  for (const t of tabs) { await p.goto('file://' + __dirname + '/local.html#' + t); await p.waitForTimeout(700); }
+  console.log('• buka langsung tiap tab lewat #hash', errs.length ? 'ERR ' + errs.join(' | ') : 'ok');
   const visitAll = async label => { for (const t of tabs) { await p.click('[data-tab="' + t + '"]'); await p.waitForTimeout(120); } const n = errs.length; console.log('•', label, n ? 'ERR ' + errs.slice(-3).join(' | ') : 'ok'); };
   const loadJson = async (obj, label) => {
     fs.writeFileSync('dl/sim.json', typeof obj === 'string' ? obj : JSON.stringify(obj));
