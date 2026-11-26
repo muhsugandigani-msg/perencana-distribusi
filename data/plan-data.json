@@ -270,9 +270,7 @@
    "alamatAuto": true,
    "hariOperasi": [
     0,
-    1,
     2,
-    3,
     4,
     5
    ]
@@ -1453,7 +1451,7 @@
    "kota": "Kota Makassar"
   }
  },
- "_savedAt": 1795705893111,
+ "_savedAt": 1795705920263,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3399,8 +3397,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795705893111,
-  "sig": "1wetsd4:20244",
+  "at": 1795705920263,
+  "sig": "uhf670:20240",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3975,9 +3973,7 @@
           "alamatAuto": true,
           "hariOperasi": [
            0,
-           1,
            2,
-           3,
            4,
            5
           ]
@@ -5548,9 +5544,7 @@
           "alamatAuto": true,
           "hariOperasi": [
            0,
-           1,
            2,
-           3,
            4,
            5
           ]
