@@ -1024,6 +1024,10 @@ function roadCfgKey(state) { // jarak berubah bila aturan blok tol / jalan berub
   const nama = (Array.isArray(b.daftar) ? b.daftar : []).filter(x => x && x.aktif !== false && String(x.nama || "").trim()).map(x => normJalan(x.nama).trim()).sort();
   return (b.semuaTol !== false ? "T" : "t") + "|" + nama.join("|");
 }
+function gatePt(state) { // titik jalur keluar/masuk gudang (Parameter); null bila kosong / tidak terbaca
+  const g = parseKoordinat(state.params && state.params.titikGudang);
+  return g && g.lat != null ? [g.lat, g.lng] : null;
+}
 function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik cepat
   const J = state.jarakJalan;
   if (!J || J.cfg !== roadCfgKey(state) || !Array.isArray(J.k) || !J.d) return null;
@@ -1033,6 +1037,8 @@ function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik ce
     const i = idx.get(ptKey(st.lat, st.lng)); if (i == null) continue;
     let m = byLat.get(+st.lat); if (!m) byLat.set(+st.lat, m = new Map()); m.set(+st.lng, i);
   }
+  const G = gatePt(state);
+  if (G) { const i = idx.get(ptKey(G[0], G[1])); if (i != null) { let m = byLat.get(+G[0]); if (!m) byLat.set(+G[0], m = new Map()); m.set(+G[1], i); } }
   const memo = new Map();
   return function (a, b) {
     const ma = byLat.get(+a[0]), mb = byLat.get(+b[0]); if (!ma || !mb) return null;
@@ -1114,7 +1120,18 @@ function makeCtx(state, day) {
     return t + dur;
   }
   const RT = state._roadT !== undefined ? state._roadT : roadTable(state);
+  // semua rit keluar & masuk gudang lewat satu titik jalur (Parameter) bila diisi
+  const G = gatePt(state), D0 = state.stores.find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
+  const near = (q, r) => Math.abs(q[0] - r[0]) < 1e-7 && Math.abs(q[1] - r[1]) < 1e-7;
+  const atD = q => D0 && near(q, [D0.lat, D0.lng]);
   function leg(a, b, t, speed) {
+    if (G && D0 && !near(a, G) && !near(b, G) && (atD(a) !== atD(b))) {
+      const x = leg0(a, G, t, speed), y = leg0(G, b, t != null ? t + x.min : null, speed);
+      return { km: x.km + y.km, min: x.min + y.min };
+    }
+    return leg0(a, b, t, speed);
+  }
+  function leg0(a, b, t, speed) {
     const h = hav(a, b);
     if (h < 1e-6) return { km: 0, min: 0 };
     let road = RT ? RT(a, b) : null;
@@ -1928,7 +1945,7 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined" && module.exports) module.exports = { prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined" && module.exports) module.exports = { gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
 
 const SAMPLE = {
  "vehicles": [
@@ -3941,6 +3958,8 @@ function renderParameter() {
   </div>
   <div class="card pad" style="display:grid;gap:12px">
     <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
+    <div class="field"><label>Jalur keluar/masuk gudang</label><input class="in" data-k="params.titikGudang" data-rerender="1" value="${esc(p.titikGudang || "")}" placeholder="Tempel link Google Maps titik jalur, atau koordinat">
+      <p class="hint">Semua rit berangkat dari gudang lewat titik ini dan pulang lewat titik ini juga (mis. simpang masuk jalan lingkar barat). Kosongkan bila kendaraan bebas lewat jalan mana saja. ${(() => { const g = parseKoordinat(p.titikGudang); return !p.titikGudang ? "" : g && g.lat != null ? "<b>Terbaca: " + g.lat.toFixed(5) + ", " + g.lng.toFixed(5) + "</b>" : g && g.short ? '<b style="color:var(--danger,#b42318)">Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau tempel koordinatnya.</b>' : '<b style="color:var(--danger,#b42318)">Koordinat tidak terbaca.</b>'; })()}</p></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-k="params.jalanBlok.semuaTol" ${p.jalanBlok.semuaTol !== false ? "checked" : ""}> <span><b>Blok semua jalan tol</b> <span class="hint">(Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan, dan tol lain)</span></span></label>
     <div style="display:grid;gap:6px">${p.jalanBlok.daftar.map((j, i) => `<div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto"><input type="checkbox" data-k="params.jalanBlok.daftar.${i}.aktif" ${j.aktif !== false ? "checked" : ""} aria-label="Aktif"><input class="in" data-k="params.jalanBlok.daftar.${i}.nama" value="${esc(j.nama || "")}" placeholder="Nama jalan, mis. Tol Reformasi"><button class="btn icon" type="button" data-del="params.jalanBlok.daftar|${i}" aria-label="Hapus">✕</button></div>`).join("") || '<span class="off">Belum ada jalan yang diblok.</span>'}</div>
   </div>
@@ -4045,7 +4064,7 @@ function weeksCard() {
 }
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
 function gmapsLink(t) {
-  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d.lat, d.lng]]);
+  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(gatePt(state) ? [gatePt(state)] : [], t.stops.map(s => [s.store.lat, s.store.lng]), gatePt(state) ? [gatePt(state)] : [], [[d.lat, d.lng]]);
   return "https://www.google.com/maps/dir/" + pts.map(p => p[0] + "," + p[1]).join("/") + "/data=!4m4!4m3!2m1!2b1!3e0";
 }
 function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
@@ -4245,7 +4264,7 @@ const JARAK_LS = LS_KEY + "-jarak";
 const MAXP = 100; // batas server: "Exceeded max locations: 100" = sumber × tujuan per permintaan
 const roadJob = { run: false, done: 0, total: 0, failKey: "", err: "" };
 let sharedChecked = false;
-function jarakPts() { return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)))]; }
+function jarakPts() { const G = gatePt(state); return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)).concat(G ? [ptKey(G[0], G[1])] : []))]; }
 function mergeJarak(src) { // gabungkan matriks lain (cache browser / data bersama) ke state
   src = cleanJarak(src); const cfg = roadCfgKey(state); if (!src || src.cfg !== cfg) return 0;
   let J = state.jarakJalan; if (!J || J.cfg !== cfg) J = state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
@@ -4441,7 +4460,7 @@ async function drawMap() {
   const lines = [];
   trips.forEach((t, i) => {
     const col = mapDay === "all" ? dayColor(t.day) : tripColor(t, i);
-    const pts = [[d0.lat, d0.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d0.lat, d0.lng]]);
+    const pts = [[d0.lat, d0.lng]].concat(gatePt(state) ? [gatePt(state)] : [], t.stops.map(s => [s.store.lat, s.store.lng]), gatePt(state) ? [gatePt(state)] : [], [[d0.lat, d0.lng]]);
     pts.forEach(p => bounds.push(p));
     const dash = t.shift > 1 ? "8 6" : null;
     const pl = L.polyline(pts, { color: col, weight: mapDay === "all" ? 3 : 4, opacity: .85, dashArray: dash }).addTo(mapLayer);
@@ -4507,6 +4526,7 @@ function exportExcel() {
   const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)
+  par.push([], ["Jalur keluar/masuk gudang", state.params.titikGudang || "Bebas"]);
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
