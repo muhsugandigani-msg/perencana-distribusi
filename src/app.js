@@ -49,6 +49,7 @@ function normalize(s) {
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
   s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
   s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); x.bbm = /bensin/i.test(x.bbm || "") ? "Bensin" : "Solar"; for (const k of ["maksKmRit", "maksRadiusKm"]) { const v = num(x[k]); if (v != null && v > 0) x[k] = v; else delete x[k]; } if (Array.isArray(x.hariAktif)) { const h = [...new Set(x.hariAktif.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (h.length === 7) delete x.hariAktif; else x.hariAktif = h; } else delete x.hariAktif; });
+  if (!["rendah", "sedang", "tinggi"].includes(s.params.tingkatOptimasi)) s.params.tingkatOptimasi = "sedang";
   s.params.fairness = Object.assign(clone(SAMPLE.params.fairness), isObj(s.params.fairness) ? s.params.fairness : {});
   // fairness baru (Gandi 2026-11-26): waktu, jarak, jumlah tugas + antar shift; dinyalakan sekali di tingkat sedang
   if (!s.params.fairness.v2) Object.assign(s.params.fairness, { v2: true, aktif: true, tingkat: "sedang", jam: true, km: true, toko: true, antarShift: true });
@@ -406,8 +407,9 @@ function tugasCard(p) {
   const nB = state.vehicles.filter(v => v.aktif !== false && v.bbm === "Bensin").length, nS = state.vehicles.filter(v => v.aktif !== false && v.bbm !== "Bensin").length;
   return `<div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Pembagian tugas kendaraan</h3>
-      <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
-        <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius) tetap dipatuhi.</p></div>
+      <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi</b></label>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:6px">Tingkat <select class="in" data-k="params.tingkatOptimasi" style="max-width:150px">${[["rendah", "Rendah"], ["sedang", "Sedang"], ["tinggi", "Tinggi"]].map(([a, b]) => `<option value="${a}" ${(p.tingkatOptimasi || "sedang") === a ? "selected" : ""}>${b}</option>`).join("")}</select></label>
+        <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius) tetap dipatuhi. Makin tinggi tingkatnya, makin teliti tapi makin lama: <b>Rendah</b> ±10–20 detik, <b>Sedang</b> ±20–40 detik, <b>Tinggi</b> ±40–80 detik (tergantung jumlah store &amp; kecepatan komputer). Hasil selalu sama bila data sama.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.fairness.aktif" ${F.aktif ? "checked" : ""}> <b>Fairness</b></label>
         <p class="hint">Tugas dibagi merata ke setiap kendaraan, dan antara shift 1 dan shift 2 pada kendaraan 2 shift. Store dipindah antar kendaraan/shift di hari yang sama bila beban jadi lebih rata, walau total km sedikit naik.</p>
         <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:6px">
@@ -745,25 +747,25 @@ function startDeep() {
     const quick = planWeeks || [];
     // jangan pernah lebih buruk dari plan cepat; dibandingkan per siklus agar rute mingguan tetap sama di semua minggu
     const cyc = A => A.reduce((a, P) => a + (P && P.opt ? P.opt.cost : Infinity), 0);
-    if (quick.length === W.length && cyc(quick) <= cyc(W)) { deepNote(); toast("Optimasi mendalam selesai: plan cepat sudah yang paling efisien.", 4000); return; }
+    if (quick.length === W.length && cyc(quick) <= cyc(W)) { deepNote(); toast("Optimasi selesai: plan cepat sudah yang paling efisien.", 4000); return; }
     W.forEach((P, w) => { if (P.opt) P.opt.biasa = baseW[w] || null; });
     planWeeks = W; weekCache.meta = W.meta; if (weekSel >= W.length) weekSel = 0; plan = W[weekSel]; mapDrawn = null;
     if (["plan", "gantt", "peta"].includes(tab)) renderTab(); else deepNote();
     const tot = weeksTotal(W), b0 = baseW.filter(Boolean);
-    if (b0.length) toast("Optimasi mendalam selesai: " + tot.rit + " rit, " + fmtNum(tot.km) + " km" + (W.length > 1 ? " dalam " + W.length + " minggu" : "") + " (plan cepat: " + b0.reduce((a, x) => a + x.rit, 0) + " rit, " + fmtNum(b0.reduce((a, x) => a + x.km, 0)) + " km).", 5000);
+    if (b0.length) toast("Optimasi selesai: " + tot.rit + " rit, " + fmtNum(tot.km) + " km" + (W.length > 1 ? " dalam " + W.length + " minggu" : "") + " (plan cepat: " + b0.reduce((a, x) => a + x.rit, 0) + " rit, " + fmtNum(b0.reduce((a, x) => a + x.km, 0)) + " km).", 5000);
   };
   setTimeout(step, 30);
 }
 function deepNoteHtml() {
   if (!deepJob.run) return "";
   const pct = deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0;
-  return `<div class="banner info"><span class="spin" aria-hidden="true"></span><div><b>Optimasi mendalam berjalan… <span id="deepPct">${pct}% (${esc(deepJob.fase)})</span></b>. Plan di bawah adalah hasil cepat; akan diganti otomatis bila ditemukan yang lebih efisien.</div><button class="btn sm" type="button" id="btnStopDeep">Hentikan</button></div>`;
+  return `<div class="banner info"><span class="spin" aria-hidden="true"></span><div><b>Optimasi berjalan… <span id="deepPct">${pct}% (${esc(deepJob.fase)})</span></b>. Plan di bawah adalah hasil cepat; akan diganti otomatis bila ditemukan yang lebih efisien.</div><button class="btn sm" type="button" id="btnStopDeep">Hentikan</button></div>`;
 }
 function deepNote() {
   const el = document.getElementById("deepNote"), pc = document.getElementById("deepPct");
   if (el && deepJob.run && pc) pc.textContent = (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "% (" + deepJob.fase + ")"; // perbarui teks saja, tombol tidak dibuat ulang
   else if (el) el.innerHTML = deepNoteHtml();
-  const sb = document.getElementById("btnStopDeep"); if (sb && !sb.onclick) sb.onclick = () => { stopDeep(); toast("Optimasi mendalam dihentikan. Plan cepat tetap dipakai."); };
+  const sb = document.getElementById("btnStopDeep"); if (sb && !sb.onclick) sb.onclick = () => { stopDeep(); toast("Optimasi dihentikan. Plan cepat tetap dipakai."); };
   const bp = document.getElementById("btnPlan"); if (bp) bp.textContent = deepJob.run ? "⏳ Mengoptimasi " + (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "%" : "▶ Buat Plan";
 }
 function* deepWeeks() { // optimasi mendalam: rute dasar store mingguan dioptimasi mendalam, lalu store 2–5 mingguan disisipkan per minggu
@@ -836,7 +838,7 @@ function optCard(plan) {
   };
   const f0 = x => fmtNum(x), f1 = x => fmtNum(x, 1), fp = x => fmtNum(x * 100);
   return `<div class="card pad" style="display:grid;gap:12px">
-    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">${O !== plan.opt ? "Angka di bawah untuk rute dasar store mingguan, yang dipakai sama setiap minggu. " : ""}Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${O.starts} variasi${O.mendalam ? " + " + O.rr + " kali susun ulang (optimasi mendalam)" : ""} dalam ${fmtNum(O.ms / 1000, 1)} detik.${plan.opt.biasa ? " Dibanding plan cepat: " + plan.opt.biasa.rit + " → " + plan.opt.akhir.rit + " rit, " + fmtNum(plan.opt.biasa.km) + " → " + fmtNum(plan.opt.akhir.km) + " km, " + fmtNum(plan.opt.biasa.jam, 1) + " → " + fmtNum(plan.opt.akhir.jam, 1) + " jam kerja." : ""} Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
+    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">${O !== plan.opt ? "Angka di bawah untuk rute dasar store mingguan, yang dipakai sama setiap minggu. " : ""}Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${O.starts} variasi${O.mendalam ? " + " + O.rr + " kali susun ulang (optimasi tingkat " + (state.params.tingkatOptimasi || "sedang") + ")" : ""} dalam ${fmtNum(O.ms / 1000, 1)} detik.${plan.opt.biasa ? " Dibanding plan cepat: " + plan.opt.biasa.rit + " → " + plan.opt.akhir.rit + " rit, " + fmtNum(plan.opt.biasa.km) + " → " + fmtNum(plan.opt.akhir.km) + " km, " + fmtNum(plan.opt.biasa.jam, 1) + " → " + fmtNum(plan.opt.akhir.jam, 1) + " jam kerja." : ""} Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
     <div>
       <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
         ${row("Belum terlayani", A.unserved, B.unserved, f0, "kunjungan")}
@@ -1259,7 +1261,7 @@ function exportExcel() {
   const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Maks km/rit", "Maks radius dari gudang (km)", "Bahan bakar", "Hari aktif distribusi", "Aktif"]];
   state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, +v.maksKmRit > 0 ? +v.maksKmRit : "Bebas", +v.maksRadiusKm > 0 ? +v.maksRadiusKm : "Bebas", v.bbm || "Solar", hariAktifLabel(v), v.aktif !== false ? "Ya" : "Tidak"]));
   const sto = storeRows();
-  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio waktu loading/unloading (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
+  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Optimasi", state.params.optimasiMendalam !== false ? "Aktif, tingkat " + (state.params.tingkatOptimasi || "sedang") : "Tidak aktif"], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio waktu loading/unloading (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   par.push(["Menaikkan/menurunkan barang di gudang", "Otomatis: muatan rit ÷ rasio loading/unloading", "Setiap hari", "Sebelum berangkat / setelah pulang", "Setiap rit", "Ya"]);
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)

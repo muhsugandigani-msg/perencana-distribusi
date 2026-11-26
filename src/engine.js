@@ -437,7 +437,9 @@ function* buildPlanCore(state, opts) {
   const near = (s, route) => route.some(x => NB[s.id] && NB[s.id].has(x.id));
   const deep = opts.mendalam != null ? !!opts.mendalam : state.params.optimasiMendalam === true;
   const sk = Math.max(0.35, Math.min(1, +opts.skala || 1)); // siklus beberapa minggu: usaha per minggu dikurangi
-  let evals = 0, EVAL_MAX = deep ? Math.round(1500000 * sk) : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
+  // tingkat optimasi (Gandi 2026-11-27): rendah = usaha dasar, sedang = 2x, tinggi = 4x
+  const EF = deep ? ({ rendah: 1, sedang: 2, tinggi: 4 }[state.params.tingkatOptimasi] || 2) : 1;
+  let evals = 0, EVAL_MAX = deep ? Math.round(1500000 * sk * EF) : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
 
   /* 1) Pembagian kunjungan ke hari. rnd = null -> deterministik (solusi awal); rnd -> variasi untuk multi-start */
   function assign(rnd) {
@@ -850,8 +852,8 @@ function* buildPlanCore(state, opts) {
   }
   const mInit = metric0(initial);
   let best = null, bestCost = Infinity, starts = 0, rr = 0, rrOk = 0;
-  const nStart = deep ? Math.max(8, Math.round(Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) * sk)) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
-  const nRR = deep ? Math.max(10, Math.round(Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) * sk)) : 0;
+  const nStart = deep ? Math.max(8, Math.round(Math.max(12, Math.min(40 * EF, Math.round(2400 * EF / Math.max(10, valid.length)))) * sk)) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  const nRR = deep ? Math.max(10, Math.round(Math.max(20, Math.min(80 * EF, Math.round(3000 * EF / Math.max(10, valid.length)))) * sk)) : 0;
   const cloneSol = sol => { const o = {}; days.forEach(d => o[d] = { R: sol[d].R.map(L => L.map(r => r.slice())), left: sol[d].left.slice(), vc: sol[d].vc.slice() }); return o; };
   for (let k = 0; k < nStart; k++) {
     const rnd = k === 0 ? null : mulberry32(1000 + k * 7919);
@@ -868,7 +870,7 @@ function* buildPlanCore(state, opts) {
   bestCost = solCost(best);
   // mode mendalam: "bongkar & susun ulang" — keluarkan sebagian store dari satu hari lalu sisipkan ulang dengan pencarian lokal
   if (deep && best) {
-    const rnd = mulberry32(424242); EVAL_MAX = evals + Math.round(1200000 * sk); // anggaran kerja sendiri untuk tahap ini
+    const rnd = mulberry32(424242); EVAL_MAX = evals + Math.round(1200000 * sk * EF); // anggaran kerja sendiri untuk tahap ini
     for (let it = 0; it < nRR && evals < EVAL_MAX; it++) {
       const cand = cloneSol(best), d = days[Math.floor(rnd() * days.length)], S = cand[d];
       const all = []; S.R.forEach((L, vi) => L.forEach((r, ri) => r.forEach((st, i) => all.push([vi, ri, st]))));
@@ -905,7 +907,7 @@ function* buildPlanCore(state, opts) {
       if (hav([a.lat, a.lng], [b.lat, b.lng]) <= PAIR_KM && okDays(a).some(d => okDays(b).includes(d))) P2.push([a, b]);
     }
     if (!P2.length) return 0;
-    EVAL_MAX = evals + Math.round(400000 * sk);
+    EVAL_MAX = evals + Math.round(400000 * sk * EF);
     const daysOf = (S, id) => days.filter(d => S[d].R.some(L => L.some(r => r.some(x => x.id === id))));
     const obj = S => {
       let c = solCost(S);
