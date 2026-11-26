@@ -11,7 +11,7 @@ const JENIS = ["CDD Box", "CDD Bak", "CDE", "Traga Box", "Traga Bak", "Engkel", 
 
 let state = loadState();
 let plan = null, planDirty = true, ganttRs = null, ganttW = 0;
-let planWeeks = null, weekSel = 0; const weekCache = { meta: null }; // plan per minggu (siklus 1x per 2–5 minggu)
+let planWeeks = null, weekSel = 0, planSavedAt = 0; const weekCache = { meta: null }; // plan per minggu (siklus 1x per 2–5 minggu)
 let tab = "kendaraan";
 
 function loadState() {
@@ -57,6 +57,7 @@ function normalize(s) {
   s.params.jalanBlok = isObj(s.params.jalanBlok) ? s.params.jalanBlok : clone(SAMPLE.params.jalanBlok);
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   s.jarakJalan = cleanJarak(s.jarakJalan);
+  if (!(isObj(s.savedPlan) && Array.isArray(s.savedPlan.weeks) && s.savedPlan.weeks.length && s.savedPlan.weeks.length <= 12 && s.savedPlan.weeks.every(isObj))) delete s.savedPlan;
   return s;
 }
 /* Simpan: perubahan baru tersimpan saat tombol "Simpan" (atau Ctrl+S) ditekan.
@@ -97,7 +98,7 @@ async function ghPutFile(data, sha) {
 function applyShared(f, quiet) {
   const keep = state.jarakJalan; state = normalize(f.data); mergeJarak(keep); try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {} shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-  unsaved = false; stopDeep(); plan = null; planWeeks = null; planDirty = true; renderTab(); saveStatus(); // plan baru dibuat saat tombol "Buat Plan" diklik
+  unsaved = false; if (!loadSavedPlan()) planDirty = true; renderTab(); saveStatus(); // tampilkan plan terakhir yang disimpan; plan baru dibuat saat tombol "Buat Plan" diklik
   if (!quiet) toast("Data bersama terbaru dimuat dari GitHub.");
 }
 async function loadShared() { // saat web dibuka
@@ -110,15 +111,49 @@ async function loadShared() { // saat web dibuka
     if (shared.at >= (+state._savedAt || 0)) applyShared({ sha: f.sha, data: f.data }, true);
     else saveStatus();
   } catch (e) { shared.ok = false; console.warn("Data bersama GitHub tidak bisa dimuat", e); saveStatus(); }
-  finally { sharedChecked = true; maybeHitungJarak(); }
+  finally { sharedChecked = true; } // jarak jalan diambil setelah "Buat Plan" diklik, bukan saat web dibuka
 }
 function saveLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; }
   catch (e) { toast("Gagal menyimpan: penyimpanan browser penuh atau diblokir.", 5000); return false; }
 }
+/* Plan terakhir ikut disimpan (di browser & GitHub) agar langsung tampil saat web dibuka, tanpa menghitung ulang. */
+function inputSig(st) { // sidik data input (tanpa plan tersimpan / cap waktu / cache jarak)
+  const txt = JSON.stringify(st, (k, v) => k === "savedPlan" || k === "_savedAt" || k === "_stamp" || k === "jarakJalan" ? undefined : v);
+  let h = 5381; for (let i = 0; i < txt.length; i++) h = (h * 33 + txt.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ":" + txt.length;
+}
+function packPlans() {
+  if (!planWeeks || !planWeeks.length || planWeeks.some(P => !P || P.error)) return undefined;
+  const rep = (k, v) => {
+    if (v && typeof v === "object" && !Array.isArray(v) && typeof v.id === "string") {
+      if ("antaran" in v || "beratKg" in v) { const d = Object.assign({}, v); delete d.id; return { $s: v.id, d }; }
+      if ("kapasitasKg" in v) { const d = Object.assign({}, v); delete d.id; return { $v: v.id, d }; }
+    }
+    return typeof v === "number" && !isFinite(v) ? null : v;
+  };
+  try { return { at: Date.now(), sig: inputSig(state), weekSel, meta: planWeeks.meta || null, weeks: JSON.parse(JSON.stringify(planWeeks.slice(), rep)) }; } catch (e) { console.warn("Plan tidak bisa disimpan", e); return undefined; }
+}
+function unpackPlans(SP) {
+  const memo = {}, fix = o => {
+    if (Array.isArray(o)) return o.map(fix);
+    if (!o || typeof o !== "object") return o;
+    if (typeof o.$s === "string") { const k = "s" + o.$s; if (memo[k]) return memo[k]; const d = isObj(o.d) ? o.d : {}; const st = state.stores.find(x => x.id === o.$s && x.lat === d.lat && x.lng === d.lng); return memo[k] = st || Object.assign({ id: o.$s }, d); }
+    if (typeof o.$v === "string") { const k = "v" + o.$v; if (memo[k]) return memo[k]; const d = isObj(o.d) ? o.d : {}; return memo[k] = state.vehicles.find(x => x.id === o.$v) || Object.assign({ id: o.$v }, d); }
+    const r = {}; for (const k in o) r[k] = fix(o[k]); return r;
+  };
+  const W = SP.weeks.map(fix); if (W.some(P => !isObj(P) || !Array.isArray(P.trips) || !Array.isArray(P.unserved) || !isObj(P.depot))) throw new Error("plan tersimpan rusak");
+  W.meta = isObj(SP.meta) ? SP.meta : { H: W.length, off: {} }; return W;
+}
+function loadSavedPlan() { // tampilkan plan terakhir yang disimpan (tanpa menghitung ulang)
+  stopDeep(); plan = null; planWeeks = null;
+  if (!state.savedPlan) return false;
+  try { const W = unpackPlans(state.savedPlan); planWeeks = W; weekCache.meta = W.meta; weekSel = Math.min(W.length - 1, Math.max(0, +state.savedPlan.weekSel || 0)); plan = W[weekSel]; planDirty = state.savedPlan.sig !== inputSig(state); planSavedAt = +state.savedPlan.at || 0; mapDrawn = null; return true; }
+  catch (e) { console.warn(e); plan = null; planWeeks = null; return false; }
+}
 async function commitSave(force) {
   if (saving) return false;
   state._savedAt = Date.now();
+  { const SP = packPlans(); if (SP) state.savedPlan = SP; } // plan yang sedang tampil ikut disimpan
   if (!saveLocal()) return false;
   if (!ghToken()) {
     shared.src = "lokal"; unsaved = false; saveStatus();
@@ -600,7 +635,8 @@ function runPlan(silent) {
   stopDeep();
   try { const W = buildWeeks(state, { mendalam: false }); planWeeks = W; weekCache.meta = W.meta; if (weekSel >= W.length) weekSel = 0; plan = W[weekSel] || W[0]; }
   catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; planWeeks = null; console.error(e); }
-  planDirty = false; mapDrawn = null;
+  planDirty = false; mapDrawn = null; planSavedAt = 0;
+  if (!plan.error) { unsaved = true; saveStatus(); } // plan baru: tekan Simpan agar tampil lagi saat web dibuka
   if (!plan.error && state.params.optimasiMendalam !== false) startDeep();
   if (!silent) { if (plan.error) toast(plan.error, 4000); else { const T = weeksTotal(planWeeks); toast("Plan dibuat: " + T.rit + " rit" + (planWeeks.length > 1 ? " dalam " + planWeeks.length + " minggu" : "") + (T.un ? ", " + T.un + " kunjungan belum terlayani" : "")); } }
   setTimeout(maybeHitungJarak, 0);
@@ -694,6 +730,7 @@ function renderPlan() {
   let html = weekBarHtml() + `<div class="head"><div><h2>Plan Distribusi Mingguan${planWeeks && planWeeks.length > 1 ? " · " + esc(weekLabel(weekSel)) : ""}</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
+    ${planSavedAt ? `<div class="hint" style="margin:-4px 0 12px">📌 Menampilkan plan terakhir yang disimpan (${esc(new Date(planSavedAt).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }))}). Klik ▶ Buat Plan untuk menghitung ulang.</div>` : ""}
     <div id="deepNote">${deepNoteHtml()}</div>
     <div id="roadNote">${roadNoteHtml()}</div>
     <div class="tiles">
@@ -1248,7 +1285,8 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   if (!document.getElementById("p-" + t)) { try { t = localStorage.getItem(LS_KEY + "-tab") || "plan"; } catch (e) { t = "plan"; } }
   if (!document.getElementById("p-" + t)) t = "plan";
   try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {}
-  setTab(t); // plan tidak dibuat otomatis saat web dibuka; tunggu tombol "Buat Plan"
+  loadSavedPlan(); // plan terakhir yang disimpan langsung tampil; plan baru hanya dibuat saat tombol "Buat Plan" diklik
+  setTab(t);
   loadShared();
 })();
 window.addEventListener("resize", () => { clearTimeout(ganttRs); ganttRs = setTimeout(() => { const w = $("#p-gantt").clientWidth; if (tab === "gantt" && plan && Math.abs(w - ganttW) > 40) renderGantt(); }, 200); });
