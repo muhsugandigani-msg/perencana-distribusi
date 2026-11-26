@@ -48,7 +48,7 @@ function normalize(s) {
   s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
   s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
-  s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); x.bbm = /bensin/i.test(x.bbm || "") ? "Bensin" : "Solar"; for (const k of ["maksKmRit", "maksRadiusKm"]) { const v = num(x[k]); if (v != null && v > 0) x[k] = v; else delete x[k]; } });
+  s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); x.bbm = /bensin/i.test(x.bbm || "") ? "Bensin" : "Solar"; for (const k of ["maksKmRit", "maksRadiusKm"]) { const v = num(x[k]); if (v != null && v > 0) x[k] = v; else delete x[k]; } if (Array.isArray(x.hariAktif)) { const h = [...new Set(x.hariAktif.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (h.length === 7) delete x.hariAktif; else x.hariAktif = h; } else delete x.hariAktif; });
   s.params.fairness = Object.assign(clone(SAMPLE.params.fairness), isObj(s.params.fairness) ? s.params.fairness : {});
   s.params.prioritasSolar = Object.assign(clone(SAMPLE.params.prioritasSolar), isObj(s.params.prioritasSolar) ? s.params.prioritasSolar : {});
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
@@ -375,6 +375,20 @@ function tugasCard(p) {
 }
 
 /* ---------- 1. Kendaraan ---------- */
+/* Hari aktif distribusi per kendaraan: dropdown centang (tidak diisi = semua hari) */
+function hariAktifLabel(v) { if (!Array.isArray(v.hariAktif)) return "Semua hari"; const on = v.hariAktif.filter(d => state.params.hari[d]); return on.length ? on.map(d => HARI3[d]).join(", ") : "Tidak ada hari"; }
+function hariAktifCell(v, i, open) {
+  const A = Array.isArray(v.hariAktif) ? v.hariAktif : null, lbl = hariAktifLabel(v);
+  const opt = (d) => `<label class="akopt" ${state.params.hari[d] ? "" : 'style="opacity:.5" title="Bukan hari distribusi (atur di tab Parameter)"'}><input type="checkbox" data-hakt="${i}|${d}" ${!A || A.includes(d) ? "checked" : ""} ${state.params.hari[d] ? "" : "disabled"}> ${HARI[d]}</label>`;
+  return `<details class="akdd" ${open ? "open" : ""}><summary class="in" title="${esc(lbl)}" ${lbl === "Tidak ada hari" ? 'style="color:var(--bad)"' : ""}>${esc(lbl)}</summary><div class="akpanel"><label class="akopt"><input type="checkbox" data-hakt="${i}|*" ${!A ? "checked" : ""}> Semua hari</label>${HARI.map((h, d) => opt(d)).join("")}<div class="hint" style="margin-top:4px">Kendaraan hanya dijadwalkan di hari yang dicentang.</div></div></details>`;
+}
+document.addEventListener("change", e => {
+  const b = e.target.closest && e.target.closest("[data-hakt]"); if (!b) return;
+  const k = b.dataset.hakt.indexOf("|"), i = +b.dataset.hakt.slice(0, k), d = b.dataset.hakt.slice(k + 1), v = state.vehicles[i]; if (!v) return;
+  if (d === "*") { if (b.checked) delete v.hariAktif; else v.hariAktif = []; }
+  else { const A = Array.isArray(v.hariAktif) ? v.hariAktif.slice() : [0, 1, 2, 3, 4, 5, 6], n = +d, at = A.indexOf(n); if (at >= 0) A.splice(at, 1); else A.push(n); A.sort((a, b) => a - b); if (A.length === 7) delete v.hariAktif; else v.hariAktif = A; }
+  save(); const cell = b.closest("td"); if (cell) { cell.innerHTML = hariAktifCell(v, i, true); const dd = cell.querySelector("details"); if (dd) placeAkses(dd); }
+});
 function renderKendaraan() {
   const el = $("#p-kendaraan");
   const rows = state.vehicles.map((v, i) => `<tr>
@@ -387,13 +401,14 @@ function renderKendaraan() {
     <td><input class="in num" type="number" min="0" step="1" data-t="num" data-k="vehicles.${i}.maksKmRit" value="${v.maksKmRit ?? ""}" placeholder="bebas" style="min-width:80px"></td>
     <td><input class="in num" type="number" min="0" step="1" data-t="num" data-k="vehicles.${i}.maksRadiusKm" value="${v.maksRadiusKm ?? ""}" placeholder="bebas" style="min-width:80px"></td>
     <td><select class="in" data-k="vehicles.${i}.bbm" style="min-width:100px">${["Solar", "Bensin"].map(b => `<option ${v.bbm === b ? "selected" : ""}>${b}</option>`).join("")}</select></td>
+    <td>${hariAktifCell(v, i)}</td>
     <td><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
   const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
-  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari. <b>Bahan bakar</b>: kendaraan solar diutamakan mendapat tugas. <b>Maks km/rit</b> dan <b>Maks radius</b> (km jalan dari gudang) membatasi kendaraan ke rute pendek, misalnya pickup agar hemat BBM. Kosongkan bila tanpa batas.</p></div>
+  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari. <b>Bahan bakar</b>: kendaraan solar diutamakan mendapat tugas. <b>Maks km/rit</b> dan <b>Maks radius</b> (km jalan dari gudang) membatasi kendaraan ke rute pendek, misalnya pickup agar hemat BBM. Kosongkan bila tanpa batas. <b>Hari aktif distribusi</b> = hari unit ini boleh dijadwalkan (mis. servis tiap Rabu); default semua hari.</p></div>
     <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
     <div class="card tbl-wrap lock"><table>
-    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Kendaraan solar diutamakan mendapat tugas (atur di tab Parameter)">Bahan bakar</th><th></th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="10" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
+    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Kendaraan solar diutamakan mendapat tugas (atur di tab Parameter)">Bahan bakar</th><th title="Hari kendaraan ini boleh dijadwalkan distribusi. Default semua hari.">Hari aktif distribusi</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="11" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
     <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
     <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
   $("#addV").onclick = () => { state.vehicles.push({ id: uid("v"), aktif: true, jenis: "Pickup", plat: "", kapasitasKg: 1000, kecepatan: 40, maksShift: 1, bbm: "Solar" }); save(); renderKendaraan(); };
@@ -1139,8 +1154,8 @@ function exportExcel() {
   WK.forEach(P => P.trips.forEach(t => { t.stops.forEach((s, i) => det.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.kota || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", P.depot.lat, P.depot.lng]); }));
   const gan = [[...H0, "Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
   WK.forEach(P => P.trips.forEach(t => t.segs.forEach(s => gan.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)]))));
-  const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Maks km/rit", "Maks radius dari gudang (km)", "Bahan bakar", "Aktif"]];
-  state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, +v.maksKmRit > 0 ? +v.maksKmRit : "Bebas", +v.maksRadiusKm > 0 ? +v.maksRadiusKm : "Bebas", v.bbm || "Solar", v.aktif !== false ? "Ya" : "Tidak"]));
+  const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Maks km/rit", "Maks radius dari gudang (km)", "Bahan bakar", "Hari aktif distribusi", "Aktif"]];
+  state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, +v.maksKmRit > 0 ? +v.maksKmRit : "Bebas", +v.maksRadiusKm > 0 ? +v.maksRadiusKm : "Bebas", v.bbm || "Solar", hariAktifLabel(v), v.aktif !== false ? "Ya" : "Tidak"]));
   const sto = storeRows();
   const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));

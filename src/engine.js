@@ -213,6 +213,7 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   const vnm = (veh.jenis || "Kendaraan") + (veh.plat ? " " + veh.plat : "");
   const maxR = +veh.maksRadiusKm, maxK = +veh.maksKmRit;
   if (maxR > 0) for (const s of stops) { const rk = ctx.leg([depot.lat, depot.lng], [s.lat, s.lng], null, speed).km; if (rk > maxR + 1e-6) { ok = false; why = s.nama + " berjarak " + rk.toFixed(1) + " km dari gudang, di luar radius maks " + vnm + " (" + maxR + " km)"; break; } }
+  if (!vehOnDay(veh, ctx.day)) { ok = false; why = vnm + " tidak aktif distribusi hari " + HARI[ctx.day]; }
   // Akses kendaraan per store: kosong = semua jenis kendaraan boleh
   const vj = normJenis(veh.jenis);
   for (const s of stops) if (!aksesOk(s, vj)) { ok = false; why = s.nama + " hanya bisa dilayani " + s.akses.join(" / ") + " (akses kendaraan)"; break; }
@@ -221,6 +222,7 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   return { ok, why, t0, shiftStart, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
+function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
 function normJenis(x) { return String(x || "").trim().toLowerCase().replace(/\s+/g, " "); }
 function aksesOk(s, vj) { return !Array.isArray(s.akses) || !s.akses.length || s.akses.some(a => normJenis(a) === vj); }
 /* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
@@ -305,6 +307,7 @@ function dayCapacity(state, day, depot, vehicles) {
   const ctx = makeCtx(state, day);
   let tot = 0;
   vehicles.forEach(v => {
+    if (!vehOnDay(v, day)) return;
     let t = ctx.start;
     for (let k = 1; k <= (+v.maksShift || 1); k++) {
       const e = simulate(ctx, depot, v, t, k, [], false);
@@ -358,6 +361,7 @@ function* buildPlanCore(state, opts) {
   const okDays = s => okDaysOf[s.id] || days;
   const restricted = s => okDays(s).length < days.length;
   state.vehicles.filter(v => v.aktif !== false && !(+v.kapasitasKg > 0)).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena kapasitas kosong/0."));
+  vehicles.filter(v => !days.some(d => vehOnDay(v, d))).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena hari aktif distribusinya tidak ada yang jatuh di hari distribusi."));
   vehicles.filter(v => !(+v.kecepatan > 0)).forEach(v => warn.push("Kecepatan " + (v.jenis || "") + " " + (v.plat || "") + " kosong, dipakai 40 km/jam."));
   valid.filter(s => !vehicles.some(v => aksesOk(s, normJenis(v.jenis)))).forEach(s => warn.push("\"" + s.nama + "\" hanya boleh dilayani " + s.akses.join(" / ") + ", tetapi tidak ada kendaraan aktif dengan jenis itu."));
   const maxCap = Math.max(...vehicles.map(v => +v.kapasitasKg));
@@ -472,7 +476,7 @@ function* buildPlanCore(state, opts) {
   const psF = { ringan: 1.15, sedang: 1.35, kuat: 1.8 }[PS.tingkat] || 1.35;
   const isBensin = v => /bensin|pertalite|pertamax|gasoline/i.test(v.bbm || "");
   const fuelF = vehicles.map(v => psOn && isBensin(v) ? psF : 1);
-  const share = fuelF.map(f => 1 / f); // porsi adil: kendaraan bensin mendapat porsi lebih kecil
+  const share = fuelF.map((f, vi) => Math.max(0.05, days.filter(d => vehOnDay(vehicles[vi], d)).length / days.length) / f); // porsi adil: kendaraan bensin & yang hari aktifnya lebih sedikit mendapat porsi lebih kecil
   // statistik satu kendaraan di satu hari (untuk fairness)
   const stCache = new Map();
   function vehStats(d, vi, list) {
@@ -811,8 +815,10 @@ function* buildPlanCore(state, opts) {
     let reason = "Waktu/kapasitas armada di hari ini sudah penuh";
     if (+s.beratKg > maxCap) reason = "Berat melebihi kapasitas kendaraan terbesar";
     else {
-      const tries = vehicles.map(v => simFlex(ctx, depot, v, ctx.start, 1, [s], false));
-      if (!tries.some(r => r.ok)) reason = [...new Set(tries.map(r => r.why).filter(Boolean))].join("; ") || reason;
+      const vOn = vehicles.filter(v => vehOnDay(v, d));
+      const tries = vOn.map(v => simFlex(ctx, depot, v, ctx.start, 1, [s], false));
+      if (!vOn.length) reason = "Tidak ada kendaraan yang aktif distribusi hari " + HARI[d];
+      else if (!tries.some(r => r.ok)) reason = [...new Set(tries.map(r => r.why).filter(Boolean))].join("; ") || reason;
     }
     unserved.push({ day: d, store: s, reason });
   }));
@@ -821,11 +827,13 @@ function* buildPlanCore(state, opts) {
   // Fairness aktif: semua unit aktif harus kebagian distribusi; beri tahu bila ada yang menganggur dan kenapa
   if (fairOn) vehicles.forEach((v, vi) => {
     if (trips.some(t => t.vIdx === vi)) {
-      const kosong = days.filter(d => !trips.some(t => t.vIdx === vi && t.day === d));
+      const kosong = days.filter(d => vehOnDay(v, d) && !trips.some(t => t.vIdx === vi && t.day === d));
       if (kosong.length) warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit pada hari " + kosong.map(d => HARI[d]).join(", ") + " karena store hari itu tidak cukup untuk semua unit atau tidak bisa dilayani unit ini (akses, radius, kapasitas, jam kerja).");
       return;
     }
-    const vj = normJenis(v.jenis), bisa = valid.filter(s => aksesOk(s, vj) && simFlex(ctxOf[days[0]], depot, v, ctxOf[days[0]].start, 1, [s], false).ok).length;
+    const dOn = days.filter(d => vehOnDay(v, d));
+    if (!dOn.length) return; // sudah diperingatkan di awal
+    const vj = normJenis(v.jenis), bisa = valid.filter(s => aksesOk(s, vj) && simFlex(ctxOf[dOn[0]], depot, v, ctxOf[dOn[0]].start, 1, [s], false).ok).length;
     warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit minggu ini" + (bisa ? " (beban sudah habis terbagi ke unit lain; naikkan tingkat fairness bila perlu)." : " karena tidak ada store yang bisa dilayaninya (cek akses kendaraan, radius/maks km, atau kapasitas)."));
   });
   trips.sort((a, b) => a.day - b.day || a.vIdx - b.vIdx || a.shift - b.shift);
@@ -833,4 +841,4 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
