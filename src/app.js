@@ -1218,6 +1218,73 @@ function renderPeta() {
   mapDrawn = sig;
   drawMap();
 }
+/* Pindah zona / rute / hari / kendaraan / shift dari Peta Rute (Gandi 2026-11-27).
+   Zona: hanya untuk pratinjau zona (belum ada plan). Rute/hari/kendaraan/shift: disimpan sebagai kunci store (store.kunci),
+   dipakai saat Buat Plan; kalau kunci membuat store tidak muat (kapasitas, jam, akses), store masuk "belum terlayani" dengan alasannya. */
+const stById = id => state.stores.find(x => x.id === id);
+function servedDays(id) { return plan && plan.trips ? [...new Set(plan.trips.filter(t => t.stops.some(x => x.store.id === id)).map(t => t.day))] : []; }
+function zoneMoveHtml(x, Z) {
+  const cur = +x.zonaManual || 0;
+  return `<div class="mvbox" data-zsid="${esc(x.id)}"><span class="mvh">Pindah zona</span><span>Ke zona</span><select data-zmv="1"><option value="0" ${!cur ? "selected" : ""}>Otomatis</option>${Z.zones.map(z => `<option value="${z.no}" ${cur === z.no ? "selected" : ""}>Zona ${z.no} (${z.n} store)</option>`).join("")}</select></div>`;
+}
+function moveHtml(s, days, fromDay) {
+  const st = stById(s.id); if (!st || !plan || !plan.trips) return "";
+  const k = st.kunci || {};
+  const from = fromDay != null ? fromDay : (mapDay !== "all" && days.includes(+mapDay) ? +mapDay : days[0]);
+  const ops = Array.isArray(st.hariOperasi) ? st.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
+  const dOk = plan.days.filter(d => ops.includes(d) && (d === from || !days.includes(d)));
+  const vs = state.vehicles.filter(v => v.aktif !== false && +v.kapasitasKg > 0);
+  const maxSh = Math.max(1, ...vs.map(v => +v.maksShift || 1));
+  const rutes = plan.trips.filter(t => dOk.includes(t.day));
+  const kh = Array.isArray(k.hari) && k.hari.length ? k.hari : null;
+  const lockTxt = st.kunci ? "🔒 Terkunci: " + [kh ? "hari " + kh.map(d => HARI[d]).join(", ") : "", k.kendaraan ? (k.kendaraanNama || k.kendaraan) : "", k.shift ? "shift " + k.shift : ""].filter(Boolean).join(" · ") : "Belum dikunci (diatur otomatis).";
+  return `<div class="mvbox" data-sid="${esc(s.id)}" data-from="${from ?? ""}" data-days="${days.join(",")}">
+<span class="mvh">Pindah rute / hari / kendaraan / shift</span>
+<span>Rute</span><select data-mv="rute"><option value="">— pilih rute —</option>${rutes.map(t => `<option value="${t.day}|${esc(t.veh.id)}|${t.shift}">${HARI[t.day]} · ${esc(vehLabel(t.veh))} · Shift ${t.shift} (${t.stops.length} store)</option>`).join("")}</select>
+<span>Hari${from != null && days.length > 1 ? " (kunjungan " + HARI[from] + ")" : ""}</span><select data-mv="hari"><option value="">Bebas</option>${dOk.map(d => `<option value="${d}" ${kh && kh.includes(d) && (days.length < 2 || d === from) ? "selected" : ""}>${HARI[d]}</option>`).join("")}</select>
+<span>Kendaraan</span><select data-mv="kendaraan"><option value="">Bebas</option>${vs.map(v => `<option value="${esc(v.id)}" ${k.kendaraan === v.id ? "selected" : ""}>${esc(vehLabel(v))}</option>`).join("")}</select>
+<span>Shift</span><select data-mv="shift"><option value="">Bebas</option>${Array.from({ length: maxSh }, (_, i) => `<option value="${i + 1}" ${+k.shift === i + 1 ? "selected" : ""}>Shift ${i + 1}</option>`).join("")}</select>
+<span class="mvnote">${lockTxt}</span>
+<span class="mvbtn"><button type="button" class="btn sm primary" data-mvgo="1">Pindahkan & buat ulang plan</button>${st.kunci ? '<button type="button" class="btn sm" data-mvfree="1">Lepas kunci</button>' : ""}</span></div>`;
+}
+function afterMove(ids) {
+  save(); runPlan(true); if (!plan || plan.error) { renderTab(); return; }
+  const bad = []; (planWeeks || [plan]).forEach(P => (P.unserved || []).forEach(u => { if (ids.includes(u.store.id)) bad.push(HARI[u.day] + ": " + u.reason); }));
+  const nm = ids.map(i => (stById(i) || {}).nama).join(", ");
+  if (bad.length) toast("⚠ " + nm + " tidak bisa dilayani sesuai pindahan: " + [...new Set(bad)].join("; ") + ". Ubah pilihan atau lepas kunci.", 9000);
+  else toast("✓ " + nm + " dipindah. Plan dibuat ulang; tekan 💾 Simpan agar tersimpan.", 5000);
+  renderTab();
+}
+document.addEventListener("change", e => {
+  const zs = e.target.closest("[data-zmv]");
+  if (zs) { const st = stById(zs.closest("[data-zsid]").dataset.zsid); if (!st) return; const v = +zs.value; if (v) st.zonaManual = v; else delete st.zonaManual; save(); if (map) map.closePopup(); drawPoints(); toast(v ? st.nama + " dipindah ke zona " + v + ". Tekan 💾 Simpan agar tersimpan." : st.nama + " kembali ke zona otomatis."); return; }
+  const r = e.target.closest('[data-mv="rute"]'); if (!r || !r.value) return;
+  const box = r.closest(".mvbox"), [d, vid, sh] = r.value.split("|");
+  box.querySelector('[data-mv="hari"]').value = d; box.querySelector('[data-mv="kendaraan"]').value = vid; box.querySelector('[data-mv="shift"]').value = sh;
+});
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-zreset]")) { state.stores.forEach(x => delete x.zonaManual); save(); drawPoints(); toast("Semua zona kembali otomatis."); return; }
+  if (e.target.closest("[data-unlockall]")) { const ids = state.stores.filter(x => x.kunci).map(x => x.id); state.stores.forEach(x => delete x.kunci); if (map) map.closePopup(); afterMove(ids); return; }
+  const go = e.target.closest("[data-mvgo],[data-mvfree]"); if (!go) return;
+  const box = go.closest(".mvbox"), st = stById(box.dataset.sid); if (!st) return;
+  if (go.dataset.mvfree) delete st.kunci;
+  else {
+    const val = n => box.querySelector(`[data-mv="${n}"]`).value;
+    const k = {}, hd = val("hari"), vid = val("kendaraan"), sh = val("shift");
+    if (hd !== "") {
+      const days = box.dataset.days ? box.dataset.days.split(",").map(Number) : [], from = box.dataset.from === "" ? null : +box.dataset.from;
+      const f = Math.max(1, Math.round(+st.frek || 1));
+      let set = f > 1 ? days.filter(d => d !== from).concat([+hd]) : [+hd];
+      set = [...new Set(set)].sort((a, b) => a - b); if (set.length < f && f > 1) set = null; // kunjungan lain belum terjadwal: hari dibiarkan bebas
+      if (set) k.hari = set;
+    }
+    if (vid) { const v = state.vehicles.find(x => x.id === vid); k.kendaraan = vid; k.kendaraanNama = v ? vehLabel(v) : vid; }
+    if (sh) k.shift = +sh;
+    if (Object.keys(k).length) st.kunci = k; else delete st.kunci;
+  }
+  if (map) map.closePopup();
+  afterMove([st.id]);
+});
 const zoneColor = n => ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"][(n - 1) % 10];
 function drawPoints() {
   if (!map) return;
@@ -1233,10 +1300,10 @@ function drawPoints() {
     const zn = Z ? Z.byStore[x.id] : null;
     const col = zn ? zoneColor(zn) : "#6b7280";
     L.marker([x.lat, x.lng], { icon: L.divIcon({ html: `<div class="storepin" style="background:${col}"></div>`, className: "", iconSize: [12, 12] }) }).addTo(mapLayer)
-      .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zn ? "<br>Zona " + zn : ""}<br><i>Belum ada rute</i>`);
+      .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zn ? "<br>Zona " + zn + (+x.zonaManual === zn ? " 🔒 (dipindah manual)" : "") : ""}<br><i>Belum ada rute</i>${Z ? zoneMoveHtml(x, Z) : ""}`);
   });
   if (D) { bounds.push([D.lat, D.lng]); L.marker([D.lat, D.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(D.nama)}</b><br>Origin / gudang`); }
-  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${zoneColor(z.no)}"></i>Zona ${z.no} · ${z.n} store · ${fmtNum(z.kg)} kg</span>`).join("") + `<span class="hint">Belum ada rute: zona dibuat dari jarak titik terdekat, jumlah store tiap zona rata (${fmtNum(Z.target, Z.target % 1 ? 1 : 0)} store per zona).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
+  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${zoneColor(z.no)}"></i>Zona ${z.no} · ${z.n} store · ${fmtNum(z.kg)} kg</span>`).join("") + (Z.zones.some(z => z.manual) ? `<span>🔒 ${Z.zones.reduce((a, z) => a + z.manual, 0)} store dipindah manual <button type="button" class="btn sm" data-zreset="1">Kembalikan otomatis</button></span>` : "") + `<span class="hint">Klik titik untuk memindah store ke zona lain. Belum ada rute: zona dibuat dari jarak titik terdekat, jumlah store tiap zona rata (${fmtNum(Z.target, Z.target % 1 ? 1 : 0)} store per zona).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
   mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
   if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
 }
@@ -1269,8 +1336,9 @@ async function drawMap() {
     let html;
     if (mapDay === "all") { const col = days.length > 1 ? "#17201d" : dayColor(days[0]); html = `<div class="storepin" style="background:${col}"></div>`; }
     else { const x = list[0]; html = `<div class="seqpin" style="background:${tripColor(x.t, x.i)}">${x.k + 1}</div>`; }
+    if (stById(s.id) && stById(s.id).kunci) html = `<div style="position:relative">${html}<span class="lockbadge">🔒</span></div>`;
     const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
-    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
+    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>${list.map(x => HARI[x.t.day] + ": " + esc(vehLabel(x.t.veh)) + " · Shift " + x.t.shift).join("<br>")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}${moveHtml(s, days)}`);
   });
   // store yang belum terlayani tetap tampil di peta (penanda merah bergaris, tanpa garis rute)
   const unG = {};
@@ -1278,8 +1346,10 @@ async function drawMap() {
   Object.values(unG).forEach(({ s, list }) => {
     bounds.push([s.lat, s.lng]);
     L.marker([s.lat, s.lng], { icon: L.divIcon({ html: '<div class="unpin">!</div>', className: "", iconSize: [18, 18] }), zIndexOffset: 500 }).addTo(mapLayer)
-      .bindPopup(`<b>${esc(s.nama)}</b><br><span style="color:var(--bad)"><b>Belum terlayani</b></span><br>${list.map(u => esc(HARI[u.day]) + ": " + esc(u.reason || "")).join("<br>")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}`);
+      .bindPopup(`<b>${esc(s.nama)}</b><br><span style="color:var(--bad)"><b>Belum terlayani</b></span><br>${list.map(u => esc(HARI[u.day]) + ": " + esc(u.reason || "")).join("<br>")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${moveHtml(s, servedDays(s.id), list[0].day)}`);
   });
+  const nLock = state.stores.filter(x => x.kunci).length;
+  if (nLock) legend.push(`<span>🔒 ${nLock} store dikunci <button type="button" class="btn sm" data-unlockall="1">Lepas semua kunci</button></span>`);
   if (Object.keys(unG).length) legend.push(`<span><i class="sw" style="background:#fff;border:2px dashed var(--bad);border-radius:50%;width:10px;height:10px"></i>Belum terlayani (${Object.keys(unG).length})</span>`);
   L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
   if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);

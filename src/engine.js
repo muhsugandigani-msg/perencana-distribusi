@@ -284,6 +284,10 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   for (const s of stops) if (!aksesOk(s, vj)) { ok = false; why = s.nama + " hanya bisa dilayani " + s.akses.join(" / ") + " (akses kendaraan)"; break; }
   if (maxK > 0 && km > maxK + 1e-6) { ok = false; why = "Rit " + km.toFixed(1) + " km melebihi maks jarak per rit " + vnm + " (" + maxK + " km)"; }
   if (end > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
+  // kunci kendaraan / shift dari Peta Rute (Gandi 2026-11-27)
+  for (const s of stops) { const k = s.kunci; if (!k) continue;
+    if (k.kendaraan && k.kendaraan !== veh.id) { ok = false; why = s.nama + " dikunci ke kendaraan lain (" + (k.kendaraanNama || k.kendaraan) + ")"; break; }
+    if (k.shift && +k.shift !== shiftNo) { ok = false; why = s.nama + " dikunci ke shift " + k.shift; break; } }
   if (shiftNo > (+veh.maksShift || 1)) { ok = false; why = "Shift 1 hari " + HARI[ctx.day] + " habis untuk " + (ctx.acts.filter(a => a.berlaku === "shift1").map(a => a.nama).join(" dan ") || "aktivitas") + "; " + vnm + " hanya 1 shift"; }
   return { ok, why, t0, shiftStart, shiftEff: shiftNo, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
@@ -366,10 +370,15 @@ function zonePreview(state) {
   const ord = C.map((c, i) => i).sort((a, b) => ang(C[b]) - ang(C[a]));
   const zones = ord.map((i, k) => { const m = st.filter(x => R.Z.get(x.id)[0] === i); return { no: k + 1, kg: m.reduce((a, x) => a + kgReal(x), 0), n: m.length, center: C[i] }; });
   const byStore = {}; st.forEach(x => { byStore[x.id] = ord.indexOf(R.Z.get(x.id)[0]) + 1; });
+  // pindah zona manual dari Peta Rute (Gandi 2026-11-27)
+  st.forEach(x => { const m = Math.round(+x.zonaManual); if (m >= 1 && m <= D) byStore[x.id] = m; });
+  zones.forEach(z => { const m = st.filter(x => byStore[x.id] === z.no); z.n = m.length; z.kg = m.reduce((a, x) => a + kgReal(x), 0); z.manual = m.filter(x => +x.zonaManual === z.no).length; });
   return { zones, byStore, target, total: st.reduce((a, x) => a + kgReal(x), 0) };
 }
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
 // Prioritas store: bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu (biaya "belum terlayani" lebih besar)
+function vehLabelE(v) { return (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : ""); }
+function kunciHari(s) { const h = s.kunci && s.kunci.hari; return Array.isArray(h) && h.length ? h : null; }
 function prioOf(s) { return s.prioritas === "Tinggi" ? 2 : s.prioritas === "Rendah" ? 0 : 1; }
 function unsCost(s) { return W.unserved * [0.5, 1, 3][prioOf(s)]; }
 function normJenis(x) { return String(x || "").trim().toLowerCase().replace(/\s+/g, " "); }
@@ -501,7 +510,9 @@ function* buildPlanCore(state, opts) {
   const zeroF = stores.filter(s => !noCoord.includes(s) && !(Math.round(+s.frek) > 0));
   zeroF.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena frekuensi kirim belum diisi / tidak dikirim."));
   // Hari beroperasi: store hanya boleh diantar pada hari aktifnya (kosong = setiap hari)
-  const opsOf = s => Array.isArray(s.hariOperasi) ? s.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
+  const opsOf0 = s => Array.isArray(s.hariOperasi) ? s.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
+  // kunci hari dari Peta Rute (Gandi 2026-11-27): store hanya boleh diantar di hari yang dikunci
+  const opsOf = s => kunciHari(s) || opsOf0(s);
   const okDaysOf = {};
   stores.forEach(s => { okDaysOf[s.id] = days.filter(d => opsOf(s).includes(d)); });
   const closed = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s) && !okDaysOf[s.id].length);
@@ -1240,6 +1251,16 @@ function* buildPlanCore(state, opts) {
       if (!vOn.length) reason = "Tidak ada kendaraan yang aktif distribusi hari " + HARI[d];
       else if (!tries.some(r => r.ok)) reason = [...new Set(tries.map(r => r.why).filter(Boolean))].join("; ") || reason;
     }
+    const k = s.kunci;
+    if (k && (k.kendaraan || k.shift)) { // store dikunci dari Peta Rute: jelaskan kenapa kuncinya tidak bisa dipenuhi
+      const lv = k.kendaraan ? vehicles.find(v => v.id === k.kendaraan) : null;
+      let why = "";
+      if (k.kendaraan && !lv) why = "kendaraan itu tidak aktif / kapasitas kosong";
+      else if (lv && k.shift && +k.shift > (+lv.maksShift || 1)) why = vehLabelE(lv) + " hanya " + (+lv.maksShift || 1) + " shift";
+      else { const vv = lv ? [lv] : vehicles.filter(v => vehOnDay(v, d)); const tr = vv.map(v => { const t0 = { ...s, kunci: null }; return simFlex(ctx, depot, v, ctx.start, Math.max(1, (+k.shift || 1) - (ctx.skip1 ? 1 : 0)), [t0], false); });
+        why = tr.some(r => r.ok) ? "rit kendaraan/shift itu sudah penuh (waktu atau kapasitas)" : [...new Set(tr.map(r => r.why).filter(Boolean))].join("; "); }
+      reason = "Kunci " + [lv ? vehLabelE(lv) : k.kendaraanNama, k.shift ? "shift " + k.shift : ""].filter(Boolean).join(" · ") + " tidak bisa dipenuhi: " + (why || reason);
+    }
     unserved.push({ day: d, store: s, reason });
   }));
   const trips = [];
@@ -1249,4 +1270,4 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { zonePreview, gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { kunciHari, zonePreview, gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
