@@ -1446,7 +1446,7 @@
   "loadingHariPertama": "malam",
   "mingguMulai": "2026-11-30"
  },
- "_savedAt": 1795683199125,
+ "_savedAt": 1795683769406,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3305,7 +3305,7 @@
   "t": 1795675184711
  },
  "savedPlan": {
-  "at": 1795683199125,
+  "at": 1795683769406,
   "sig": "1a6ae2m:19898",
   "weekSel": 0,
   "meta": {
@@ -7128,7 +7128,7 @@
       "unserved": 0
      },
      "starts": 0,
-     "ms": 2,
+     "ms": 3,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
@@ -7159,7 +7159,7 @@
        "unserved": 0
       },
       "starts": 10,
-      "ms": 361,
+      "ms": 365,
       "bobot": {
        "unserved": 10000,
        "rit": 60,
@@ -11126,7 +11126,7 @@
       "unserved": 0
      },
      "starts": 0,
-     "ms": 1,
+     "ms": 0,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
@@ -11157,7 +11157,7 @@
        "unserved": 0
       },
       "starts": 10,
-      "ms": 361,
+      "ms": 365,
       "bobot": {
        "unserved": 10000,
        "rit": 60,
