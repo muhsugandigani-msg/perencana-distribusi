@@ -1366,7 +1366,7 @@
      false
     ],
     "berlaku": "shift1",
-    "dihitung": true,
+    "dihitung": false,
     "waktu": "sebelum"
    },
    {
@@ -1453,7 +1453,7 @@
    "kota": "Kota Makassar"
   }
  },
- "_savedAt": 1795704317114,
+ "_savedAt": 1795704355026,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3399,8 +3399,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795704317114,
-  "sig": "1x98yoa:20243",
+  "at": 1795704355026,
+  "sig": "1b1wzkl:20244",
   "weekSel": 0,
   "meta": {
    "H": 1,
