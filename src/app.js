@@ -50,26 +50,126 @@ function normalize(s) {
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   return s;
 }
-/* Simpan: perubahan baru tersimpan di browser ini saat tombol "Simpan" (atau Ctrl+S) ditekan */
-let unsaved = false;
+/* Simpan: perubahan baru tersimpan saat tombol "Simpan" (atau Ctrl+S) ditekan.
+   Dengan token GitHub, data juga disimpan ke repo agar semua orang yang membuka link melihat data yang sama. */
+let unsaved = false, saving = false;
 function save() { // dipanggil di setiap perubahan input
   planDirty = true; markDirty();
   unsaved = true; saveStatus();
 }
-function commitSave() {
-  state._savedAt = Date.now();
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+const GH = { owner: "muhsugandigani-msg", repo: "perencana-distribusi", path: "data/plan-data.json", branch: "main" };
+const GH_API = `https://api.github.com/repos/${GH.owner}/${GH.repo}`;
+const shared = { sha: null, at: 0, ok: null, src: "lokal" }; // ok: null = belum dicek, false = tidak terjangkau
+function ghToken() { try { return localStorage.getItem(LS_KEY + "-gh-token") || ""; } catch (e) { return ""; } }
+function ghHeaders(json) {
+  const h = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" }, t = ghToken();
+  if (t) h.Authorization = "Bearer " + t;
+  if (json) h["Content-Type"] = "application/json";
+  return h;
+}
+function b64enc(str) { const u = new TextEncoder().encode(str); let bin = ""; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(bin); }
+function b64dec(b64) { const bin = atob(String(b64).replace(/\s/g, "")); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new TextDecoder().decode(u); }
+async function ghGetFile() { // -> {sha, data} | {sha:null} bila belum ada
+  const r = await fetch(`${GH_API}/contents/${GH.path}?ref=${GH.branch}&t=${Date.now()}`, { headers: ghHeaders(), cache: "no-store" });
+  if (r.status === 404) return { sha: null, data: null };
+  if (!r.ok) throw Object.assign(new Error("GitHub " + r.status), { status: r.status });
+  const j = await r.json(); let txt = j.content ? b64dec(j.content) : "";
+  if (!txt && j.download_url) txt = await (await fetch(`${GH_API}/contents/${GH.path}?ref=${GH.branch}`, { headers: Object.assign(ghHeaders(), { Accept: "application/vnd.github.raw+json" }), cache: "no-store" })).text();
+  return { sha: j.sha, data: txt ? JSON.parse(txt) : null };
+}
+async function ghPutFile(data, sha) {
+  const body = { message: "Simpan data plan (" + new Date().toLocaleString("id-ID") + ")", content: b64enc(JSON.stringify(data, null, 1)), branch: GH.branch };
+  if (sha) body.sha = sha;
+  const r = await fetch(`${GH_API}/contents/${GH.path}`, { method: "PUT", headers: ghHeaders(true), body: JSON.stringify(body) });
+  if (!r.ok) throw Object.assign(new Error("GitHub " + r.status), { status: r.status });
+  return (await r.json()).content.sha;
+}
+function applyShared(f, quiet) {
+  state = normalize(f.data); shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+  unsaved = false; plan = null; planDirty = true; runPlan(true); renderTab(); saveStatus();
+  if (!quiet) toast("Data bersama terbaru dimuat dari GitHub.");
+}
+async function loadShared() { // saat web dibuka
+  try {
+    const f = await ghGetFile(); shared.ok = true; shared.sha = f.sha;
+    if (!f.data) { saveStatus(); return; }
+    let d; try { d = normalize(clone(f.data)); } catch (e) { console.warn("Data bersama rusak", e); saveStatus(); return; }
+    shared.at = +d._savedAt || 0;
+    if (unsaved) { saveStatus(); toast("Ada data bersama di GitHub. Simpan atau muat ulang untuk melihatnya.", 5000); return; }
+    if (shared.at >= (+state._savedAt || 0)) applyShared({ sha: f.sha, data: f.data }, true);
+    else saveStatus();
+  } catch (e) { shared.ok = false; console.warn("Data bersama GitHub tidak bisa dimuat", e); saveStatus(); }
+}
+function saveLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; }
   catch (e) { toast("Gagal menyimpan: penyimpanan browser penuh atau diblokir.", 5000); return false; }
-  unsaved = false; saveStatus(); toast("Tersimpan. Data ini dimuat lagi saat web dibuka di browser ini.");
-  return true;
+}
+async function commitSave(force) {
+  if (saving) return false;
+  state._savedAt = Date.now();
+  if (!saveLocal()) return false;
+  if (!ghToken()) {
+    shared.src = "lokal"; unsaved = false; saveStatus();
+    toast("Tersimpan di browser ini saja. Untuk menyimpan bersama, buka menu Data → Simpan bersama (GitHub).", 4500);
+    return true;
+  }
+  saving = true; saveStatus();
+  try {
+    const cur = await ghGetFile();
+    if (!force && cur.sha && cur.sha !== shared.sha) { saving = false; saveStatus(); ghConflict(cur); return false; }
+    shared.sha = await ghPutFile(state, cur.sha); shared.at = state._savedAt; shared.ok = true; shared.src = "github";
+    saving = false; unsaved = false; saveStatus(); toast("Tersimpan ke GitHub. Semua yang membuka link ini akan melihat data ini.", 3500);
+    return true;
+  } catch (e) {
+    saving = false; unsaved = true; shared.src = "lokal";
+    if (e.status === 409 || e.status === 422) { try { const cur = await ghGetFile(); saveStatus(); ghConflict(cur); return false; } catch (e2) {} }
+    saveStatus();
+    const why = e.status === 401 ? "token tidak valid atau kedaluwarsa" : e.status === 403 || e.status === 404 ? "token tidak punya izin tulis (Contents: Read and write) ke repo ini" : "koneksi ke GitHub gagal";
+    toast("Tersimpan di browser ini, tetapi gagal ke GitHub: " + why + ".", 6000);
+    return false;
+  }
+}
+function ghConflict(cur) {
+  askConfirm("Data di GitHub sudah diubah orang lain sejak Anda membukanya. Timpa dengan data Anda, atau muat data terbaru (perubahan Anda yang belum tersimpan akan hilang)?", [
+    ["Timpa dengan data saya", () => { shared.sha = cur.sha; commitSave(true); }],
+    ["Muat data terbaru", () => { if (cur.data) applyShared(cur); else toast("Data di GitHub kosong."); }]
+  ]);
 }
 function saveStatus() {
   const b = document.getElementById("btnSave"), st = document.getElementById("saveState"); if (!b || !st) return;
-  b.classList.toggle("primary", unsaved); b.classList.toggle("dirty", unsaved);
+  b.classList.toggle("primary", unsaved); b.classList.toggle("dirty", unsaved); b.disabled = saving;
+  b.textContent = saving ? "Menyimpan…" : "💾 Simpan";
   const t = state._savedAt ? new Date(state._savedAt).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  st.textContent = unsaved ? "Belum disimpan" : (t ? "Tersimpan " + t : "Belum pernah disimpan");
-  st.className = "savestate" + (unsaved ? " warn" : "");
+  const gh = shared.src === "github" && shared.at && shared.at === state._savedAt;
+  st.textContent = saving ? "Menyimpan ke GitHub…" : unsaved ? "Belum disimpan" : !t ? "Belum pernah disimpan" : (gh ? "☁ Data bersama · " : ghToken() ? "Belum terkirim ke GitHub · " : "Tersimpan di browser ini · ") + t;
+  st.title = ghToken() ? "Token GitHub terpasang: Simpan menyimpan ke repo." : "Tanpa token GitHub: Simpan hanya menyimpan di browser ini. Menu Data → Simpan bersama (GitHub).";
+  st.className = "savestate" + (unsaved || (!gh && t && ghToken()) ? " warn" : gh ? " gh" : "");
 }
+/* Dialog token GitHub */
+function ghDialog() {
+  const d = $("#ghDlg"); $("#ghTok").value = ""; $("#ghTok").placeholder = ghToken() ? "Token sudah terpasang (isi untuk mengganti)" : "github_pat_…";
+  ghStat(ghToken() ? "Token terpasang di browser ini." : "Belum ada token. Simpan hanya ke browser ini.", "");
+  if (typeof d.showModal === "function") d.showModal(); else d.setAttribute("open", "");
+}
+function ghStat(msg, cls) { const g = $("#ghStatus"); g.textContent = msg; g.className = "gst" + (cls ? " " + cls : ""); }
+async function ghTest() {
+  const r = await fetch(GH_API, { headers: ghHeaders(), cache: "no-store" });
+  if (r.status === 401) return [false, "Token tidak valid atau kedaluwarsa."];
+  if (!r.ok) return [false, "Repo tidak bisa diakses dengan token ini (" + r.status + "). Pastikan repo perencana-distribusi dipilih."];
+  const j = await r.json();
+  return j.permissions && j.permissions.push ? [true, "Token aktif dan bisa menyimpan ke repo. Tekan 💾 Simpan untuk menyimpan bersama."] : [false, "Token hanya bisa membaca. Ubah izin Contents menjadi Read and write."];
+}
+$("#ghSaveTok").onclick = async () => {
+  const v = $("#ghTok").value.trim();
+  if (v) { if (!/^[A-Za-z0-9_]{20,255}$/.test(v)) return ghStat("Format token tidak dikenali. Salin ulang token dari GitHub.", "bad"); try { localStorage.setItem(LS_KEY + "-gh-token", v); } catch (e) { return ghStat("Browser memblokir penyimpanan token.", "bad"); } }
+  if (!ghToken()) return ghStat("Tempel token terlebih dahulu.", "bad");
+  ghStat("Mengetes token…", "");
+  try { const [ok, msg] = await ghTest(); ghStat(msg, ok ? "ok" : "bad"); $("#ghTok").value = ""; $("#ghTok").placeholder = "Token sudah terpasang (isi untuk mengganti)"; }
+  catch (e) { ghStat("Tidak bisa menghubungi GitHub dari sini. Token tetap tersimpan; coba lagi nanti.", "bad"); }
+  saveStatus();
+};
+$("#ghDel").onclick = () => { try { localStorage.removeItem(LS_KEY + "-gh-token"); } catch (e) {} $("#ghTok").value = ""; $("#ghTok").placeholder = "github_pat_…"; ghStat("Token dihapus dari browser ini. Simpan hanya ke browser ini.", ""); saveStatus(); };
 window.addEventListener("beforeunload", e => { if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); commitSave(); } });
 function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
@@ -405,7 +505,7 @@ function runPlan(silent) {
   planDirty = false; mapDrawn = null;
   if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
 }
-$("#btnSave").onclick = commitSave; saveStatus();
+$("#btnSave").onclick = () => commitSave(); saveStatus();
 $("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
 
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
@@ -933,6 +1033,7 @@ $("#menuPop").addEventListener("click", e => {
   if (a === "import") $("#fileJson").click();
   if (a === "importStore") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); $("#fileStore").click(); }
   if (a === "template") storeTemplate();
+  if (a === "github") ghDialog();
   if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); state._savedAt = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); unsaved = false; saveStatus(); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
   if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); runPlan(); renderTab(); }]]);
   if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
@@ -947,5 +1048,6 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   if (!document.getElementById("p-" + t)) t = "plan";
   runPlan(true);
   setTab(t);
+  loadShared();
 })();
 window.addEventListener("resize", () => { clearTimeout(ganttRs); ganttRs = setTimeout(() => { const w = $("#p-gantt").clientWidth; if (tab === "gantt" && plan && Math.abs(w - ganttW) > 40) renderGantt(); }, 200); });
