@@ -1445,9 +1445,10 @@
   "optimasiMendalam": true,
   "loadingHariPertama": "malam",
   "mingguMulai": "2026-11-30",
-  "titikGudang": "https://www.google.com/maps/place/5%C2%B006'07.5%22S+119%C2%B028'39.3%22E/@-5.102094,119.477585,17z/data=!3m1!4b1!4m4!3m3!8m2!3d-5.102094!4d119.477585?entry=ttu&g_ep=EgoyMDI2MTEyMy4wIKXMDSoASAFQAw%3D%3D"
+  "titikGudang": "https://www.google.com/maps/place/5%C2%B006'07.5%22S+119%C2%B028'39.3%22E/@-5.102094,119.477585,17z/data=!3m1!4b1!4m4!3m3!8m2!3d-5.102094!4d119.477585?entry=ttu&g_ep=EgoyMDI2MTEyMy4wIKXMDSoASAFQAw%3D%3D",
+  "jalurGudang": {}
  },
- "_savedAt": 1795702900143,
+ "_savedAt": 1795703557913,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3393,8 +3394,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795702900143,
-  "sig": "1bqlrbv:20115",
+  "at": 1795703557913,
+  "sig": "jjtc41:20132",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3456,18 +3457,6 @@
        "bbm": "Bensin",
        "maksRadiusKm": 15
       }
-     },
-     {
-      "$v": "vfaooj7",
-      "d": {
-       "aktif": false,
-       "jenis": "CDD Box",
-       "plat": "DD 0003 LZ",
-       "kapasitasKg": 6000,
-       "kecepatan": 40,
-       "maksShift": 1,
-       "bbm": "Solar"
-      }
      }
     ],
     "days": [
@@ -3483,2352 +3472,14 @@
       "ok": true,
       "why": "",
       "t0": 480,
-      "shiftStart": 780,
-      "dep": 930,
-      "ret": 1255.6942083333336,
-      "end": 1255.6942083333336,
-      "endShift": 1255.6942083333336,
-      "dur": 475.69420833333356,
-      "km": 42.480000000000004,
-      "kgDel": 3680.2000000000003,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s2",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Panakkukang",
-          "alamat": "Jalan Toddopuli Raya, Pandang, Panakkukang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1631663,119.4525599",
-          "lat": -5.1631663,
-          "lng": 119.4525599,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 947.7,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 14.27,
-        "drive": 35.31825,
-        "depart": 930,
-        "arr": 965.31825,
-        "start": 965.31825,
-        "fin": 996.9082500000001,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s7",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Tamalate",
-          "alamat": "Jalan Tamalate Raya, Kassi-Kassi, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1679776,119.4477005",
-          "lat": -5.1679776,
-          "lng": 119.4477005,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 921.7,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 1.17,
-        "drive": 3.6196875,
-        "depart": 996.9082500000001,
-        "arr": 1000.5279375000001,
-        "start": 1000.5279375000001,
-        "fin": 1031.2512708333334,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s14",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Mappaoddang",
-          "alamat": "Jalan Andi Mappaodang, Bongaya, Tamalate",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1697756,119.4174852",
-          "lat": -5.1697756,
-          "lng": 119.4174852,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 560.4,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 5.04,
-        "drive": 15.592500000000001,
-        "depart": 1031.2512708333334,
-        "arr": 1046.8437708333333,
-        "start": 1046.8437708333333,
-        "fin": 1065.5237708333334,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s13",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Sunu",
-          "alamat": "Jalan Sunu, Kalukuang, Tallo",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1263022,119.4287397",
-          "lat": -5.1263022,
-          "lng": 119.4287397,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1250.4,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 6.53,
-        "drive": 20.2021875,
-        "depart": 1065.5237708333334,
-        "arr": 1115.7259583333334,
-        "start": 1115.7259583333334,
-        "fin": 1217.4059583333335,
-        "brk": 90,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 720,
-        "label": "Pembersihan kendaraan & gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 780,
-        "end": 840,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 840,
-        "end": 900,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 930,
-        "end": 965.31825,
-        "label": "Perjalanan ke Lazuna Chicken Panakkukang",
-        "km": 14.27
-       },
-       {
-        "type": "bongkar",
-        "start": 965.31825,
-        "end": 996.9082500000001,
-        "label": "Menurunkan barang di Lazuna Chicken Panakkukang",
-        "kg": 947.7
-       },
-       {
-        "type": "jalan",
-        "start": 996.9082500000001,
-        "end": 1000.5279375000001,
-        "label": "Perjalanan ke Lazuna Chicken Tamalate",
-        "km": 1.17
-       },
-       {
-        "type": "bongkar",
-        "start": 1000.5279375000001,
-        "end": 1031.2512708333334,
-        "label": "Menurunkan barang di Lazuna Chicken Tamalate",
-        "kg": 921.7
-       },
-       {
-        "type": "jalan",
-        "start": 1031.2512708333334,
-        "end": 1046.8437708333333,
-        "label": "Perjalanan ke Lazuna Chicken Mappaoddang",
-        "km": 5.04
-       },
-       {
-        "type": "bongkar",
-        "start": 1046.8437708333333,
-        "end": 1065.5237708333334,
-        "label": "Menurunkan barang di Lazuna Chicken Mappaoddang",
-        "kg": 560.4
-       },
-       {
-        "type": "jalan",
-        "start": 1065.5237708333334,
-        "end": 1115.7259583333334,
-        "label": "Perjalanan ke Lazuna Chicken Sunu",
-        "km": 6.53
-       },
-       {
-        "type": "bongkar",
-        "start": 1115.7259583333334,
-        "end": 1217.4059583333335,
-        "label": "Menurunkan barang di Lazuna Chicken Sunu",
-        "kg": 1250.4
-       },
-       {
-        "type": "jalan",
-        "start": 1217.4059583333335,
-        "end": 1255.6942083333336,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 15.469999999999999
-       }
-      ],
-      "backKm": 15.469999999999999,
-      "backMin": 38.28825,
-      "backDep": 1217.4059583333335,
-      "backBrk": 0,
-      "day": 0,
-      "vIdx": 0,
-      "veh": {
-       "$v": "v1",
-       "d": {
-        "aktif": true,
-        "jenis": "CDD Box",
-        "plat": "DD 0001 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 2,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 780,
-      "dep": 930,
-      "ret": 1024.5685624999999,
-      "end": 1024.5685624999999,
-      "endShift": 1024.5685624999999,
-      "dur": 244.56856249999987,
-      "km": 15.95,
-      "kgDel": 0,
-      "kgPick": 1500,
-      "stops": [
-       {
-        "store": {
-         "$s": "s1",
-         "d": {
-          "aktif": true,
-          "nama": "PRODUKSI",
-          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
-          "lat": -5.1169668,
-          "lng": 119.5093495,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1500,
-          "frek": 5,
-          "antaran": "Tujuan",
-          "loading": "Menaikkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           5
-          ]
-         }
-        },
-        "km": 7.72,
-        "drive": 19.106999999999996,
-        "depart": 930,
-        "arr": 949.107,
-        "start": 949.107,
-        "fin": 999.107,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 720,
-        "label": "Pembersihan kendaraan & gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 780,
-        "end": 840,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 840,
-        "end": 900,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 930,
-        "end": 949.107,
-        "label": "Perjalanan ke PRODUKSI",
-        "km": 7.72
-       },
-       {
-        "type": "muat",
-        "start": 949.107,
-        "end": 999.107,
-        "label": "Menaikkan barang di PRODUKSI",
-        "kg": 1500
-       },
-       {
-        "type": "jalan",
-        "start": 999.107,
-        "end": 1024.5685624999999,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.23
-       }
-      ],
-      "backKm": 8.23,
-      "backMin": 25.461562500000003,
-      "backDep": 999.107,
-      "backBrk": 0,
-      "day": 0,
-      "vIdx": 1,
-      "veh": {
-       "$v": "vtt5ge9",
-       "d": {
-        "aktif": true,
-        "jenis": "Pickup Box",
-        "plat": "DD 0002 LZ",
-        "kapasitasKg": 1500,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Bensin",
-        "maksRadiusKm": 15
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 780,
-      "dep": 930,
-      "ret": 1245.53575,
-      "end": 1245.53575,
-      "endShift": 1245.53575,
-      "dur": 465.53575,
-      "km": 37.14,
-      "kgDel": 3828,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s26",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Urip 286",
-          "alamat": "Lorong KB, Karampuang, Panakkukang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1407254,119.4513953",
-          "lat": -5.1407254,
-          "lng": 119.4513953,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1155.7,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 12.42,
-        "drive": 30.7395,
-        "depart": 930,
-        "arr": 960.7395,
-        "start": 960.7395,
-        "fin": 999.2628333333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s3",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Talasalapang",
-          "alamat": "Gunung Sari, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1823601,119.4453868",
-          "lat": -5.1823601,
-          "lng": 119.4453868,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1658.1,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 7.44,
-        "drive": 23.017500000000002,
-        "depart": 999.2628333333333,
-        "arr": 1022.2803333333334,
-        "start": 1022.2803333333334,
-        "fin": 1077.5503333333334,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s41",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Tamalate 2",
-          "alamat": "Jalan Tamalate Raya, Mappala, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1721955,119.4454488",
-          "lat": -5.1721955,
-          "lng": 119.4454488,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1014.2,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 2.28,
-        "drive": 7.05375,
-        "depart": 1077.5503333333334,
-        "arr": 1114.6040833333334,
-        "start": 1114.6040833333334,
-        "fin": 1208.41075,
-        "brk": 90,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 720,
-        "label": "Pembersihan kendaraan & gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 780,
-        "end": 840,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 840,
-        "end": 900,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 930,
-        "end": 960.7395,
-        "label": "Perjalanan ke Lazuna Chicken Urip 286",
-        "km": 12.42
-       },
-       {
-        "type": "bongkar",
-        "start": 960.7395,
-        "end": 999.2628333333333,
-        "label": "Menurunkan barang di Lazuna Chicken Urip 286",
-        "kg": 1155.7
-       },
-       {
-        "type": "jalan",
-        "start": 999.2628333333333,
-        "end": 1022.2803333333334,
-        "label": "Perjalanan ke Lazuna Chicken Talasalapang",
-        "km": 7.44
-       },
-       {
-        "type": "bongkar",
-        "start": 1022.2803333333334,
-        "end": 1077.5503333333334,
-        "label": "Menurunkan barang di Lazuna Chicken Talasalapang",
-        "kg": 1658.1
-       },
-       {
-        "type": "jalan",
-        "start": 1077.5503333333334,
-        "end": 1114.6040833333334,
-        "label": "Perjalanan ke Lazuna Chicken Tamalate 2",
-        "km": 2.28
-       },
-       {
-        "type": "bongkar",
-        "start": 1114.6040833333334,
-        "end": 1208.41075,
-        "label": "Menurunkan barang di Lazuna Chicken Tamalate 2",
-        "kg": 1014.2
-       },
-       {
-        "type": "jalan",
-        "start": 1208.41075,
-        "end": 1245.53575,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 15
-       }
-      ],
-      "backKm": 15,
-      "backMin": 37.125,
-      "backDep": 1208.41075,
-      "backBrk": 0,
-      "day": 0,
-      "vIdx": 2,
-      "veh": {
-       "$v": "vfaooj7",
-       "d": {
-        "aktif": false,
-        "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
       "shiftStart": 480,
       "dep": 600,
-      "ret": 938.44625,
-      "end": 938.44625,
-      "endShift": 938.44625,
-      "dur": 458.44624999999996,
-      "km": 26.749999999999996,
-      "kgDel": 3967.2,
-      "kgPick": 1500,
-      "stops": [
-       {
-        "store": {
-         "$s": "s8",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken BTP",
-          "alamat": "Jalan Tamalanrea Raya, Tamalanrea",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1322714,119.5016939",
-          "lat": -5.1322714,
-          "lng": 119.5016939,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 724.3,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 6.8500000000000005,
-        "drive": 16.953750000000003,
-        "depart": 600,
-        "arr": 616.95375,
-        "start": 616.95375,
-        "fin": 641.0970833333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s42",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Hamzy (PK 3)",
-          "alamat": "Jalan Perintis Kemerdekaan 3, Tamalanrea Indah, Tamalanrea",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1415796,119.4776584",
-          "lat": -5.1415796,
-          "lng": 119.4776584,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 702.5,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 4,
-        "drive": 9.899999999999999,
-        "depart": 641.0970833333333,
-        "arr": 650.9970833333333,
-        "start": 650.9970833333333,
-        "fin": 674.4137499999999,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s37",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Perintis Daya",
-          "alamat": "Jalan Perintis Kemerdekaan, Berua, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1162665,119.5123061",
-          "lat": -5.1162665,
-          "lng": 119.5123061,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1067.1,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 5.26,
-        "drive": 13.0185,
-        "depart": 674.4137499999999,
-        "arr": 687.43225,
-        "start": 687.43225,
-        "fin": 783.00225,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s9",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Paccerakkang",
-          "alamat": "Jalan Paccerakkang, Berua, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1138766,119.5168249",
-          "lat": -5.1138766,
-          "lng": 119.5168249,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1473.3,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 0.99,
-        "drive": 2.45025,
-        "depart": 783.00225,
-        "arr": 785.4525,
-        "start": 785.4525,
-        "fin": 834.5625,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s1",
-         "d": {
-          "aktif": true,
-          "nama": "PRODUKSI",
-          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
-          "lat": -5.1169668,
-          "lng": 119.5093495,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1500,
-          "frek": 5,
-          "antaran": "Tujuan",
-          "loading": "Menaikkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           5
-          ]
-         }
-        },
-        "km": 1.42,
-        "drive": 3.5144999999999995,
-        "depart": 834.5625,
-        "arr": 838.077,
-        "start": 838.077,
-        "fin": 888.077,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 616.95375,
-        "label": "Perjalanan ke Lazuna Chicken BTP",
-        "km": 6.8500000000000005
-       },
-       {
-        "type": "bongkar",
-        "start": 616.95375,
-        "end": 641.0970833333333,
-        "label": "Menurunkan barang di Lazuna Chicken BTP",
-        "kg": 724.3
-       },
-       {
-        "type": "jalan",
-        "start": 641.0970833333333,
-        "end": 650.9970833333333,
-        "label": "Perjalanan ke Lazuna Chicken Hamzy (PK 3)",
-        "km": 4
-       },
-       {
-        "type": "bongkar",
-        "start": 650.9970833333333,
-        "end": 674.4137499999999,
-        "label": "Menurunkan barang di Lazuna Chicken Hamzy (PK 3)",
-        "kg": 702.5
-       },
-       {
-        "type": "jalan",
-        "start": 674.4137499999999,
-        "end": 687.43225,
-        "label": "Perjalanan ke Lazuna Chicken Perintis Daya",
-        "km": 5.26
-       },
-       {
-        "type": "bongkar",
-        "start": 687.43225,
-        "end": 783.00225,
-        "label": "Menurunkan barang di Lazuna Chicken Perintis Daya",
-        "kg": 1067.1
-       },
-       {
-        "type": "jalan",
-        "start": 783.00225,
-        "end": 785.4525,
-        "label": "Perjalanan ke Lazuna Chicken Paccerakkang",
-        "km": 0.99
-       },
-       {
-        "type": "bongkar",
-        "start": 785.4525,
-        "end": 834.5625,
-        "label": "Menurunkan barang di Lazuna Chicken Paccerakkang",
-        "kg": 1473.3
-       },
-       {
-        "type": "jalan",
-        "start": 834.5625,
-        "end": 838.077,
-        "label": "Perjalanan ke PRODUKSI",
-        "km": 1.42
-       },
-       {
-        "type": "muat",
-        "start": 838.077,
-        "end": 888.077,
-        "label": "Menaikkan barang di PRODUKSI",
-        "kg": 1500
-       },
-       {
-        "type": "jalan",
-        "start": 888.077,
-        "end": 938.44625,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.23
-       }
-      ],
-      "backKm": 8.23,
-      "backMin": 20.36925,
-      "backDep": 888.077,
-      "backBrk": 30,
-      "day": 1,
-      "vIdx": 0,
-      "veh": {
-       "$v": "v1",
-       "d": {
-        "aktif": true,
-        "jenis": "CDD Box",
-        "plat": "DD 0001 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 2,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 667.8021666666667,
-      "end": 667.8021666666667,
-      "endShift": 667.8021666666667,
-      "dur": 187.80216666666672,
-      "km": 16.98,
-      "kgDel": 773.3,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s27",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Villa Mutiara",
-          "alamat": "Jalan Mutiara Boulevard, Bulurokeng, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.0739644,119.4926582",
-          "lat": -5.0739644,
-          "lng": 119.4926582,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 773.3,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 7.74,
-        "drive": 19.156499999999998,
-        "depart": 600,
-        "arr": 619.1565,
-        "start": 619.1565,
-        "fin": 644.9331666666667,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 619.1565,
-        "label": "Perjalanan ke Lazuna Chicken Villa Mutiara",
-        "km": 7.74
-       },
-       {
-        "type": "bongkar",
-        "start": 619.1565,
-        "end": 644.9331666666667,
-        "label": "Menurunkan barang di Lazuna Chicken Villa Mutiara",
-        "kg": 773.3
-       },
-       {
-        "type": "jalan",
-        "start": 644.9331666666667,
-        "end": 667.8021666666667,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 9.24
-       }
-      ],
-      "backKm": 9.24,
-      "backMin": 22.869,
-      "backDep": 644.9331666666667,
-      "backBrk": 0,
-      "day": 1,
-      "vIdx": 1,
-      "veh": {
-       "$v": "vtt5ge9",
-       "d": {
-        "aktif": true,
-        "jenis": "Pickup Box",
-        "plat": "DD 0002 LZ",
-        "kapasitasKg": 1500,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Bensin",
-        "maksRadiusKm": 15
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 937.9801666666666,
-      "end": 937.9801666666666,
-      "endShift": 937.9801666666666,
-      "dur": 457.9801666666666,
-      "km": 45.06,
-      "kgDel": 4093.7,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s40",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Pajjaiang",
-          "alamat": "Jalan Laikang, Laikang, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1026843,119.5289779",
-          "lat": -5.1026843,
-          "lng": 119.5289779,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1055.8,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 10.469999999999999,
-        "drive": 25.913249999999998,
-        "depart": 600,
-        "arr": 625.91325,
-        "start": 625.91325,
-        "fin": 661.1065833333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s12",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Goa Ria",
-          "alamat": "Jalan Goa Ria, Bakung, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.0898566,119.5285946",
-          "lat": -5.0898566,
-          "lng": 119.5285946,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 972.4,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 2.02,
-        "drive": 4.9995,
-        "depart": 661.1065833333333,
-        "arr": 666.1060833333333,
-        "start": 666.1060833333333,
-        "fin": 698.5194166666666,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s25",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Bontoa",
-          "alamat": "Bontoa, Mandai",
-          "kota": "Kabupaten Maros",
-          "link": "https://www.google.com/maps?q=-5.048903,119.5516553",
-          "lat": -5.048903,
-          "lng": 119.5516553,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1057.5,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 6.47,
-        "drive": 16.01325,
-        "depart": 698.5194166666666,
-        "arr": 714.5326666666666,
-        "start": 714.5326666666666,
-        "fin": 809.7826666666666,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s24",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Pettuadae (Zuper)",
-          "alamat": "RW 05 Desa Pattuadae, Turikale",
-          "kota": "Kabupaten Maros",
-          "link": "https://www.google.com/maps?q=-5.0137729,119.5733044",
-          "lat": -5.0137729,
-          "lng": 119.5733044,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1008,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 5.48,
-        "drive": 13.563,
-        "depart": 809.7826666666666,
-        "arr": 823.3456666666666,
-        "start": 823.3456666666666,
-        "fin": 856.9456666666666,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 625.91325,
-        "label": "Perjalanan ke Lazuna Chicken Pajjaiang",
-        "km": 10.469999999999999
-       },
-       {
-        "type": "bongkar",
-        "start": 625.91325,
-        "end": 661.1065833333333,
-        "label": "Menurunkan barang di Lazuna Chicken Pajjaiang",
-        "kg": 1055.8
-       },
-       {
-        "type": "jalan",
-        "start": 661.1065833333333,
-        "end": 666.1060833333333,
-        "label": "Perjalanan ke Lazuna Chicken Goa Ria",
-        "km": 2.02
-       },
-       {
-        "type": "bongkar",
-        "start": 666.1060833333333,
-        "end": 698.5194166666666,
-        "label": "Menurunkan barang di Lazuna Chicken Goa Ria",
-        "kg": 972.4
-       },
-       {
-        "type": "jalan",
-        "start": 698.5194166666666,
-        "end": 714.5326666666666,
-        "label": "Perjalanan ke Lazuna Chicken Bontoa",
-        "km": 6.47
-       },
-       {
-        "type": "bongkar",
-        "start": 714.5326666666666,
-        "end": 809.7826666666666,
-        "label": "Menurunkan barang di Lazuna Chicken Bontoa",
-        "kg": 1057.5
-       },
-       {
-        "type": "jalan",
-        "start": 809.7826666666666,
-        "end": 823.3456666666666,
-        "label": "Perjalanan ke Lazuna Chicken Pettuadae (Zuper)",
-        "km": 5.48
-       },
-       {
-        "type": "bongkar",
-        "start": 823.3456666666666,
-        "end": 856.9456666666666,
-        "label": "Menurunkan barang di Lazuna Chicken Pettuadae (Zuper)",
-        "kg": 1008
-       },
-       {
-        "type": "jalan",
-        "start": 856.9456666666666,
-        "end": 937.9801666666666,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 20.62
-       }
-      ],
-      "backKm": 20.62,
-      "backMin": 51.0345,
-      "backDep": 856.9456666666666,
-      "backBrk": 30,
-      "day": 1,
-      "vIdx": 2,
-      "veh": {
-       "$v": "vfaooj7",
-       "d": {
-        "aktif": false,
-        "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 893.0115,
-      "end": 893.0115,
-      "endShift": 893.0115,
-      "dur": 413.01149999999996,
-      "km": 36.739999999999995,
-      "kgDel": 4262.400000000001,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s43",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Antang 2",
-          "alamat": "Jalan Muhammad Paleo Raya, Antang, Manggala",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.162023,119.4765097",
-          "lat": -5.162023,
-          "lng": 119.4765097,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1155.4,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 11.7,
-        "drive": 28.957499999999996,
-        "depart": 600,
-        "arr": 628.9575,
-        "start": 628.9575,
-        "fin": 667.4708333333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s39",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Zuper Hertasning Aroepala",
-          "alamat": "Minasa Upa, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1782174,119.4618899",
-          "lat": -5.1782174,
-          "lng": 119.4618899,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1193.7,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 4.15,
-        "drive": 10.27125,
-        "depart": 667.4708333333333,
-        "arr": 677.7420833333333,
-        "start": 677.7420833333333,
-        "fin": 717.5320833333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s29",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Nipa-Nipa",
-          "alamat": "Manggala",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1627128,119.5022184",
-          "lat": -5.1627128,
-          "lng": 119.5022184,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 833.9,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 6.74,
-        "drive": 16.6815,
-        "depart": 717.5320833333333,
-        "arr": 794.2135833333333,
-        "start": 794.2135833333333,
-        "fin": 822.0102499999999,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s20",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Baruga",
-          "alamat": "Jalan Inspeksi P.A.M., Antang, Manggala",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1563815,119.4817461",
-          "lat": -5.1563815,
-          "lng": 119.4817461,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1079.4,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 2.47,
-        "drive": 6.113250000000001,
-        "depart": 822.0102499999999,
-        "arr": 828.1234999999999,
-        "start": 828.1234999999999,
-        "fin": 864.1034999999999,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 628.9575,
-        "label": "Perjalanan ke Lazuna Chicken Antang 2",
-        "km": 11.7
-       },
-       {
-        "type": "bongkar",
-        "start": 628.9575,
-        "end": 667.4708333333333,
-        "label": "Menurunkan barang di Lazuna Chicken Antang 2",
-        "kg": 1155.4
-       },
-       {
-        "type": "jalan",
-        "start": 667.4708333333333,
-        "end": 677.7420833333333,
-        "label": "Perjalanan ke Lazuna Chicken Zuper Hertasning Aroepala",
-        "km": 4.15
-       },
-       {
-        "type": "bongkar",
-        "start": 677.7420833333333,
-        "end": 717.5320833333333,
-        "label": "Menurunkan barang di Lazuna Chicken Zuper Hertasning Aroepala",
-        "kg": 1193.7
-       },
-       {
-        "type": "jalan",
-        "start": 717.5320833333333,
-        "end": 794.2135833333333,
-        "label": "Perjalanan ke Lazuna Chicken Nipa-Nipa",
-        "km": 6.74
-       },
-       {
-        "type": "bongkar",
-        "start": 794.2135833333333,
-        "end": 822.0102499999999,
-        "label": "Menurunkan barang di Lazuna Chicken Nipa-Nipa",
-        "kg": 833.9
-       },
-       {
-        "type": "jalan",
-        "start": 822.0102499999999,
-        "end": 828.1234999999999,
-        "label": "Perjalanan ke Lazuna Chicken Baruga",
-        "km": 2.47
-       },
-       {
-        "type": "bongkar",
-        "start": 828.1234999999999,
-        "end": 864.1034999999999,
-        "label": "Menurunkan barang di Lazuna Chicken Baruga",
-        "kg": 1079.4
-       },
-       {
-        "type": "jalan",
-        "start": 864.1034999999999,
-        "end": 893.0115,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 11.68
-       }
-      ],
-      "backKm": 11.68,
-      "backMin": 28.907999999999998,
-      "backDep": 864.1034999999999,
-      "backBrk": 0,
-      "day": 2,
-      "vIdx": 0,
-      "veh": {
-       "$v": "v1",
-       "d": {
-        "aktif": true,
-        "jenis": "CDD Box",
-        "plat": "DD 0001 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 2,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 689.4762499999999,
-      "end": 689.4762499999999,
-      "endShift": 689.4762499999999,
-      "dur": 209.47624999999994,
-      "km": 15.95,
-      "kgDel": 0,
-      "kgPick": 1500,
-      "stops": [
-       {
-        "store": {
-         "$s": "s1",
-         "d": {
-          "aktif": true,
-          "nama": "PRODUKSI",
-          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
-          "lat": -5.1169668,
-          "lng": 119.5093495,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1500,
-          "frek": 5,
-          "antaran": "Tujuan",
-          "loading": "Menaikkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           5
-          ]
-         }
-        },
-        "km": 7.72,
-        "drive": 19.106999999999996,
-        "depart": 600,
-        "arr": 619.107,
-        "start": 619.107,
-        "fin": 669.107,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 619.107,
-        "label": "Perjalanan ke PRODUKSI",
-        "km": 7.72
-       },
-       {
-        "type": "muat",
-        "start": 619.107,
-        "end": 669.107,
-        "label": "Menaikkan barang di PRODUKSI",
-        "kg": 1500
-       },
-       {
-        "type": "jalan",
-        "start": 669.107,
-        "end": 689.4762499999999,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.23
-       }
-      ],
-      "backKm": 8.23,
-      "backMin": 20.36925,
-      "backDep": 669.107,
-      "backBrk": 0,
-      "day": 2,
-      "vIdx": 1,
-      "veh": {
-       "$v": "vtt5ge9",
-       "d": {
-        "aktif": true,
-        "jenis": "Pickup Box",
-        "plat": "DD 0002 LZ",
-        "kapasitasKg": 1500,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Bensin",
-        "maksRadiusKm": 15
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 952.0245833333333,
-      "end": 952.0245833333333,
-      "endShift": 952.0245833333333,
-      "dur": 472.02458333333334,
-      "km": 39.349999999999994,
-      "kgDel": 4939,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s17",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Tinumbu",
-          "alamat": "Jalan Tinumbu, Parang Layang, Bontoala",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1229435,119.4198277",
-          "lat": -5.1229435,
-          "lng": 119.4198277,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 815.3,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 17.279999999999998,
-        "drive": 42.767999999999994,
-        "depart": 600,
-        "arr": 642.768,
-        "start": 642.768,
-        "fin": 669.9446666666666,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s16",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Rappocini",
-          "alamat": "Jalan Rappocini Raya, Buakana, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1576263,119.4324174",
-          "lat": -5.1576263,
-          "lng": 119.4324174,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1084.8,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 4.51,
-        "drive": 11.162249999999998,
-        "depart": 669.9446666666666,
-        "arr": 681.1069166666666,
-        "start": 681.1069166666666,
-        "fin": 717.2669166666666,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s15",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Abdesir",
-          "alamat": "Jalan Abdullah Daeng Sirua, Tamamaung, Panakkukang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1486494,119.439298",
-          "lat": -5.1486494,
-          "lng": 119.439298,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1889.1,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 2.2,
-        "drive": 5.445,
-        "depart": 717.2669166666666,
-        "arr": 782.7119166666666,
-        "start": 782.7119166666666,
-        "fin": 845.6819166666667,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s5",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Perintis VII",
-          "alamat": "Jalan Perintis Kemerdekaan 7, Tamalanrea Indah, Tamalanrea",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.136437,119.4825193",
-          "lat": -5.136437,
-          "lng": 119.4825193,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1149.8,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 6.84,
-        "drive": 16.929,
-        "depart": 845.6819166666667,
-        "arr": 862.6109166666666,
-        "start": 862.6109166666666,
-        "fin": 930.9375833333334,
-        "brk": 30,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 642.768,
-        "label": "Perjalanan ke Lazuna Chicken Tinumbu",
-        "km": 17.279999999999998
-       },
-       {
-        "type": "bongkar",
-        "start": 642.768,
-        "end": 669.9446666666666,
-        "label": "Menurunkan barang di Lazuna Chicken Tinumbu",
-        "kg": 815.3
-       },
-       {
-        "type": "jalan",
-        "start": 669.9446666666666,
-        "end": 681.1069166666666,
-        "label": "Perjalanan ke Lazuna Chicken Rappocini",
-        "km": 4.51
-       },
-       {
-        "type": "bongkar",
-        "start": 681.1069166666666,
-        "end": 717.2669166666666,
-        "label": "Menurunkan barang di Lazuna Chicken Rappocini",
-        "kg": 1084.8
-       },
-       {
-        "type": "jalan",
-        "start": 717.2669166666666,
-        "end": 782.7119166666666,
-        "label": "Perjalanan ke Lazuna Chicken Abdesir",
-        "km": 2.2
-       },
-       {
-        "type": "bongkar",
-        "start": 782.7119166666666,
-        "end": 845.6819166666667,
-        "label": "Menurunkan barang di Lazuna Chicken Abdesir",
-        "kg": 1889.1
-       },
-       {
-        "type": "jalan",
-        "start": 845.6819166666667,
-        "end": 862.6109166666666,
-        "label": "Perjalanan ke Lazuna Chicken Perintis VII",
-        "km": 6.84
-       },
-       {
-        "type": "bongkar",
-        "start": 862.6109166666666,
-        "end": 930.9375833333334,
-        "label": "Menurunkan barang di Lazuna Chicken Perintis VII",
-        "kg": 1149.8
-       },
-       {
-        "type": "jalan",
-        "start": 930.9375833333334,
-        "end": 952.0245833333333,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.52
-       }
-      ],
-      "backKm": 8.52,
-      "backMin": 21.087,
-      "backDep": 930.9375833333334,
-      "backBrk": 0,
-      "day": 2,
-      "vIdx": 2,
-      "veh": {
-       "$v": "vfaooj7",
-       "d": {
-        "aktif": false,
-        "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 949.1813333333334,
-      "end": 949.1813333333334,
-      "endShift": 949.1813333333334,
-      "dur": 469.18133333333344,
-      "km": 41.68,
-      "kgDel": 4680.7,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "s7",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Tamalate",
-          "alamat": "Jalan Tamalate Raya, Kassi-Kassi, Rappocini",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1679776,119.4477005",
-          "lat": -5.1679776,
-          "lng": 119.4477005,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 921.7,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 15.27,
-        "drive": 37.79325,
-        "depart": 600,
-        "arr": 637.79325,
-        "start": 637.79325,
-        "fin": 668.5165833333333,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s21",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Cendrawasih",
-          "alamat": "Baji Mappakasunggu, Mamajang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.169139,119.4113906",
-          "lat": -5.169139,
-          "lng": 119.4113906,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1439.3,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 5.75,
-        "drive": 14.23125,
-        "depart": 668.5165833333333,
-        "arr": 682.7478333333333,
-        "start": 682.7478333333333,
-        "fin": 790.7245,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s14",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Mappaoddang",
-          "alamat": "Jalan Andi Mappaodang, Bongaya, Tamalate",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1697756,119.4174852",
-          "lat": -5.1697756,
-          "lng": 119.4174852,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 560.4,
-          "frek": 2,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5
-          ]
-         }
-        },
-        "km": 1.02,
-        "drive": 2.5244999999999997,
-        "depart": 790.7245,
-        "arr": 793.249,
-        "start": 793.249,
-        "fin": 811.929,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s30",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Kerung-Kerung",
-          "alamat": "Jalan Kerung-Kerung, Maradekaya Utara, Makassar",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1400941,119.4274905",
-          "lat": -5.1400941,
-          "lng": 119.4274905,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 849.6,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 4.04,
-        "drive": 9.999,
-        "depart": 811.929,
-        "arr": 821.928,
-        "start": 821.928,
-        "fin": 850.248,
-        "brk": 0,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s22",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Urip",
-          "alamat": "Jalan Urip Sumoharjo, Karuwisi Utara, Panakkukang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1354857,119.4362772",
-          "lat": -5.1354857,
-          "lng": 119.4362772,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 909.7,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 2.19,
-        "drive": 5.42025,
-        "depart": 850.248,
-        "arr": 855.6682500000001,
-        "start": 855.6682500000001,
-        "fin": 885.9915833333334,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 637.79325,
-        "label": "Perjalanan ke Lazuna Chicken Tamalate",
-        "km": 15.27
-       },
-       {
-        "type": "bongkar",
-        "start": 637.79325,
-        "end": 668.5165833333333,
-        "label": "Menurunkan barang di Lazuna Chicken Tamalate",
-        "kg": 921.7
-       },
-       {
-        "type": "jalan",
-        "start": 668.5165833333333,
-        "end": 682.7478333333333,
-        "label": "Perjalanan ke Lazuna Chicken Cendrawasih",
-        "km": 5.75
-       },
-       {
-        "type": "bongkar",
-        "start": 682.7478333333333,
-        "end": 790.7245,
-        "label": "Menurunkan barang di Lazuna Chicken Cendrawasih",
-        "kg": 1439.3
-       },
-       {
-        "type": "jalan",
-        "start": 790.7245,
-        "end": 793.249,
-        "label": "Perjalanan ke Lazuna Chicken Mappaoddang",
-        "km": 1.02
-       },
-       {
-        "type": "bongkar",
-        "start": 793.249,
-        "end": 811.929,
-        "label": "Menurunkan barang di Lazuna Chicken Mappaoddang",
-        "kg": 560.4
-       },
-       {
-        "type": "jalan",
-        "start": 811.929,
-        "end": 821.928,
-        "label": "Perjalanan ke Lazuna Chicken Kerung-Kerung",
-        "km": 4.04
-       },
-       {
-        "type": "bongkar",
-        "start": 821.928,
-        "end": 850.248,
-        "label": "Menurunkan barang di Lazuna Chicken Kerung-Kerung",
-        "kg": 849.6
-       },
-       {
-        "type": "jalan",
-        "start": 850.248,
-        "end": 855.6682500000001,
-        "label": "Perjalanan ke Lazuna Chicken Urip",
-        "km": 2.19
-       },
-       {
-        "type": "bongkar",
-        "start": 855.6682500000001,
-        "end": 885.9915833333334,
-        "label": "Menurunkan barang di Lazuna Chicken Urip",
-        "kg": 909.7
-       },
-       {
-        "type": "jalan",
-        "start": 885.9915833333334,
-        "end": 949.1813333333334,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 13.41
-       }
-      ],
-      "backKm": 13.41,
-      "backMin": 33.18975,
-      "backDep": 885.9915833333334,
-      "backBrk": 30,
-      "day": 3,
-      "vIdx": 0,
-      "veh": {
-       "$v": "v1",
-       "d": {
-        "aktif": true,
-        "jenis": "CDD Box",
-        "plat": "DD 0001 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 2,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 689.4762499999999,
-      "end": 689.4762499999999,
-      "endShift": 689.4762499999999,
-      "dur": 209.47624999999994,
-      "km": 15.95,
-      "kgDel": 0,
-      "kgPick": 1500,
-      "stops": [
-       {
-        "store": {
-         "$s": "s1",
-         "d": {
-          "aktif": true,
-          "nama": "PRODUKSI",
-          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
-          "lat": -5.1169668,
-          "lng": 119.5093495,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1500,
-          "frek": 5,
-          "antaran": "Tujuan",
-          "loading": "Menaikkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           5
-          ]
-         }
-        },
-        "km": 7.72,
-        "drive": 19.106999999999996,
-        "depart": 600,
-        "arr": 619.107,
-        "start": 619.107,
-        "fin": 669.107,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 619.107,
-        "label": "Perjalanan ke PRODUKSI",
-        "km": 7.72
-       },
-       {
-        "type": "muat",
-        "start": 619.107,
-        "end": 669.107,
-        "label": "Menaikkan barang di PRODUKSI",
-        "kg": 1500
-       },
-       {
-        "type": "jalan",
-        "start": 669.107,
-        "end": 689.4762499999999,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.23
-       }
-      ],
-      "backKm": 8.23,
-      "backMin": 20.36925,
-      "backDep": 669.107,
-      "backBrk": 0,
-      "day": 3,
-      "vIdx": 1,
-      "veh": {
-       "$v": "vtt5ge9",
-       "d": {
-        "aktif": true,
-        "jenis": "Pickup Box",
-        "plat": "DD 0002 LZ",
-        "kapasitasKg": 1500,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Bensin",
-        "maksRadiusKm": 15
-       }
-      },
-      "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 953.0319166666665,
-      "end": 953.0319166666665,
-      "endShift": 953.0319166666665,
-      "dur": 473.03191666666646,
-      "km": 38.39,
-      "kgDel": 5040.5,
+      "ret": 871.1106666666665,
+      "end": 871.1106666666665,
+      "endShift": 871.1106666666665,
+      "dur": 391.1106666666665,
+      "km": 34.64,
+      "kgDel": 3761.3,
       "kgPick": 0,
       "stops": [
        {
@@ -5908,44 +3559,6 @@
        },
        {
         "store": {
-         "$s": "s38",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Sultan Hasanuddin",
-          "alamat": "Jalan Sultan Hasanuddin, Baru, Ujung Pandang",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1389444,119.4095859",
-          "lat": -5.1389444,
-          "lng": 119.4095859,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1279.2,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 5.28,
-        "drive": 13.068,
-        "depart": 717.9506666666666,
-        "arr": 791.0186666666666,
-        "start": 791.0186666666666,
-        "fin": 833.6586666666666,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
          "$s": "s13",
          "d": {
           "aktif": true,
@@ -5972,13 +3585,13 @@
           ]
          }
         },
-        "km": 3.8,
-        "drive": 9.405,
-        "depart": 833.6586666666666,
-        "arr": 843.0636666666666,
-        "start": 843.0636666666666,
-        "fin": 884.7436666666665,
-        "brk": 0,
+        "km": 5.33,
+        "drive": 13.191749999999999,
+        "depart": 717.9506666666666,
+        "arr": 791.1424166666666,
+        "start": 791.1424166666666,
+        "fin": 832.8224166666665,
+        "brk": 60,
         "wait": 0
        }
       ],
@@ -6026,54 +3639,40 @@
        {
         "type": "jalan",
         "start": 717.9506666666666,
-        "end": 791.0186666666666,
-        "label": "Perjalanan ke Lazuna Chicken Sultan Hasanuddin",
-        "km": 5.28
-       },
-       {
-        "type": "bongkar",
-        "start": 791.0186666666666,
-        "end": 833.6586666666666,
-        "label": "Menurunkan barang di Lazuna Chicken Sultan Hasanuddin",
-        "kg": 1279.2
-       },
-       {
-        "type": "jalan",
-        "start": 833.6586666666666,
-        "end": 843.0636666666666,
+        "end": 791.1424166666666,
         "label": "Perjalanan ke Lazuna Chicken Sunu",
-        "km": 3.8
+        "km": 5.33
        },
        {
         "type": "bongkar",
-        "start": 843.0636666666666,
-        "end": 884.7436666666665,
+        "start": 791.1424166666666,
+        "end": 832.8224166666665,
         "label": "Menurunkan barang di Lazuna Chicken Sunu",
         "kg": 1250.4
        },
        {
         "type": "jalan",
-        "start": 884.7436666666665,
-        "end": 953.0319166666665,
+        "start": 832.8224166666665,
+        "end": 871.1106666666665,
         "label": "Kembali ke Gudang PT Inti Lazuna Grup",
         "km": 15.469999999999999
        }
       ],
       "backKm": 15.469999999999999,
       "backMin": 38.28825,
-      "backDep": 884.7436666666665,
-      "backBrk": 30,
-      "day": 3,
-      "vIdx": 2,
+      "backDep": 832.8224166666665,
+      "backBrk": 0,
+      "day": 1,
+      "vIdx": 0,
       "veh": {
-       "$v": "vfaooj7",
+       "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
+        "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6082,31 +3681,31 @@
      {
       "ok": true,
       "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 930.55275,
-      "end": 930.55275,
-      "endShift": 930.55275,
-      "dur": 450.55274999999995,
-      "km": 26.09,
-      "kgDel": 3479.3999999999996,
+      "t0": 871.1106666666665,
+      "shiftStart": 871.1106666666665,
+      "dep": 961.1106666666665,
+      "ret": 1344.6437708333333,
+      "end": 1344.6437708333333,
+      "endShift": 1344.6437708333333,
+      "dur": 473.5331041666668,
+      "km": 43.07,
+      "kgDel": 5227.7,
       "kgPick": 0,
       "stops": [
        {
         "store": {
-         "$s": "s31",
+         "$s": "s39",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken Bung",
-          "alamat": "Jalan Bung, Tamalanrea Jaya, Tamalanrea",
+          "nama": "Lazuna Chicken Zuper Hertasning Aroepala",
+          "alamat": "Minasa Upa, Rappocini",
           "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1423639,119.4873547",
-          "lat": -5.1423639,
-          "lng": 119.4873547,
+          "link": "https://www.google.com/maps?q=-5.1782174,119.4618899",
+          "lat": -5.1782174,
+          "lng": 119.4618899,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 774.8,
+          "beratKg": 1193.7,
           "frek": 1,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
@@ -6122,12 +3721,727 @@
           ]
          }
         },
-        "km": 8.35,
-        "drive": 20.66625,
+        "km": 16.76,
+        "drive": 51.85125,
+        "depart": 961.1106666666665,
+        "arr": 1012.9619166666665,
+        "start": 1012.9619166666665,
+        "fin": 1052.7519166666666,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s19",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Agus Salim",
+          "alamat": "Jalan Haji Agus Salim, Bonto-Bontoa, Somba Opu",
+          "kota": "Kabupaten Gowa",
+          "link": "https://www.google.com/maps?q=-5.2017618,119.4572171",
+          "lat": -5.2017618,
+          "lng": 119.4572171,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1507.3,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 3.73,
+        "drive": 11.5396875,
+        "depart": 1052.7519166666666,
+        "arr": 1064.2916041666665,
+        "start": 1064.2916041666665,
+        "fin": 1204.5349374999998,
+        "brk": 90,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s35",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Alauddin",
+          "alamat": "Jalan Bumi Raya No. 249, Gunung Sari, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1851435,119.4412059",
+          "lat": -5.1851435,
+          "lng": 119.4412059,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 868.6,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 3.76,
+        "drive": 9.306,
+        "depart": 1204.5349374999998,
+        "arr": 1213.8409374999999,
+        "start": 1213.8409374999999,
+        "fin": 1242.7942708333333,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s3",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Talasalapang",
+          "alamat": "Gunung Sari, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1823601,119.4453868",
+          "lat": -5.1823601,
+          "lng": 119.4453868,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1658.1,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 1.54,
+        "drive": 3.8114999999999997,
+        "depart": 1242.7942708333333,
+        "arr": 1246.6057708333333,
+        "start": 1246.6057708333333,
+        "fin": 1301.8757708333333,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 871.1106666666665,
+        "end": 961.1106666666665,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "jalan",
+        "start": 961.1106666666665,
+        "end": 1012.9619166666665,
+        "label": "Perjalanan ke Lazuna Chicken Zuper Hertasning Aroepala",
+        "km": 16.76
+       },
+       {
+        "type": "bongkar",
+        "start": 1012.9619166666665,
+        "end": 1052.7519166666666,
+        "label": "Menurunkan barang di Lazuna Chicken Zuper Hertasning Aroepala",
+        "kg": 1193.7
+       },
+       {
+        "type": "jalan",
+        "start": 1052.7519166666666,
+        "end": 1064.2916041666665,
+        "label": "Perjalanan ke Lazuna Chicken Agus Salim",
+        "km": 3.73
+       },
+       {
+        "type": "bongkar",
+        "start": 1064.2916041666665,
+        "end": 1204.5349374999998,
+        "label": "Menurunkan barang di Lazuna Chicken Agus Salim",
+        "kg": 1507.3
+       },
+       {
+        "type": "jalan",
+        "start": 1204.5349374999998,
+        "end": 1213.8409374999999,
+        "label": "Perjalanan ke Lazuna Chicken Alauddin",
+        "km": 3.76
+       },
+       {
+        "type": "bongkar",
+        "start": 1213.8409374999999,
+        "end": 1242.7942708333333,
+        "label": "Menurunkan barang di Lazuna Chicken Alauddin",
+        "kg": 868.6
+       },
+       {
+        "type": "jalan",
+        "start": 1242.7942708333333,
+        "end": 1246.6057708333333,
+        "label": "Perjalanan ke Lazuna Chicken Talasalapang",
+        "km": 1.54
+       },
+       {
+        "type": "bongkar",
+        "start": 1246.6057708333333,
+        "end": 1301.8757708333333,
+        "label": "Menurunkan barang di Lazuna Chicken Talasalapang",
+        "kg": 1658.1
+       },
+       {
+        "type": "jalan",
+        "start": 1301.8757708333333,
+        "end": 1344.6437708333333,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 17.28
+       }
+      ],
+      "backKm": 17.28,
+      "backMin": 42.768,
+      "backDep": 1301.8757708333333,
+      "backBrk": 0,
+      "day": 1,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 2
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 480,
+      "shiftStart": 480,
+      "dep": 600,
+      "ret": 781.3663333333333,
+      "end": 781.3663333333333,
+      "endShift": 781.3663333333333,
+      "dur": 301.3663333333333,
+      "km": 19.080000000000002,
+      "kgDel": 724.3,
+      "kgPick": 1500,
+      "stops": [
+       {
+        "store": {
+         "$s": "s8",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken BTP",
+          "alamat": "Jalan Tamalanrea Raya, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1322714,119.5016939",
+          "lat": -5.1322714,
+          "lng": 119.5016939,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 724.3,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 6.8500000000000005,
+        "drive": 16.953750000000003,
         "depart": 600,
-        "arr": 620.66625,
-        "start": 620.66625,
-        "fin": 646.4929166666667,
+        "arr": 616.95375,
+        "start": 616.95375,
+        "fin": 641.0970833333333,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s1",
+         "d": {
+          "aktif": true,
+          "nama": "PRODUKSI",
+          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
+          "lat": -5.1169668,
+          "lng": 119.5093495,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1500,
+          "frek": 5,
+          "antaran": "Tujuan",
+          "loading": "Menaikkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           5
+          ]
+         }
+        },
+        "km": 4,
+        "drive": 9.899999999999999,
+        "depart": 641.0970833333333,
+        "arr": 650.9970833333333,
+        "start": 650.9970833333333,
+        "fin": 700.9970833333333,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 480,
+        "end": 540,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "aktivitas",
+        "start": 540,
+        "end": 600,
+        "label": "Antri BBM"
+       },
+       {
+        "type": "jalan",
+        "start": 600,
+        "end": 616.95375,
+        "label": "Perjalanan ke Lazuna Chicken BTP",
+        "km": 6.8500000000000005
+       },
+       {
+        "type": "bongkar",
+        "start": 616.95375,
+        "end": 641.0970833333333,
+        "label": "Menurunkan barang di Lazuna Chicken BTP",
+        "kg": 724.3
+       },
+       {
+        "type": "jalan",
+        "start": 641.0970833333333,
+        "end": 650.9970833333333,
+        "label": "Perjalanan ke PRODUKSI",
+        "km": 4
+       },
+       {
+        "type": "muat",
+        "start": 650.9970833333333,
+        "end": 700.9970833333333,
+        "label": "Menaikkan barang di PRODUKSI",
+        "kg": 1500
+       },
+       {
+        "type": "jalan",
+        "start": 700.9970833333333,
+        "end": 781.3663333333333,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 8.23
+       }
+      ],
+      "backKm": 8.23,
+      "backMin": 20.36925,
+      "backDep": 700.9970833333333,
+      "backBrk": 60,
+      "day": 1,
+      "vIdx": 1,
+      "veh": {
+       "$v": "vtt5ge9",
+       "d": {
+        "aktif": true,
+        "jenis": "Pickup Box",
+        "plat": "DD 0002 LZ",
+        "kapasitasKg": 1500,
+        "kecepatan": 40,
+        "maksShift": 1,
+        "bbm": "Bensin",
+        "maksRadiusKm": 15
+       }
+      },
+      "shift": 1
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 480,
+      "shiftStart": 480,
+      "dep": 600,
+      "ret": 870.5426666666666,
+      "end": 870.5426666666666,
+      "endShift": 870.5426666666666,
+      "dur": 390.5426666666666,
+      "km": 40.16,
+      "kgDel": 3334.3999999999996,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s14",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Mappaoddang",
+          "alamat": "Jalan Andi Mappaodang, Bongaya, Tamalate",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1697756,119.4174852",
+          "lat": -5.1697756,
+          "lng": 119.4174852,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 560.4,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 19.66,
+        "drive": 48.6585,
+        "depart": 600,
+        "arr": 648.6585,
+        "start": 648.6585,
+        "fin": 667.3385,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s7",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Tamalate",
+          "alamat": "Jalan Tamalate Raya, Kassi-Kassi, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1679776,119.4477005",
+          "lat": -5.1679776,
+          "lng": 119.4477005,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 921.7,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 4.72,
+        "drive": 11.681999999999999,
+        "depart": 667.3385,
+        "arr": 679.0205,
+        "start": 679.0205,
+        "fin": 709.7438333333333,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s42",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Hamzy (PK 3)",
+          "alamat": "Jalan Perintis Kemerdekaan 3, Tamalanrea Indah, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1415796,119.4776584",
+          "lat": -5.1415796,
+          "lng": 119.4776584,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 702.5,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 5.85,
+        "drive": 14.478749999999996,
+        "depart": 709.7438333333333,
+        "arr": 784.2225833333333,
+        "start": 784.2225833333333,
+        "fin": 807.63925,
+        "brk": 60,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s5",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Perintis VII",
+          "alamat": "Jalan Perintis Kemerdekaan 7, Tamalanrea Indah, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.136437,119.4825193",
+          "lat": -5.136437,
+          "lng": 119.4825193,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1149.8,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 1.41,
+        "drive": 3.4897499999999995,
+        "depart": 807.63925,
+        "arr": 811.1289999999999,
+        "start": 811.1289999999999,
+        "fin": 849.4556666666666,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 480,
+        "end": 540,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "aktivitas",
+        "start": 540,
+        "end": 600,
+        "label": "Antri BBM"
+       },
+       {
+        "type": "jalan",
+        "start": 600,
+        "end": 648.6585,
+        "label": "Perjalanan ke Lazuna Chicken Mappaoddang",
+        "km": 19.66
+       },
+       {
+        "type": "bongkar",
+        "start": 648.6585,
+        "end": 667.3385,
+        "label": "Menurunkan barang di Lazuna Chicken Mappaoddang",
+        "kg": 560.4
+       },
+       {
+        "type": "jalan",
+        "start": 667.3385,
+        "end": 679.0205,
+        "label": "Perjalanan ke Lazuna Chicken Tamalate",
+        "km": 4.72
+       },
+       {
+        "type": "bongkar",
+        "start": 679.0205,
+        "end": 709.7438333333333,
+        "label": "Menurunkan barang di Lazuna Chicken Tamalate",
+        "kg": 921.7
+       },
+       {
+        "type": "jalan",
+        "start": 709.7438333333333,
+        "end": 784.2225833333333,
+        "label": "Perjalanan ke Lazuna Chicken Hamzy (PK 3)",
+        "km": 5.85
+       },
+       {
+        "type": "bongkar",
+        "start": 784.2225833333333,
+        "end": 807.63925,
+        "label": "Menurunkan barang di Lazuna Chicken Hamzy (PK 3)",
+        "kg": 702.5
+       },
+       {
+        "type": "jalan",
+        "start": 807.63925,
+        "end": 811.1289999999999,
+        "label": "Perjalanan ke Lazuna Chicken Perintis VII",
+        "km": 1.41
+       },
+       {
+        "type": "bongkar",
+        "start": 811.1289999999999,
+        "end": 849.4556666666666,
+        "label": "Menurunkan barang di Lazuna Chicken Perintis VII",
+        "kg": 1149.8
+       },
+       {
+        "type": "jalan",
+        "start": 849.4556666666666,
+        "end": 870.5426666666666,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 8.52
+       }
+      ],
+      "backKm": 8.52,
+      "backMin": 21.087,
+      "backDep": 849.4556666666666,
+      "backBrk": 0,
+      "day": 2,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 1
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 870.5426666666666,
+      "shiftStart": 870.5426666666666,
+      "dep": 960.5426666666666,
+      "ret": 1349.307,
+      "end": 1349.307,
+      "endShift": 1349.307,
+      "dur": 478.7643333333334,
+      "km": 37.379999999999995,
+      "kgDel": 5936.5,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s20",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Baruga",
+          "alamat": "Jalan Inspeksi P.A.M., Antang, Manggala",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1563815,119.4817461",
+          "lat": -5.1563815,
+          "lng": 119.4817461,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1079.4,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 11.139999999999999,
+        "drive": 34.464375000000004,
+        "depart": 960.5426666666666,
+        "arr": 995.0070416666666,
+        "start": 995.0070416666666,
+        "fin": 1030.9870416666665,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s43",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Antang 2",
+          "alamat": "Jalan Muhammad Paleo Raya, Antang, Manggala",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.162023,119.4765097",
+          "lat": -5.162023,
+          "lng": 119.4765097,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1155.4,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 1.27,
+        "drive": 3.9290625,
+        "depart": 1030.9870416666665,
+        "arr": 1034.9161041666666,
+        "start": 1034.9161041666666,
+        "fin": 1073.4294375,
         "brk": 0,
         "wait": 0
        },
@@ -6160,30 +4474,30 @@
           ]
          }
         },
-        "km": 4.51,
-        "drive": 11.162249999999998,
-        "depart": 646.4929166666667,
-        "arr": 657.6551666666667,
-        "start": 657.6551666666667,
-        "fin": 844.3918333333334,
-        "brk": 120,
+        "km": 1.11,
+        "drive": 3.4340625000000005,
+        "depart": 1073.4294375,
+        "arr": 1076.8635,
+        "start": 1076.8635,
+        "fin": 1233.6001666666666,
+        "brk": 90,
         "wait": 0
        },
        {
         "store": {
-         "$s": "s42",
+         "$s": "s18",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken Hamzy (PK 3)",
-          "alamat": "Jalan Perintis Kemerdekaan 3, Tamalanrea Indah, Tamalanrea",
-          "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1415796,119.4776584",
-          "lat": -5.1415796,
-          "lng": 119.4776584,
+          "nama": "Lazuna Chicken Samata",
+          "alamat": "Jalan H.M. Yasin Limpo, Romangpolong, Somba Opu",
+          "kota": "Kabupaten Gowa",
+          "link": "https://www.google.com/maps?q=-5.2022542,119.4963478",
+          "lat": -5.2022542,
+          "lng": 119.4963478,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 702.5,
-          "frek": 2,
+          "beratKg": 1699.6,
+          "frek": 1,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
           "alamatAuto": true,
@@ -6193,16 +4507,434 @@
            2,
            3,
            4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 5.37,
+        "drive": 13.29075,
+        "depart": 1233.6001666666666,
+        "arr": 1246.8909166666665,
+        "start": 1246.8909166666665,
+        "fin": 1303.54425,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 870.5426666666666,
+        "end": 960.5426666666666,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "jalan",
+        "start": 960.5426666666666,
+        "end": 995.0070416666666,
+        "label": "Perjalanan ke Lazuna Chicken Baruga",
+        "km": 11.139999999999999
+       },
+       {
+        "type": "bongkar",
+        "start": 995.0070416666666,
+        "end": 1030.9870416666665,
+        "label": "Menurunkan barang di Lazuna Chicken Baruga",
+        "kg": 1079.4
+       },
+       {
+        "type": "jalan",
+        "start": 1030.9870416666665,
+        "end": 1034.9161041666666,
+        "label": "Perjalanan ke Lazuna Chicken Antang 2",
+        "km": 1.27
+       },
+       {
+        "type": "bongkar",
+        "start": 1034.9161041666666,
+        "end": 1073.4294375,
+        "label": "Menurunkan barang di Lazuna Chicken Antang 2",
+        "kg": 1155.4
+       },
+       {
+        "type": "jalan",
+        "start": 1073.4294375,
+        "end": 1076.8635,
+        "label": "Perjalanan ke Lazuna Chicken Antang",
+        "km": 1.11
+       },
+       {
+        "type": "bongkar",
+        "start": 1076.8635,
+        "end": 1233.6001666666666,
+        "label": "Menurunkan barang di Lazuna Chicken Antang",
+        "kg": 2002.1
+       },
+       {
+        "type": "jalan",
+        "start": 1233.6001666666666,
+        "end": 1246.8909166666665,
+        "label": "Perjalanan ke Lazuna Chicken Samata",
+        "km": 5.37
+       },
+       {
+        "type": "bongkar",
+        "start": 1246.8909166666665,
+        "end": 1303.54425,
+        "label": "Menurunkan barang di Lazuna Chicken Samata",
+        "kg": 1699.6
+       },
+       {
+        "type": "jalan",
+        "start": 1303.54425,
+        "end": 1349.307,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 18.49
+       }
+      ],
+      "backKm": 18.49,
+      "backMin": 45.76275,
+      "backDep": 1303.54425,
+      "backBrk": 0,
+      "day": 2,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 2
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 480,
+      "shiftStart": 480,
+      "dep": 600,
+      "ret": 818.6549166666666,
+      "end": 818.6549166666666,
+      "endShift": 818.6549166666666,
+      "dur": 338.6549166666666,
+      "km": 32.67,
+      "kgDel": 833.9,
+      "kgPick": 1500,
+      "stops": [
+       {
+        "store": {
+         "$s": "s29",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Nipa-Nipa",
+          "alamat": "Manggala",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1627128,119.5022184",
+          "lat": -5.1627128,
+          "lng": 119.5022184,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 833.9,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 13.62,
+        "drive": 33.7095,
+        "depart": 600,
+        "arr": 633.7095,
+        "start": 633.7095,
+        "fin": 661.5061666666667,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s1",
+         "d": {
+          "aktif": true,
+          "nama": "PRODUKSI",
+          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
+          "lat": -5.1169668,
+          "lng": 119.5093495,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1500,
+          "frek": 5,
+          "antaran": "Tujuan",
+          "loading": "Menaikkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
            5
           ]
          }
         },
-        "km": 4.71,
-        "drive": 11.657249999999998,
-        "depart": 844.3918333333334,
-        "arr": 856.0490833333333,
-        "start": 856.0490833333333,
-        "fin": 879.46575,
+        "km": 10.82,
+        "drive": 26.7795,
+        "depart": 661.5061666666667,
+        "arr": 688.2856666666667,
+        "start": 688.2856666666667,
+        "fin": 798.2856666666667,
+        "brk": 60,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 480,
+        "end": 540,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "aktivitas",
+        "start": 540,
+        "end": 600,
+        "label": "Antri BBM"
+       },
+       {
+        "type": "jalan",
+        "start": 600,
+        "end": 633.7095,
+        "label": "Perjalanan ke Lazuna Chicken Nipa-Nipa",
+        "km": 13.62
+       },
+       {
+        "type": "bongkar",
+        "start": 633.7095,
+        "end": 661.5061666666667,
+        "label": "Menurunkan barang di Lazuna Chicken Nipa-Nipa",
+        "kg": 833.9
+       },
+       {
+        "type": "jalan",
+        "start": 661.5061666666667,
+        "end": 688.2856666666667,
+        "label": "Perjalanan ke PRODUKSI",
+        "km": 10.82
+       },
+       {
+        "type": "muat",
+        "start": 688.2856666666667,
+        "end": 798.2856666666667,
+        "label": "Menaikkan barang di PRODUKSI",
+        "kg": 1500
+       },
+       {
+        "type": "jalan",
+        "start": 798.2856666666667,
+        "end": 818.6549166666666,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 8.23
+       }
+      ],
+      "backKm": 8.23,
+      "backMin": 20.36925,
+      "backDep": 798.2856666666667,
+      "backBrk": 0,
+      "day": 2,
+      "vIdx": 1,
+      "veh": {
+       "$v": "vtt5ge9",
+       "d": {
+        "aktif": true,
+        "jenis": "Pickup Box",
+        "plat": "DD 0002 LZ",
+        "kapasitasKg": 1500,
+        "kecepatan": 40,
+        "maksShift": 1,
+        "bbm": "Bensin",
+        "maksRadiusKm": 15
+       }
+      },
+      "shift": 1
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 480,
+      "shiftStart": 480,
+      "dep": 600,
+      "ret": 886.4043333333334,
+      "end": 886.4043333333334,
+      "endShift": 886.4043333333334,
+      "dur": 406.4043333333334,
+      "km": 26.36,
+      "kgDel": 4834.9,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s37",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Perintis Daya",
+          "alamat": "Jalan Perintis Kemerdekaan, Berua, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1162665,119.5123061",
+          "lat": -5.1162665,
+          "lng": 119.5123061,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1067.1,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 7.79,
+        "drive": 19.28025,
+        "depart": 600,
+        "arr": 619.28025,
+        "start": 619.28025,
+        "fin": 654.8502500000001,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s9",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Paccerakkang",
+          "alamat": "Jalan Paccerakkang, Berua, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1138766,119.5168249",
+          "lat": -5.1138766,
+          "lng": 119.5168249,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1473.3,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 0.99,
+        "drive": 2.45025,
+        "depart": 654.8502500000001,
+        "arr": 657.3005,
+        "start": 657.3005,
+        "fin": 706.4105000000001,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s4",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken BTP Blok E",
+          "alamat": "Jalan Tamalanrea Raya, Buntusu, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1374438,119.5136457",
+          "lat": -5.1374438,
+          "lng": 119.5136457,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1519.7,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 3.96,
+        "drive": 9.801,
+        "depart": 706.4105000000001,
+        "arr": 716.2115000000001,
+        "start": 716.2115000000001,
+        "fin": 826.8681666666668,
+        "brk": 60,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s31",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Bung",
+          "alamat": "Jalan Bung, Tamalanrea Jaya, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1423639,119.4873547",
+          "lat": -5.1423639,
+          "lng": 119.4873547,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 774.8,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 3.77,
+        "drive": 9.33075,
+        "depart": 826.8681666666668,
+        "arr": 836.1989166666667,
+        "start": 836.1989166666667,
+        "fin": 862.0255833333334,
         "brk": 0,
         "wait": 0
        }
@@ -6223,58 +4955,72 @@
        {
         "type": "jalan",
         "start": 600,
-        "end": 620.66625,
-        "label": "Perjalanan ke Lazuna Chicken Bung",
-        "km": 8.35
+        "end": 619.28025,
+        "label": "Perjalanan ke Lazuna Chicken Perintis Daya",
+        "km": 7.79
        },
        {
         "type": "bongkar",
-        "start": 620.66625,
-        "end": 646.4929166666667,
+        "start": 619.28025,
+        "end": 654.8502500000001,
+        "label": "Menurunkan barang di Lazuna Chicken Perintis Daya",
+        "kg": 1067.1
+       },
+       {
+        "type": "jalan",
+        "start": 654.8502500000001,
+        "end": 657.3005,
+        "label": "Perjalanan ke Lazuna Chicken Paccerakkang",
+        "km": 0.99
+       },
+       {
+        "type": "bongkar",
+        "start": 657.3005,
+        "end": 706.4105000000001,
+        "label": "Menurunkan barang di Lazuna Chicken Paccerakkang",
+        "kg": 1473.3
+       },
+       {
+        "type": "jalan",
+        "start": 706.4105000000001,
+        "end": 716.2115000000001,
+        "label": "Perjalanan ke Lazuna Chicken BTP Blok E",
+        "km": 3.96
+       },
+       {
+        "type": "bongkar",
+        "start": 716.2115000000001,
+        "end": 826.8681666666668,
+        "label": "Menurunkan barang di Lazuna Chicken BTP Blok E",
+        "kg": 1519.7
+       },
+       {
+        "type": "jalan",
+        "start": 826.8681666666668,
+        "end": 836.1989166666667,
+        "label": "Perjalanan ke Lazuna Chicken Bung",
+        "km": 3.77
+       },
+       {
+        "type": "bongkar",
+        "start": 836.1989166666667,
+        "end": 862.0255833333334,
         "label": "Menurunkan barang di Lazuna Chicken Bung",
         "kg": 774.8
        },
        {
         "type": "jalan",
-        "start": 646.4929166666667,
-        "end": 657.6551666666667,
-        "label": "Perjalanan ke Lazuna Chicken Antang",
-        "km": 4.51
-       },
-       {
-        "type": "bongkar",
-        "start": 657.6551666666667,
-        "end": 844.3918333333334,
-        "label": "Menurunkan barang di Lazuna Chicken Antang",
-        "kg": 2002.1
-       },
-       {
-        "type": "jalan",
-        "start": 844.3918333333334,
-        "end": 856.0490833333333,
-        "label": "Perjalanan ke Lazuna Chicken Hamzy (PK 3)",
-        "km": 4.71
-       },
-       {
-        "type": "bongkar",
-        "start": 856.0490833333333,
-        "end": 879.46575,
-        "label": "Menurunkan barang di Lazuna Chicken Hamzy (PK 3)",
-        "kg": 702.5
-       },
-       {
-        "type": "jalan",
-        "start": 879.46575,
-        "end": 930.55275,
+        "start": 862.0255833333334,
+        "end": 886.4043333333334,
         "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.52
+        "km": 9.85
        }
       ],
-      "backKm": 8.52,
-      "backMin": 21.087,
-      "backDep": 879.46575,
-      "backBrk": 30,
-      "day": 4,
+      "backKm": 9.85,
+      "backMin": 24.378749999999997,
+      "backDep": 862.0255833333334,
+      "backBrk": 0,
+      "day": 3,
       "vIdx": 0,
       "veh": {
        "$v": "v1",
@@ -6293,16 +5039,326 @@
      {
       "ok": true,
       "why": "",
+      "t0": 886.4043333333334,
+      "shiftStart": 886.4043333333334,
+      "dep": 976.4043333333334,
+      "ret": 1361.563729166667,
+      "end": 1361.563729166667,
+      "endShift": 1361.563729166667,
+      "dur": 475.1593958333335,
+      "km": 49.480000000000004,
+      "kgDel": 4867,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s27",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Villa Mutiara",
+          "alamat": "Jalan Mutiara Boulevard, Bulurokeng, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.0739644,119.4926582",
+          "lat": -5.0739644,
+          "lng": 119.4926582,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 773.3,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 7.74,
+        "drive": 23.945625,
+        "depart": 976.4043333333334,
+        "arr": 1000.3499583333333,
+        "start": 1000.3499583333333,
+        "fin": 1026.126625,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s40",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Pajjaiang",
+          "alamat": "Jalan Laikang, Laikang, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1026843,119.5289779",
+          "lat": -5.1026843,
+          "lng": 119.5289779,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1055.8,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 7.15,
+        "drive": 22.120312500000004,
+        "depart": 1026.126625,
+        "arr": 1048.2469375,
+        "start": 1048.2469375,
+        "fin": 1113.4402708333334,
+        "brk": 30,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s12",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Goa Ria",
+          "alamat": "Jalan Goa Ria, Bakung, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.0898566,119.5285946",
+          "lat": -5.0898566,
+          "lng": 119.5285946,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 972.4,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 2.02,
+        "drive": 6.249375000000001,
+        "depart": 1113.4402708333334,
+        "arr": 1119.6896458333335,
+        "start": 1119.6896458333335,
+        "fin": 1212.102979166667,
+        "brk": 60,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s25",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Bontoa",
+          "alamat": "Bontoa, Mandai",
+          "kota": "Kabupaten Maros",
+          "link": "https://www.google.com/maps?q=-5.048903,119.5516553",
+          "lat": -5.048903,
+          "lng": 119.5516553,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1057.5,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 6.47,
+        "drive": 16.01325,
+        "depart": 1212.102979166667,
+        "arr": 1228.116229166667,
+        "start": 1228.116229166667,
+        "fin": 1263.366229166667,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s24",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Pettuadae (Zuper)",
+          "alamat": "RW 05 Desa Pattuadae, Turikale",
+          "kota": "Kabupaten Maros",
+          "link": "https://www.google.com/maps?q=-5.0137729,119.5733044",
+          "lat": -5.0137729,
+          "lng": 119.5733044,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1008,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 5.48,
+        "drive": 13.563,
+        "depart": 1263.366229166667,
+        "arr": 1276.929229166667,
+        "start": 1276.929229166667,
+        "fin": 1310.529229166667,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 886.4043333333334,
+        "end": 976.4043333333334,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "jalan",
+        "start": 976.4043333333334,
+        "end": 1000.3499583333333,
+        "label": "Perjalanan ke Lazuna Chicken Villa Mutiara",
+        "km": 7.74
+       },
+       {
+        "type": "bongkar",
+        "start": 1000.3499583333333,
+        "end": 1026.126625,
+        "label": "Menurunkan barang di Lazuna Chicken Villa Mutiara",
+        "kg": 773.3
+       },
+       {
+        "type": "jalan",
+        "start": 1026.126625,
+        "end": 1048.2469375,
+        "label": "Perjalanan ke Lazuna Chicken Pajjaiang",
+        "km": 7.15
+       },
+       {
+        "type": "bongkar",
+        "start": 1048.2469375,
+        "end": 1113.4402708333334,
+        "label": "Menurunkan barang di Lazuna Chicken Pajjaiang",
+        "kg": 1055.8
+       },
+       {
+        "type": "jalan",
+        "start": 1113.4402708333334,
+        "end": 1119.6896458333335,
+        "label": "Perjalanan ke Lazuna Chicken Goa Ria",
+        "km": 2.02
+       },
+       {
+        "type": "bongkar",
+        "start": 1119.6896458333335,
+        "end": 1212.102979166667,
+        "label": "Menurunkan barang di Lazuna Chicken Goa Ria",
+        "kg": 972.4
+       },
+       {
+        "type": "jalan",
+        "start": 1212.102979166667,
+        "end": 1228.116229166667,
+        "label": "Perjalanan ke Lazuna Chicken Bontoa",
+        "km": 6.47
+       },
+       {
+        "type": "bongkar",
+        "start": 1228.116229166667,
+        "end": 1263.366229166667,
+        "label": "Menurunkan barang di Lazuna Chicken Bontoa",
+        "kg": 1057.5
+       },
+       {
+        "type": "jalan",
+        "start": 1263.366229166667,
+        "end": 1276.929229166667,
+        "label": "Perjalanan ke Lazuna Chicken Pettuadae (Zuper)",
+        "km": 5.48
+       },
+       {
+        "type": "bongkar",
+        "start": 1276.929229166667,
+        "end": 1310.529229166667,
+        "label": "Menurunkan barang di Lazuna Chicken Pettuadae (Zuper)",
+        "kg": 1008
+       },
+       {
+        "type": "jalan",
+        "start": 1310.529229166667,
+        "end": 1361.563729166667,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 20.62
+       }
+      ],
+      "backKm": 20.62,
+      "backMin": 51.0345,
+      "backDep": 1310.529229166667,
+      "backBrk": 0,
+      "day": 3,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 2
+     },
+     {
+      "ok": true,
+      "why": "",
       "t0": 480,
       "shiftStart": 480,
       "dep": 600,
-      "ret": 669.60375,
-      "end": 669.60375,
-      "endShift": 669.60375,
-      "dur": 189.60375,
-      "km": 16.05,
+      "ret": 791.7312499999999,
+      "end": 791.7312499999999,
+      "endShift": 791.7312499999999,
+      "dur": 311.73124999999993,
+      "km": 20.95,
       "kgDel": 896.4,
-      "kgPick": 0,
+      "kgPick": 1500,
       "stops": [
        {
         "store": {
@@ -6345,6 +5401,42 @@
         "fin": 649.60575,
         "brk": 0,
         "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s1",
+         "d": {
+          "aktif": true,
+          "nama": "PRODUKSI",
+          "alamat": "Jalan Parumpa, Daya, Biringkanaya",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
+          "lat": -5.1169668,
+          "lng": 119.5093495,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1500,
+          "frek": 5,
+          "antaran": "Tujuan",
+          "loading": "Menaikkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           5
+          ]
+         }
+        },
+        "km": 4.75,
+        "drive": 11.75625,
+        "depart": 649.60575,
+        "arr": 661.362,
+        "start": 661.362,
+        "fin": 711.362,
+        "brk": 0,
+        "wait": 0
        }
       ],
       "segs": [
@@ -6377,16 +5469,30 @@
        {
         "type": "jalan",
         "start": 649.60575,
-        "end": 669.60375,
+        "end": 661.362,
+        "label": "Perjalanan ke PRODUKSI",
+        "km": 4.75
+       },
+       {
+        "type": "muat",
+        "start": 661.362,
+        "end": 711.362,
+        "label": "Menaikkan barang di PRODUKSI",
+        "kg": 1500
+       },
+       {
+        "type": "jalan",
+        "start": 711.362,
+        "end": 791.7312499999999,
         "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 8.08
+        "km": 8.23
        }
       ],
-      "backKm": 8.08,
-      "backMin": 19.997999999999998,
-      "backDep": 649.60575,
-      "backBrk": 0,
-      "day": 4,
+      "backKm": 8.23,
+      "backMin": 20.36925,
+      "backDep": 711.362,
+      "backBrk": 60,
+      "day": 3,
       "vIdx": 1,
       "veh": {
        "$v": "vtt5ge9",
@@ -6409,12 +5515,12 @@
       "t0": 480,
       "shiftStart": 480,
       "dep": 600,
-      "ret": 956.6835,
-      "end": 956.6835,
-      "endShift": 956.6835,
-      "dur": 476.6835,
-      "km": 40.26,
-      "kgDel": 3211.2,
+      "ret": 889.65575,
+      "end": 889.65575,
+      "endShift": 889.65575,
+      "dur": 409.65575,
+      "km": 32.370000000000005,
+      "kgDel": 2686.2,
       "kgPick": 0,
       "stops": [
        {
@@ -6456,18 +5562,18 @@
        },
        {
         "store": {
-         "$s": "s4",
+         "$s": "s41",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken BTP Blok E",
-          "alamat": "Jalan Tamalanrea Raya, Buntusu, Tamalanrea",
+          "nama": "Lazuna Chicken Tamalate 2",
+          "alamat": "Jalan Tamalate Raya, Mappala, Rappocini",
           "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1374438,119.5136457",
-          "lat": -5.1374438,
-          "lng": 119.5136457,
+          "link": "https://www.google.com/maps?q=-5.1721955,119.4454488",
+          "lat": -5.1721955,
+          "lng": 119.4454488,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 1519.7,
+          "beratKg": 1014.2,
           "frek": 1,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
@@ -6483,29 +5589,29 @@
           ]
          }
         },
-        "km": 1.62,
-        "drive": 4.0095,
+        "km": 10.32,
+        "drive": 25.541999999999998,
         "depart": 641.0970833333333,
-        "arr": 645.1065833333333,
-        "start": 645.1065833333333,
-        "fin": 695.76325,
+        "arr": 666.6390833333334,
+        "start": 666.6390833333334,
+        "fin": 700.44575,
         "brk": 0,
         "wait": 0
        },
        {
         "store": {
-         "$s": "s33",
+         "$s": "s2",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken Andi Djemma",
-          "alamat": "Banta-Bantaeng, Rappocini",
+          "nama": "Lazuna Chicken Panakkukang",
+          "alamat": "Jalan Toddopuli Raya, Pandang, Panakkukang",
           "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1651551,119.4258725",
-          "lat": -5.1651551,
-          "lng": 119.4258725,
+          "link": "https://www.google.com/maps?q=-5.1631663,119.4525599",
+          "lat": -5.1631663,
+          "lng": 119.4525599,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 967.2,
+          "beratKg": 947.7,
           "frek": 1,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
@@ -6521,12 +5627,12 @@
           ]
          }
         },
-        "km": 14.14,
-        "drive": 34.9965,
-        "depart": 695.76325,
-        "arr": 850.7597499999999,
-        "start": 850.7597499999999,
-        "fin": 882.99975,
+        "km": 1.66,
+        "drive": 4.108499999999999,
+        "depart": 700.44575,
+        "arr": 704.55425,
+        "start": 704.55425,
+        "fin": 856.14425,
         "brk": 120,
         "wait": 0
        }
@@ -6561,54 +5667,54 @@
        {
         "type": "jalan",
         "start": 641.0970833333333,
-        "end": 645.1065833333333,
-        "label": "Perjalanan ke Lazuna Chicken BTP Blok E",
-        "km": 1.62
+        "end": 666.6390833333334,
+        "label": "Perjalanan ke Lazuna Chicken Tamalate 2",
+        "km": 10.32
        },
        {
         "type": "bongkar",
-        "start": 645.1065833333333,
-        "end": 695.76325,
-        "label": "Menurunkan barang di Lazuna Chicken BTP Blok E",
-        "kg": 1519.7
+        "start": 666.6390833333334,
+        "end": 700.44575,
+        "label": "Menurunkan barang di Lazuna Chicken Tamalate 2",
+        "kg": 1014.2
        },
        {
         "type": "jalan",
-        "start": 695.76325,
-        "end": 850.7597499999999,
-        "label": "Perjalanan ke Lazuna Chicken Andi Djemma",
-        "km": 14.14
+        "start": 700.44575,
+        "end": 704.55425,
+        "label": "Perjalanan ke Lazuna Chicken Panakkukang",
+        "km": 1.66
        },
        {
         "type": "bongkar",
-        "start": 850.7597499999999,
-        "end": 882.99975,
-        "label": "Menurunkan barang di Lazuna Chicken Andi Djemma",
-        "kg": 967.2
+        "start": 704.55425,
+        "end": 856.14425,
+        "label": "Menurunkan barang di Lazuna Chicken Panakkukang",
+        "kg": 947.7
        },
        {
         "type": "jalan",
-        "start": 882.99975,
-        "end": 956.6835,
+        "start": 856.14425,
+        "end": 889.65575,
         "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 17.65
+        "km": 13.54
        }
       ],
-      "backKm": 17.65,
-      "backMin": 43.683749999999996,
-      "backDep": 882.99975,
-      "backBrk": 30,
+      "backKm": 13.54,
+      "backMin": 33.5115,
+      "backDep": 856.14425,
+      "backBrk": 0,
       "day": 4,
-      "vIdx": 2,
+      "vIdx": 0,
       "veh": {
-       "$v": "vfaooj7",
+       "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
+        "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6617,15 +5723,323 @@
      {
       "ok": true,
       "why": "",
+      "t0": 889.65575,
+      "shiftStart": 889.65575,
+      "dep": 979.65575,
+      "ret": 1336.7333333333336,
+      "end": 1336.7333333333336,
+      "endShift": 1336.7333333333336,
+      "dur": 447.07758333333356,
+      "km": 36.260000000000005,
+      "kgDel": 4980.700000000001,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s26",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Urip 286",
+          "alamat": "Lorong KB, Karampuang, Panakkukang",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1407254,119.4513953",
+          "lat": -5.1407254,
+          "lng": 119.4513953,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1155.7,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 12.42,
+        "drive": 38.424375000000005,
+        "depart": 979.65575,
+        "arr": 1018.0801250000001,
+        "start": 1018.0801250000001,
+        "fin": 1056.6034583333335,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s30",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Kerung-Kerung",
+          "alamat": "Jalan Kerung-Kerung, Maradekaya Utara, Makassar",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1400941,119.4274905",
+          "lat": -5.1400941,
+          "lng": 119.4274905,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 849.6,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 3.32,
+        "drive": 10.271249999999998,
+        "depart": 1056.6034583333335,
+        "arr": 1066.8747083333335,
+        "start": 1066.8747083333335,
+        "fin": 1125.1947083333334,
+        "brk": 30,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s17",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Tinumbu",
+          "alamat": "Jalan Tinumbu, Parang Layang, Bontoala",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1229435,119.4198277",
+          "lat": -5.1229435,
+          "lng": 119.4198277,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 815.3,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 2.54,
+        "drive": 7.858125,
+        "depart": 1125.1947083333334,
+        "arr": 1133.0528333333334,
+        "start": 1133.0528333333334,
+        "fin": 1220.2295000000001,
+        "brk": 60,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s13",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Sunu",
+          "alamat": "Jalan Sunu, Kalukuang, Tallo",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1263022,119.4287397",
+          "lat": -5.1263022,
+          "lng": 119.4287397,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1250.4,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 2.52,
+        "drive": 6.237,
+        "depart": 1220.2295000000001,
+        "arr": 1226.4665000000002,
+        "start": 1226.4665000000002,
+        "fin": 1268.1465000000003,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s22",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Urip",
+          "alamat": "Jalan Urip Sumoharjo, Karuwisi Utara, Panakkukang",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1354857,119.4362772",
+          "lat": -5.1354857,
+          "lng": 119.4362772,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 909.7,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 2.05,
+        "drive": 5.0737499999999995,
+        "depart": 1268.1465000000003,
+        "arr": 1273.2202500000003,
+        "start": 1273.2202500000003,
+        "fin": 1303.5435833333336,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 889.65575,
+        "end": 979.65575,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "jalan",
+        "start": 979.65575,
+        "end": 1018.0801250000001,
+        "label": "Perjalanan ke Lazuna Chicken Urip 286",
+        "km": 12.42
+       },
+       {
+        "type": "bongkar",
+        "start": 1018.0801250000001,
+        "end": 1056.6034583333335,
+        "label": "Menurunkan barang di Lazuna Chicken Urip 286",
+        "kg": 1155.7
+       },
+       {
+        "type": "jalan",
+        "start": 1056.6034583333335,
+        "end": 1066.8747083333335,
+        "label": "Perjalanan ke Lazuna Chicken Kerung-Kerung",
+        "km": 3.32
+       },
+       {
+        "type": "bongkar",
+        "start": 1066.8747083333335,
+        "end": 1125.1947083333334,
+        "label": "Menurunkan barang di Lazuna Chicken Kerung-Kerung",
+        "kg": 849.6
+       },
+       {
+        "type": "jalan",
+        "start": 1125.1947083333334,
+        "end": 1133.0528333333334,
+        "label": "Perjalanan ke Lazuna Chicken Tinumbu",
+        "km": 2.54
+       },
+       {
+        "type": "bongkar",
+        "start": 1133.0528333333334,
+        "end": 1220.2295000000001,
+        "label": "Menurunkan barang di Lazuna Chicken Tinumbu",
+        "kg": 815.3
+       },
+       {
+        "type": "jalan",
+        "start": 1220.2295000000001,
+        "end": 1226.4665000000002,
+        "label": "Perjalanan ke Lazuna Chicken Sunu",
+        "km": 2.52
+       },
+       {
+        "type": "bongkar",
+        "start": 1226.4665000000002,
+        "end": 1268.1465000000003,
+        "label": "Menurunkan barang di Lazuna Chicken Sunu",
+        "kg": 1250.4
+       },
+       {
+        "type": "jalan",
+        "start": 1268.1465000000003,
+        "end": 1273.2202500000003,
+        "label": "Perjalanan ke Lazuna Chicken Urip",
+        "km": 2.05
+       },
+       {
+        "type": "bongkar",
+        "start": 1273.2202500000003,
+        "end": 1303.5435833333336,
+        "label": "Menurunkan barang di Lazuna Chicken Urip",
+        "kg": 909.7
+       },
+       {
+        "type": "jalan",
+        "start": 1303.5435833333336,
+        "end": 1336.7333333333336,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 13.41
+       }
+      ],
+      "backKm": 13.41,
+      "backMin": 33.18975,
+      "backDep": 1303.5435833333336,
+      "backBrk": 0,
+      "day": 4,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 2
+     },
+     {
+      "ok": true,
+      "why": "",
       "t0": 480,
       "shiftStart": 480,
       "dep": 600,
-      "ret": 942.9783333333334,
-      "end": 942.9783333333334,
-      "endShift": 942.9783333333334,
-      "dur": 462.97833333333335,
-      "km": 45,
-      "kgDel": 4248.099999999999,
+      "ret": 958.8674166666665,
+      "end": 958.8674166666665,
+      "endShift": 958.8674166666665,
+      "dur": 478.8674166666665,
+      "km": 40.97,
+      "kgDel": 5024,
       "kgPick": 0,
       "stops": [
        {
@@ -6706,19 +6120,19 @@
        },
        {
         "store": {
-         "$s": "s35",
+         "$s": "s14",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken Alauddin",
-          "alamat": "Jalan Bumi Raya No. 249, Gunung Sari, Rappocini",
+          "nama": "Lazuna Chicken Mappaoddang",
+          "alamat": "Jalan Andi Mappaodang, Bongaya, Tamalate",
           "kota": "Kota Makassar",
-          "link": "https://www.google.com/maps?q=-5.1851435,119.4412059",
-          "lat": -5.1851435,
-          "lng": 119.4412059,
+          "link": "https://www.google.com/maps?q=-5.1697756,119.4174852",
+          "lat": -5.1697756,
+          "lng": 119.4174852,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 868.6,
-          "frek": 1,
+          "beratKg": 560.4,
+          "frek": 2,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
           "alamatAuto": true,
@@ -6728,34 +6142,33 @@
            2,
            3,
            4,
-           5,
-           6
+           5
           ]
          }
         },
-        "km": 3.23,
-        "drive": 7.994249999999999,
+        "km": 2.46,
+        "drive": 6.0885,
         "depart": 710.3969166666666,
-        "arr": 718.3911666666665,
-        "start": 718.3911666666665,
-        "fin": 807.3444999999999,
+        "arr": 716.4854166666665,
+        "start": 716.4854166666665,
+        "fin": 795.1654166666665,
         "brk": 60,
         "wait": 0
        },
        {
         "store": {
-         "$s": "s19",
+         "$s": "s33",
          "d": {
           "aktif": true,
-          "nama": "Lazuna Chicken Agus Salim",
-          "alamat": "Jalan Haji Agus Salim, Bonto-Bontoa, Somba Opu",
-          "kota": "Kabupaten Gowa",
-          "link": "https://www.google.com/maps?q=-5.2017618,119.4572171",
-          "lat": -5.2017618,
-          "lng": 119.4572171,
+          "nama": "Lazuna Chicken Andi Djemma",
+          "alamat": "Banta-Bantaeng, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1651551,119.4258725",
+          "lat": -5.1651551,
+          "lng": 119.4258725,
           "buka": "07:00",
           "tutup": "22:00",
-          "beratKg": 1507.3,
+          "beratKg": 967.2,
           "frek": 1,
           "antaran": "Tujuan",
           "loading": "Menurunkan",
@@ -6771,13 +6184,87 @@
           ]
          }
         },
-        "km": 2.91,
-        "drive": 7.20225,
-        "depart": 807.3444999999999,
-        "arr": 814.54675,
-        "start": 814.54675,
-        "fin": 864.7900833333333,
+        "km": 1.6,
+        "drive": 3.9599999999999995,
+        "depart": 795.1654166666665,
+        "arr": 799.1254166666665,
+        "start": 799.1254166666665,
+        "fin": 831.3654166666665,
         "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s7",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Tamalate",
+          "alamat": "Jalan Tamalate Raya, Kassi-Kassi, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1679776,119.4477005",
+          "lat": -5.1679776,
+          "lng": 119.4477005,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 921.7,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 3.15,
+        "drive": 7.796249999999999,
+        "depart": 831.3654166666665,
+        "arr": 839.1616666666665,
+        "start": 839.1616666666665,
+        "fin": 869.8849999999999,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s42",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Hamzy (PK 3)",
+          "alamat": "Jalan Perintis Kemerdekaan 3, Tamalanrea Indah, Tamalanrea",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1415796,119.4776584",
+          "lat": -5.1415796,
+          "lng": 119.4776584,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 702.5,
+          "frek": 2,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5
+          ]
+         }
+        },
+        "km": 5.85,
+        "drive": 14.478749999999996,
+        "depart": 869.8849999999999,
+        "arr": 884.3637499999999,
+        "start": 884.3637499999999,
+        "fin": 937.7804166666665,
+        "brk": 30,
         "wait": 0
        }
       ],
@@ -6825,43 +6312,71 @@
        {
         "type": "jalan",
         "start": 710.3969166666666,
-        "end": 718.3911666666665,
-        "label": "Perjalanan ke Lazuna Chicken Alauddin",
-        "km": 3.23
+        "end": 716.4854166666665,
+        "label": "Perjalanan ke Lazuna Chicken Mappaoddang",
+        "km": 2.46
        },
        {
         "type": "bongkar",
-        "start": 718.3911666666665,
-        "end": 807.3444999999999,
-        "label": "Menurunkan barang di Lazuna Chicken Alauddin",
-        "kg": 868.6
+        "start": 716.4854166666665,
+        "end": 795.1654166666665,
+        "label": "Menurunkan barang di Lazuna Chicken Mappaoddang",
+        "kg": 560.4
        },
        {
         "type": "jalan",
-        "start": 807.3444999999999,
-        "end": 814.54675,
-        "label": "Perjalanan ke Lazuna Chicken Agus Salim",
-        "km": 2.91
+        "start": 795.1654166666665,
+        "end": 799.1254166666665,
+        "label": "Perjalanan ke Lazuna Chicken Andi Djemma",
+        "km": 1.6
        },
        {
         "type": "bongkar",
-        "start": 814.54675,
-        "end": 864.7900833333333,
-        "label": "Menurunkan barang di Lazuna Chicken Agus Salim",
-        "kg": 1507.3
+        "start": 799.1254166666665,
+        "end": 831.3654166666665,
+        "label": "Menurunkan barang di Lazuna Chicken Andi Djemma",
+        "kg": 967.2
        },
        {
         "type": "jalan",
-        "start": 864.7900833333333,
-        "end": 942.9783333333334,
+        "start": 831.3654166666665,
+        "end": 839.1616666666665,
+        "label": "Perjalanan ke Lazuna Chicken Tamalate",
+        "km": 3.15
+       },
+       {
+        "type": "bongkar",
+        "start": 839.1616666666665,
+        "end": 869.8849999999999,
+        "label": "Menurunkan barang di Lazuna Chicken Tamalate",
+        "kg": 921.7
+       },
+       {
+        "type": "jalan",
+        "start": 869.8849999999999,
+        "end": 884.3637499999999,
+        "label": "Perjalanan ke Lazuna Chicken Hamzy (PK 3)",
+        "km": 5.85
+       },
+       {
+        "type": "bongkar",
+        "start": 884.3637499999999,
+        "end": 937.7804166666665,
+        "label": "Menurunkan barang di Lazuna Chicken Hamzy (PK 3)",
+        "kg": 702.5
+       },
+       {
+        "type": "jalan",
+        "start": 937.7804166666665,
+        "end": 958.8674166666665,
         "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 19.47
+        "km": 8.52
        }
       ],
-      "backKm": 19.47,
-      "backMin": 48.18825,
-      "backDep": 864.7900833333333,
-      "backBrk": 30,
+      "backKm": 8.52,
+      "backMin": 21.087,
+      "backDep": 937.7804166666665,
+      "backBrk": 0,
       "day": 5,
       "vIdx": 0,
       "veh": {
@@ -6877,6 +6392,212 @@
        }
       },
       "shift": 1
+     },
+     {
+      "ok": true,
+      "why": "",
+      "t0": 958.8674166666665,
+      "shiftStart": 958.8674166666665,
+      "dep": 1018.8674166666665,
+      "ret": 1356.4560416666668,
+      "end": 1356.4560416666668,
+      "endShift": 1356.4560416666668,
+      "dur": 397.5886250000003,
+      "km": 39.16,
+      "kgDel": 4253.099999999999,
+      "kgPick": 0,
+      "stops": [
+       {
+        "store": {
+         "$s": "s15",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Abdesir",
+          "alamat": "Jalan Abdullah Daeng Sirua, Tamamaung, Panakkukang",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1486494,119.439298",
+          "lat": -5.1486494,
+          "lng": 119.439298,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1889.1,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 14.379999999999999,
+        "drive": 44.488125,
+        "depart": 1018.8674166666665,
+        "arr": 1063.3555416666666,
+        "start": 1063.3555416666666,
+        "fin": 1216.3255416666666,
+        "brk": 90,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s16",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Rappocini",
+          "alamat": "Jalan Rappocini Raya, Buakana, Rappocini",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1576263,119.4324174",
+          "lat": -5.1576263,
+          "lng": 119.4324174,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1084.8,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 2.98,
+        "drive": 7.375499999999999,
+        "depart": 1216.3255416666666,
+        "arr": 1223.7010416666667,
+        "start": 1223.7010416666667,
+        "fin": 1259.8610416666668,
+        "brk": 0,
+        "wait": 0
+       },
+       {
+        "store": {
+         "$s": "s38",
+         "d": {
+          "aktif": true,
+          "nama": "Lazuna Chicken Sultan Hasanuddin",
+          "alamat": "Jalan Sultan Hasanuddin, Baru, Ujung Pandang",
+          "kota": "Kota Makassar",
+          "link": "https://www.google.com/maps?q=-5.1389444,119.4095859",
+          "lat": -5.1389444,
+          "lng": 119.4095859,
+          "buka": "07:00",
+          "tutup": "22:00",
+          "beratKg": 1279.2,
+          "frek": 1,
+          "antaran": "Tujuan",
+          "loading": "Menurunkan",
+          "alamatAuto": true,
+          "hariOperasi": [
+           0,
+           1,
+           2,
+           3,
+           4,
+           5,
+           6
+          ]
+         }
+        },
+        "km": 4.09,
+        "drive": 10.12275,
+        "depart": 1259.8610416666668,
+        "arr": 1269.9837916666668,
+        "start": 1269.9837916666668,
+        "fin": 1312.6237916666669,
+        "brk": 0,
+        "wait": 0
+       }
+      ],
+      "segs": [
+       {
+        "type": "aktivitas",
+        "start": 958.8674166666665,
+        "end": 1018.8674166666665,
+        "label": "Loading di gudang"
+       },
+       {
+        "type": "jalan",
+        "start": 1018.8674166666665,
+        "end": 1063.3555416666666,
+        "label": "Perjalanan ke Lazuna Chicken Abdesir",
+        "km": 14.379999999999999
+       },
+       {
+        "type": "bongkar",
+        "start": 1063.3555416666666,
+        "end": 1216.3255416666666,
+        "label": "Menurunkan barang di Lazuna Chicken Abdesir",
+        "kg": 1889.1
+       },
+       {
+        "type": "jalan",
+        "start": 1216.3255416666666,
+        "end": 1223.7010416666667,
+        "label": "Perjalanan ke Lazuna Chicken Rappocini",
+        "km": 2.98
+       },
+       {
+        "type": "bongkar",
+        "start": 1223.7010416666667,
+        "end": 1259.8610416666668,
+        "label": "Menurunkan barang di Lazuna Chicken Rappocini",
+        "kg": 1084.8
+       },
+       {
+        "type": "jalan",
+        "start": 1259.8610416666668,
+        "end": 1269.9837916666668,
+        "label": "Perjalanan ke Lazuna Chicken Sultan Hasanuddin",
+        "km": 4.09
+       },
+       {
+        "type": "bongkar",
+        "start": 1269.9837916666668,
+        "end": 1312.6237916666669,
+        "label": "Menurunkan barang di Lazuna Chicken Sultan Hasanuddin",
+        "kg": 1279.2
+       },
+       {
+        "type": "jalan",
+        "start": 1312.6237916666669,
+        "end": 1356.4560416666668,
+        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
+        "km": 17.71
+       }
+      ],
+      "backKm": 17.71,
+      "backMin": 43.83225,
+      "backDep": 1312.6237916666669,
+      "backBrk": 0,
+      "day": 5,
+      "vIdx": 0,
+      "veh": {
+       "$v": "v1",
+       "d": {
+        "aktif": true,
+        "jenis": "CDD Box",
+        "plat": "DD 0001 LZ",
+        "kapasitasKg": 6000,
+        "kecepatan": 40,
+        "maksShift": 2,
+        "bbm": "Solar"
+       }
+      },
+      "shift": 2
      },
      {
       "ok": true,
@@ -6984,184 +6705,54 @@
        }
       },
       "shift": 1
-     },
-     {
-      "ok": true,
-      "why": "",
-      "t0": 480,
-      "shiftStart": 480,
-      "dep": 600,
-      "ret": 948.9364999999999,
-      "end": 948.9364999999999,
-      "endShift": 948.9364999999999,
-      "dur": 468.9364999999999,
-      "km": 60.14,
-      "kgDel": 3302.7,
-      "kgPick": 0,
-      "stops": [
-       {
-        "store": {
-         "$s": "si6a5ih",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Barombong",
-          "alamat": "Jalan Perjanjian Bungaya, Barombong, Tamalate",
-          "link": "https://www.google.com/maps/place/Golqi+Chicken+Barombong/@-5.2091608,119.3862073,17z/data=!4m6!3m5!1s0x2dbf1d410d5828a1:0xc9c91653ce613d63!8m2!3d-5.2091661!4d119.3887822!16s%2Fg%2F11xtmhrgk0?entry=tts&g_ep=EgoyMDI2MTEyMy4wIOC7DCoASAFQAw%3D%3D&skid=eed93869-2caf-4a44-b4f1-5560a61585e8",
-          "lat": -5.2091661,
-          "lng": 119.3887822,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 2000,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ],
-          "kota": "Kota Makassar",
-          "alamatAuto": true
-         }
-        },
-        "km": 27.259999999999998,
-        "drive": 67.46849999999999,
-        "depart": 600,
-        "arr": 667.4685,
-        "start": 667.4685,
-        "fin": 794.1351666666666,
-        "brk": 60,
-        "wait": 0
-       },
-       {
-        "store": {
-         "$s": "s23",
-         "d": {
-          "aktif": true,
-          "nama": "Lazuna Chicken Pallangga (Zuper)",
-          "alamat": "Jalan Poros Sungguminasa - Takalar, Mangngalli",
-          "kota": "Kabupaten Gowa",
-          "link": "https://www.google.com/maps?q=-5.2209106,119.44535",
-          "lat": -5.2209106,
-          "lng": 119.44535,
-          "buka": "07:00",
-          "tutup": "22:00",
-          "beratKg": 1302.7,
-          "frek": 1,
-          "antaran": "Tujuan",
-          "loading": "Menurunkan",
-          "alamatAuto": true,
-          "hariOperasi": [
-           0,
-           1,
-           2,
-           3,
-           4,
-           5,
-           6
-          ]
-         }
-        },
-        "km": 8.92,
-        "drive": 22.077,
-        "depart": 794.1351666666666,
-        "arr": 816.2121666666666,
-        "start": 816.2121666666666,
-        "fin": 859.6354999999999,
-        "brk": 0,
-        "wait": 0
-       }
-      ],
-      "segs": [
-       {
-        "type": "aktivitas",
-        "start": 480,
-        "end": 540,
-        "label": "Loading di gudang"
-       },
-       {
-        "type": "aktivitas",
-        "start": 540,
-        "end": 600,
-        "label": "Antri BBM"
-       },
-       {
-        "type": "jalan",
-        "start": 600,
-        "end": 667.4685,
-        "label": "Perjalanan ke Lazuna Chicken Barombong",
-        "km": 27.259999999999998
-       },
-       {
-        "type": "bongkar",
-        "start": 667.4685,
-        "end": 794.1351666666666,
-        "label": "Menurunkan barang di Lazuna Chicken Barombong",
-        "kg": 2000
-       },
-       {
-        "type": "jalan",
-        "start": 794.1351666666666,
-        "end": 816.2121666666666,
-        "label": "Perjalanan ke Lazuna Chicken Pallangga (Zuper)",
-        "km": 8.92
-       },
-       {
-        "type": "bongkar",
-        "start": 816.2121666666666,
-        "end": 859.6354999999999,
-        "label": "Menurunkan barang di Lazuna Chicken Pallangga (Zuper)",
-        "kg": 1302.7
-       },
-       {
-        "type": "jalan",
-        "start": 859.6354999999999,
-        "end": 948.9364999999999,
-        "label": "Kembali ke Gudang PT Inti Lazuna Grup",
-        "km": 23.96
-       }
-      ],
-      "backKm": 23.96,
-      "backMin": 59.301,
-      "backDep": 859.6354999999999,
-      "backBrk": 30,
-      "day": 5,
-      "vIdx": 2,
-      "veh": {
-       "$v": "vfaooj7",
-       "d": {
-        "aktif": false,
-        "jenis": "CDD Box",
-        "plat": "DD 0003 LZ",
-        "kapasitasKg": 6000,
-        "kecepatan": 40,
-        "maksShift": 1,
-        "bbm": "Solar"
-       }
-      },
-      "shift": 1
      }
     ],
     "unserved": [
      {
-      "day": 4,
+      "day": 0,
       "store": {
-       "$s": "s18",
+       "$s": "s1",
        "d": {
         "aktif": true,
-        "nama": "Lazuna Chicken Samata",
-        "alamat": "Jalan H.M. Yasin Limpo, Romangpolong, Somba Opu",
-        "kota": "Kabupaten Gowa",
-        "link": "https://www.google.com/maps?q=-5.2022542,119.4963478",
-        "lat": -5.2022542,
-        "lng": 119.4963478,
+        "nama": "PRODUKSI",
+        "alamat": "Jalan Parumpa, Daya, Biringkanaya",
+        "kota": "Kota Makassar",
+        "link": "https://www.google.com/maps?q=-5.1169668,119.5093495",
+        "lat": -5.1169668,
+        "lng": 119.5093495,
         "buka": "07:00",
         "tutup": "22:00",
-        "beratKg": 1699.6,
+        "beratKg": 1500,
+        "frek": 5,
+        "antaran": "Tujuan",
+        "loading": "Menaikkan",
+        "alamatAuto": true,
+        "hariOperasi": [
+         0,
+         1,
+         2,
+         3,
+         5
+        ]
+       }
+      },
+      "reason": "Melebihi jam kerja shift"
+     },
+     {
+      "day": 1,
+      "store": {
+       "$s": "s23",
+       "d": {
+        "aktif": true,
+        "nama": "Lazuna Chicken Pallangga (Zuper)",
+        "alamat": "Jalan Poros Sungguminasa - Takalar, Mangngalli",
+        "kota": "Kabupaten Gowa",
+        "link": "https://www.google.com/maps?q=-5.2209106,119.44535",
+        "lat": -5.2209106,
+        "lng": 119.44535,
+        "buka": "07:00",
+        "tutup": "22:00",
+        "beratKg": 1302.7,
         "frek": 1,
         "antaran": "Tujuan",
         "loading": "Menurunkan",
@@ -7178,122 +6769,103 @@
        }
       },
       "reason": "Waktu/kapasitas armada di hari ini sudah penuh"
+     },
+     {
+      "day": 4,
+      "store": {
+       "$s": "s21",
+       "d": {
+        "aktif": true,
+        "nama": "Lazuna Chicken Cendrawasih",
+        "alamat": "Baji Mappakasunggu, Mamajang",
+        "kota": "Kota Makassar",
+        "link": "https://www.google.com/maps?q=-5.169139,119.4113906",
+        "lat": -5.169139,
+        "lng": 119.4113906,
+        "buka": "07:00",
+        "tutup": "22:00",
+        "beratKg": 1439.3,
+        "frek": 1,
+        "antaran": "Tujuan",
+        "loading": "Menurunkan",
+        "alamatAuto": true,
+        "hariOperasi": [
+         0,
+         1,
+         2,
+         3,
+         4,
+         5,
+         6
+        ]
+       }
+      },
+      "reason": "Waktu/kapasitas armada di hari ini sudah penuh"
+     },
+     {
+      "day": 5,
+      "store": {
+       "$s": "si6a5ih",
+       "d": {
+        "aktif": true,
+        "nama": "Lazuna Chicken Barombong",
+        "alamat": "Jalan Perjanjian Bungaya, Barombong, Tamalate",
+        "link": "https://www.google.com/maps/place/Golqi+Chicken+Barombong/@-5.2091608,119.3862073,17z/data=!4m6!3m5!1s0x2dbf1d410d5828a1:0xc9c91653ce613d63!8m2!3d-5.2091661!4d119.3887822!16s%2Fg%2F11xtmhrgk0?entry=tts&g_ep=EgoyMDI2MTEyMy4wIOC7DCoASAFQAw%3D%3D&skid=eed93869-2caf-4a44-b4f1-5560a61585e8",
+        "lat": -5.2091661,
+        "lng": 119.3887822,
+        "buka": "07:00",
+        "tutup": "22:00",
+        "beratKg": 2000,
+        "frek": 1,
+        "antaran": "Tujuan",
+        "loading": "Menurunkan",
+        "hariOperasi": [
+         0,
+         1,
+         2,
+         3,
+         4,
+         5,
+         6
+        ],
+        "kota": "Kota Makassar",
+        "alamatAuto": true
+       }
+      },
+      "reason": "Waktu/kapasitas armada di hari ini sudah penuh"
      }
     ],
     "warn": [],
     "opt": {
      "awal": {
-      "rit": 17,
-      "km": 582.98,
-      "jam": 112.1043361111111,
-      "isi": 0.7340872549019609,
-      "unserved": 2
+      "rit": 15,
+      "km": 594.3399999999999,
+      "jam": 98.96812604166666,
+      "isi": 0.7461488888888891,
+      "unserved": 6
      },
      "akhir": {
-      "rit": 18,
-      "km": 575.91,
-      "jam": 113.24100034722223,
-      "isi": 0.7352953703703702,
-      "unserved": 1
+      "rit": 14,
+      "km": 468.49999999999994,
+      "jam": 91.83221041666668,
+      "isi": 0.8203071428571429,
+      "unserved": 4
      },
-     "starts": 37,
-     "ms": 8639,
+     "starts": 10,
+     "ms": 1027,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
       "km": 2
      },
-     "mendalam": true,
-     "rr": 71,
+     "mendalam": false,
+     "rr": 0,
      "rrOk": 0,
-     "cost": 20643,
+     "cost": 47287,
      "dasar": false,
      "solar": {
-      "aktif": true,
+      "aktif": false,
       "tingkat": "sedang"
-     },
-     "fair": {
-      "kriteria": [
-       "rit",
-       "toko",
-       "jam",
-       "kg",
-       "km",
-       "s2"
-      ],
-      "tingkat": "sedang",
-      "sebelum": [
-       {
-        "rit": 6,
-        "toko": 26,
-        "jam": 2812.313645833334,
-        "kg": 27049,
-        "km": 223.46,
-        "s2": 0
-       },
-       {
-        "rit": 4,
-        "toko": 6,
-        "jam": 1058.4516458333333,
-        "kg": 7619.200000000001,
-        "km": 78.32,
-        "s2": 0
-       },
-       {
-        "rit": 6,
-        "toko": 19,
-        "jam": 2740.641104166666,
-        "kg": 23234.600000000002,
-        "km": 259.27,
-        "s2": 0
-       }
-      ],
-      "sesudah": [
-       {
-        "rit": 6,
-        "toko": 25,
-        "jam": 2729.864375,
-        "kg": 25818,
-        "km": 218.74,
-        "s2": 0
-       },
-       {
-        "rit": 6,
-        "toko": 6,
-        "jam": 1250.4032291666665,
-        "kg": 7669.7,
-        "km": 96.83,
-        "s2": 0
-       },
-       {
-        "rit": 6,
-        "toko": 20,
-        "jam": 2814.1924166666663,
-        "kg": 24415.100000000002,
-        "km": 260.34,
-        "s2": 0
-       }
-      ],
-      "mSebelum": {
-       "rit": 16,
-       "km": 561.05,
-       "jam": 110.19010659722221,
-       "isi": 0.7173875000000001,
-       "unserved": 1
-      },
-      "cap": [
-       6000,
-       1500,
-       6000
-      ],
-      "kgRelatif": true
-     },
-     "biasa": {
-      "rit": 18,
-      "km": 609.77,
-      "jam": 113.66639409722224,
-      "isi": 0.7085092592592593,
-      "unserved": 2
      }
     },
     "ctxBreaks": {
@@ -7408,7 +6980,7 @@
     },
     "H": 480,
     "jarak": {
-     "real": 69,
+     "real": 62,
      "est": 0,
      "mode": "jalan"
     },
