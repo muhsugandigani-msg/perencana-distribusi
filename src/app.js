@@ -713,6 +713,7 @@ document.addEventListener("mousemove", e => {
    titik jalan yang diblok. Disimpan di state.jarakJalan (ikut tersimpan ke GitHub) dan di browser ini. Pasangan
    yang gagal diambil memakai perkiraan garis lurus × faktor jarak jalan. */
 const JARAK_LS = LS_KEY + "-jarak";
+const MAXP = 100; // batas server: "Exceeded max locations: 100" = sumber × tujuan per permintaan
 const roadJob = { run: false, done: 0, total: 0, failKey: "", err: "" };
 let sharedChecked = false;
 function jarakPts() { return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)))]; }
@@ -749,11 +750,11 @@ async function hitungJarak(manual) {
   const { pts, miss } = jarakMissing(); if (!miss.length) { if (manual) toast("Semua jarak sudah memakai rute jalan sebenarnya."); return; }
   const cfg = roadCfgKey(state); if (!state.jarakJalan || state.jarakJalan.cfg !== cfg) state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
   const J = state.jarakJalan, idx = new Map(J.k.map((k, i) => [k, i])); const at = k => { let i = idx.get(k); if (i == null) { i = J.k.length; J.k.push(k); idx.set(k, i); } return i; };
-  // permintaan seminimal mungkin: baris penuh untuk titik baru, sisanya per kolom; tiap permintaan maks. 20 × 20 titik
+  // permintaan seminimal mungkin: baris penuh untuk titik baru, sisanya per kolom; tiap permintaan maks. 100 pasangan (batas server publik)
   const bySrc = new Map(); miss.forEach(([a, b]) => { if (!bySrc.has(a)) bySrc.set(a, new Set()); bySrc.get(a).add(b); });
   const full = pts.filter(a => bySrc.has(a) && bySrc.get(a).size > pts.length / 2), fullSet = new Set(full);
   const rest = miss.filter(([a]) => !fullSet.has(a)), blocks = [];
-  const chunk = (S, T) => { for (let j = 0; j < T.length; j += 20) { const Tc = T.slice(j, j + 20), n = 20; for (let i = 0; i < S.length; i += n) blocks.push([S.slice(i, i + n), Tc]); } };
+  const chunk = (S, T) => { const tsz = Math.max(1, Math.min(T.length, S.length < 10 ? Math.floor(MAXP / S.length) : 10)); for (let j = 0; j < T.length; j += tsz) { const Tc = T.slice(j, j + tsz), n = Math.max(1, Math.floor(MAXP / Tc.length)); for (let i = 0; i < S.length; i += n) blocks.push([S.slice(i, i + n), Tc]); } };
   if (full.length) chunk(full, pts);
   if (rest.length) chunk([...new Set(rest.map(x => x[0]))], [...new Set(rest.map(x => x[1]))]);
   const wasUnsaved = unsaved; let got = 0, failed = 0;
