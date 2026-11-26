@@ -28,7 +28,8 @@
    "kapasitasKg": 1500,
    "kecepatan": 40,
    "maksShift": 1,
-   "bbm": "Bensin"
+   "bbm": "Bensin",
+   "maksKmRit": 30
   }
  ],
  "stores": [
@@ -1403,7 +1404,7 @@
   },
   "loadingHariPertama": "malam"
  },
- "_savedAt": 1795663213593,
+ "_savedAt": 1795664566434,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
