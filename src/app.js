@@ -120,9 +120,31 @@ async function loadShared() { // saat web dibuka
   } catch (e) { shared.ok = false; console.warn("Data bersama GitHub tidak bisa dimuat", e); saveStatus(); }
   finally { sharedChecked = true; } // jarak jalan diambil setelah "Buat Plan" diklik, bukan saat web dibuka
 }
-function saveLocal() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; }
-  catch (e) { toast("Gagal menyimpan: penyimpanan browser penuh atau diblokir.", 5000); return false; }
+// Simpan ke browser. Bila kuota penuh (biasanya karena cache garis rute peta), cache itu dikosongkan dulu lalu dicoba lagi;
+// bila masih penuh, data disimpan tanpa salinan jarak jalan / plan tersimpan (keduanya bisa dibuat ulang). Data kendaraan, store & parameter tidak pernah dibuang.
+let lastLocalNote = "";
+function saveLocal(quiet) {
+  const put = obj => { try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); return true; } catch (e) { return false; } };
+  lastLocalNote = "";
+  if (put(state)) return true;
+  try { localStorage.removeItem(LS_KEY + "-rute-tanpa-tol"); localStorage.removeItem(LS_KEY + "-osrm"); } catch (e) {}
+  if (put(state)) { lastLocalNote = "cache garis rute peta dikosongkan"; return true; }
+  const lite = Object.assign({}, state); delete lite.jarakJalan;
+  if (put(lite)) { lastLocalNote = "cache garis rute dikosongkan, jarak jalan disimpan terpisah"; return true; }
+  delete lite.savedPlan;
+  if (put(lite)) { lastLocalNote = "plan tersimpan tidak ikut disimpan di browser (klik Buat Plan saat dibuka lagi)"; return true; }
+  if (!quiet) toast("Gagal menyimpan di browser: penyimpanan browser penuh atau diblokir (mis. mode penyamaran / pengaturan privasi).", 6000);
+  return false;
+}
+// cache garis rute peta dibatasi agar tidak memenuhi penyimpanan browser
+const OSRM_MAX = 1200000;
+function persistOsrm() {
+  const keys = Object.keys(osrmCache);
+  const pack = ks => JSON.stringify(Object.fromEntries(ks.map(k => [k, osrmCache[k].map(p => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5])])));
+  let ks = keys, txt = pack(ks);
+  while (txt.length > OSRM_MAX && ks.length > 1) { ks = ks.slice(Math.ceil(ks.length / 4)); txt = pack(ks); } // buang yang paling lama
+  try { localStorage.setItem(LS_KEY + "-rute-tanpa-tol", txt); }
+  catch (e) { try { localStorage.removeItem(LS_KEY + "-rute-tanpa-tol"); } catch (e2) {} }
 }
 /* Plan terakhir ikut disimpan (di browser & GitHub) agar langsung tampil saat web dibuka, tanpa menghitung ulang. */
 function inputSig(st) { // sidik data input (tanpa plan tersimpan / cap waktu / cache jarak)
@@ -162,10 +184,11 @@ async function commitSave(force) {
   if (saving) return false;
   state._savedAt = Date.now();
   { const SP = packPlans(); if (SP) state.savedPlan = SP; } // plan yang sedang tampil ikut disimpan
-  if (!saveLocal()) return false;
+  const okLocal = saveLocal(!!ghToken());
   if (!ghToken()) {
+    if (!okLocal) return false;
     shared.src = "lokal"; unsaved = false; saveStatus();
-    toast("Tersimpan di browser ini saja. Untuk menyimpan bersama, buka menu Data → Simpan bersama (GitHub).", 4500);
+    toast("Tersimpan di browser ini saja" + (lastLocalNote ? " (" + lastLocalNote + ")" : "") + ". Untuk menyimpan bersama, buka menu Data → Simpan bersama (GitHub).", 5000);
     return true;
   }
   saving = true; saveStatus();
@@ -173,14 +196,14 @@ async function commitSave(force) {
     const cur = await ghGetFile();
     if (!force && cur.sha && cur.sha !== shared.sha) { saving = false; saveStatus(); ghConflict(cur); return false; }
     shared.sha = await ghPutFile(state, cur.sha); shared.at = state._savedAt; shared.ok = true; shared.src = "github";
-    saving = false; unsaved = false; saveStatus(); toast("Tersimpan ke GitHub. Semua yang membuka link ini akan melihat data ini.", 3500);
+    saving = false; unsaved = false; saveStatus(); toast("Tersimpan ke GitHub. Semua yang membuka link ini akan melihat data ini." + (okLocal ? "" : " (Penyimpanan browser penuh/diblokir, jadi data hanya tersimpan di GitHub.)"), okLocal ? 3500 : 6000);
     return true;
   } catch (e) {
     saving = false; unsaved = true; shared.src = "lokal";
     if (e.status === 409 || e.status === 422) { try { const cur = await ghGetFile(); saveStatus(); ghConflict(cur); return false; } catch (e2) {} }
     saveStatus();
     const why = e.status === 401 ? "token tidak valid atau kedaluwarsa" : e.status === 403 || e.status === 404 ? "token tidak punya izin tulis (Contents: Read and write) ke repo ini" : "koneksi ke GitHub gagal";
-    toast("Tersimpan di browser ini, tetapi gagal ke GitHub: " + why + ".", 6000);
+    toast((okLocal ? "Tersimpan di browser ini, tetapi gagal ke GitHub: " : "Gagal menyimpan: browser penuh/diblokir dan GitHub gagal (") + why + (okLocal ? "." : "). Gunakan menu Data → Simpan data input (JSON) untuk menyimpan salinan."), 7000);
     return false;
   }
 }
@@ -1161,7 +1184,7 @@ async function osrmRoute(pts) {
       if (!baru) {
         const g = j.trip.legs.flatMap(l => decodePoly6(l.shape));
         osrmCache[key] = g;
-        try { localStorage.setItem(LS_KEY + "-rute-tanpa-tol", JSON.stringify(osrmCache)); } catch (e) {}
+        persistOsrm();
         return g;
       }
       try { localStorage.setItem(LS_KEY + "-blok-titik", JSON.stringify(blokTitik)); } catch (e) {}
