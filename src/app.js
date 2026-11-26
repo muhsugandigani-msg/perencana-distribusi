@@ -50,12 +50,28 @@ function normalize(s) {
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   return s;
 }
-let saveT = null;
-function save() {
+/* Simpan: perubahan baru tersimpan di browser ini saat tombol "Simpan" (atau Ctrl+S) ditekan */
+let unsaved = false;
+function save() { // dipanggil di setiap perubahan input
   planDirty = true; markDirty();
-  clearTimeout(saveT);
-  saveT = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} }, 300);
+  unsaved = true; saveStatus();
 }
+function commitSave() {
+  state._savedAt = Date.now();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch (e) { toast("Gagal menyimpan: penyimpanan browser penuh atau diblokir.", 5000); return false; }
+  unsaved = false; saveStatus(); toast("Tersimpan. Data ini dimuat lagi saat web dibuka di browser ini.");
+  return true;
+}
+function saveStatus() {
+  const b = document.getElementById("btnSave"), st = document.getElementById("saveState"); if (!b || !st) return;
+  b.classList.toggle("primary", unsaved); b.classList.toggle("dirty", unsaved);
+  const t = state._savedAt ? new Date(state._savedAt).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  st.textContent = unsaved ? "Belum disimpan" : (t ? "Tersimpan " + t : "Belum pernah disimpan");
+  st.className = "savestate" + (unsaved ? " warn" : "");
+}
+window.addEventListener("beforeunload", e => { if (unsaved) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); commitSave(); } });
 function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
 
 /* ---------- binding generik ---------- */
@@ -389,6 +405,7 @@ function runPlan(silent) {
   planDirty = false; mapDrawn = null;
   if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
 }
+$("#btnSave").onclick = commitSave; saveStatus();
 $("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
 
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
@@ -916,7 +933,7 @@ $("#menuPop").addEventListener("click", e => {
   if (a === "import") $("#fileJson").click();
   if (a === "importStore") { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); $("#fileStore").click(); }
   if (a === "template") storeTemplate();
-  if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
+  if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); state._savedAt = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); unsaved = false; saveStatus(); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
   if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); runPlan(); renderTab(); }]]);
   if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
 });
