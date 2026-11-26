@@ -362,8 +362,6 @@ function tugasCard(p) {
   const nB = state.vehicles.filter(v => v.aktif !== false && v.bbm === "Bensin").length, nS = state.vehicles.filter(v => v.aktif !== false && v.bbm !== "Bensin").length;
   return `<div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Pembagian tugas kendaraan</h3>
-      <div class="field"><label class="chk"><input type="checkbox" data-k="params.metodeZona" ${p.metodeZona !== false ? "checked" : ""}> <b>Susun per zona hari</b></label>
-        <p class="hint">Titik store dikelompokkan menurut jarak terdekat menjadi satu zona per hari distribusi (6 hari = 6 zona), berat muatan &amp; jumlah store tiap zona seimbang sebanding jam kerja harinya. Tiap zona lalu dibagi ke armada aktif (kapasitas besar dulu) dan dirapikan berulang kali; keseimbangan zona dijaga ±10% selama optimasi.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
         <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius, solar, fairness) tetap dipatuhi.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.prioritasSolar.aktif" ${PS.aktif !== false ? "checked" : ""} data-rerender="1"> <b>Utamakan kendaraan solar</b></label>
@@ -642,8 +640,6 @@ function renderParameter() {
   </div>
   <div class="card pad" style="display:grid;gap:12px">
     <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
-    <div class="field"><label>Titik keluar/masuk gudang</label><input class="in" data-k="params.titikGudang" data-rerender="1" value="${esc(p.titikGudang || "")}" placeholder="Link Google Maps atau koordinat, mis. -5.0980, 119.4850">
-      <p class="hint">Semua rit berangkat dari gudang lewat titik ini dan pulang lewat titik ini juga (mis. simpang masuk jalan lingkar barat). Kosongkan bila kendaraan bebas lewat jalan mana saja. ${(() => { const g = parseKoordinat(p.titikGudang); return !p.titikGudang ? "" : g && g.lat != null ? "<b>Terbaca: " + g.lat.toFixed(5) + ", " + g.lng.toFixed(5) + "</b>" : g && g.short ? '<b style="color:var(--danger,#b42318)">Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau tempel koordinatnya.</b>' : '<b style="color:var(--danger,#b42318)">Koordinat tidak terbaca.</b>'; })()}</p></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-k="params.jalanBlok.semuaTol" ${p.jalanBlok.semuaTol !== false ? "checked" : ""}> <span><b>Blok semua jalan tol</b> <span class="hint">(Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan, dan tol lain)</span></span></label>
     <div style="display:grid;gap:6px">${p.jalanBlok.daftar.map((j, i) => `<div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto"><input type="checkbox" data-k="params.jalanBlok.daftar.${i}.aktif" ${j.aktif !== false ? "checked" : ""} aria-label="Aktif"><input class="in" data-k="params.jalanBlok.daftar.${i}.nama" value="${esc(j.nama || "")}" placeholder="Nama jalan, mis. Tol Reformasi"><button class="btn icon" type="button" data-del="params.jalanBlok.daftar|${i}" aria-label="Hapus">✕</button></div>`).join("") || '<span class="off">Belum ada jalan yang diblok.</span>'}</div>
   </div>
@@ -748,7 +744,7 @@ function weeksCard() {
 }
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
 function gmapsLink(t) {
-  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(gatePt(state) ? [gatePt(state)] : [], t.stops.map(s => [s.store.lat, s.store.lng]), gatePt(state) ? [gatePt(state)] : [], [[d.lat, d.lng]]);
+  const d = plan.depot; const pts = [[d.lat, d.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d.lat, d.lng]]);
   return "https://www.google.com/maps/dir/" + pts.map(p => p[0] + "," + p[1]).join("/") + "/data=!4m4!4m3!2m1!2b1!3e0";
 }
 function tripColor(t, i) { const pal = ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"]; return pal[i % pal.length]; }
@@ -948,7 +944,7 @@ const JARAK_LS = LS_KEY + "-jarak";
 const MAXP = 100; // batas server: "Exceeded max locations: 100" = sumber × tujuan per permintaan
 const roadJob = { run: false, done: 0, total: 0, failKey: "", err: "" };
 let sharedChecked = false;
-function jarakPts() { const G = gatePt(state); return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)).concat(G ? [ptKey(G[0], G[1])] : []))]; }
+function jarakPts() { return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)))]; }
 function mergeJarak(src) { // gabungkan matriks lain (cache browser / data bersama) ke state
   src = cleanJarak(src); const cfg = roadCfgKey(state); if (!src || src.cfg !== cfg) return 0;
   let J = state.jarakJalan; if (!J || J.cfg !== cfg) J = state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
@@ -1144,7 +1140,7 @@ async function drawMap() {
   const lines = [];
   trips.forEach((t, i) => {
     const col = mapDay === "all" ? dayColor(t.day) : tripColor(t, i);
-    const pts = [[d0.lat, d0.lng]].concat(gatePt(state) ? [gatePt(state)] : [], t.stops.map(s => [s.store.lat, s.store.lng]), gatePt(state) ? [gatePt(state)] : [], [[d0.lat, d0.lng]]);
+    const pts = [[d0.lat, d0.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d0.lat, d0.lng]]);
     pts.forEach(p => bounds.push(p));
     const dash = t.shift > 1 ? "8 6" : null;
     const pl = L.polyline(pts, { color: col, weight: mapDay === "all" ? 3 : 4, opacity: .85, dashArray: dash }).addTo(mapLayer);
@@ -1211,8 +1207,7 @@ function exportExcel() {
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   { const F = state.params.fairness, PS = state.params.prioritasSolar;
     par.push([], ["Pembagian tugas kendaraan", ""], ["Utamakan kendaraan solar", PS.aktif !== false ? "Ya (" + (PS.tingkat || "sedang") + ")" : "Tidak"], ["Fairness", F.aktif ? "Ya (" + (F.tingkat || "sedang") + ")" : "Tidak"]);
-    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); } par.push(["Susun per zona hari", state.params.metodeZona !== false ? "Ya" : "Tidak"]);
-  par.push([], ["Titik keluar/masuk gudang", state.params.titikGudang || "Bebas"]);
+    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); }
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
