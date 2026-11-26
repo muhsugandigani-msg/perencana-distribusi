@@ -7,7 +7,7 @@
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
    "kecepatan": 40,
-   "maksShift": 2,
+   "maksShift": 1,
    "bbm": "Solar"
   },
   {
@@ -30,6 +30,16 @@
    "maksShift": 1,
    "bbm": "Bensin",
    "maksRadiusKm": 15
+  },
+  {
+   "id": "vfaooj7",
+   "aktif": true,
+   "jenis": "CDD Box",
+   "plat": "DD 0004 LZ",
+   "kapasitasKg": 6000,
+   "kecepatan": 40,
+   "maksShift": 1,
+   "bbm": "Solar"
   }
  ],
  "stores": [
@@ -1432,7 +1442,7 @@
   "loadingHariPertama": "malam",
   "mingguMulai": "2026-11-30"
  },
- "_savedAt": 1795675234186,
+ "_savedAt": 1795676934207,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3291,8 +3301,8 @@
   "t": 1795675184711
  },
  "savedPlan": {
-  "at": 1795675234186,
-  "sig": "lq7yb3:19733",
+  "at": 1795676934208,
+  "sig": "ujbm90:19863",
   "weekSel": 0,
   "meta": {
    "H": 2,
@@ -3344,7 +3354,7 @@
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
        "kecepatan": 40,
-       "maksShift": 2,
+       "maksShift": 1,
        "bbm": "Solar"
       }
      },
@@ -3582,7 +3592,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -3959,7 +3969,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -4216,7 +4226,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -4637,7 +4647,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -4893,7 +4903,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5314,7 +5324,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5623,7 +5633,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5892,7 +5902,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6251,7 +6261,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6462,7 +6472,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6720,7 +6730,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6900,7 +6910,7 @@
         "buka": "07:00",
         "tutup": "22:00",
         "beratKg": 2000,
-        "frek": 1,
+        "frek": 0.5,
         "antaran": "Tujuan",
         "loading": "Menurunkan",
         "hariOperasi": [
@@ -6913,8 +6923,7 @@
          6
         ],
         "kota": "Kota Makassar",
-        "alamatAuto": true,
-        "_periode": 2
+        "alamatAuto": true
        }
       },
       "reason": "Waktu/kapasitas armada di hari ini sudah penuh"
@@ -7175,7 +7184,7 @@
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
        "kecepatan": 40,
-       "maksShift": 2,
+       "maksShift": 1,
        "bbm": "Solar"
       }
      },
@@ -7465,7 +7474,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -7840,7 +7849,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -8150,7 +8159,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -8520,7 +8529,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -8777,7 +8786,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -9251,7 +9260,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -9457,7 +9466,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -9826,7 +9835,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -10083,7 +10092,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -10294,7 +10303,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -10500,7 +10509,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
