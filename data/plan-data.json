@@ -1447,7 +1447,7 @@
   "mingguMulai": "2026-11-30",
   "titikGudang": "https://www.google.com/maps/place/5%C2%B006'07.5%22S+119%C2%B028'39.3%22E/@-5.102094,119.477585,17z/data=!3m1!4b1!4m4!3m3!8m2!3d-5.102094!4d119.477585?entry=ttu&g_ep=EgoyMDI2MTEyMy4wIKXMDSoASAFQAw%3D%3D"
  },
- "_savedAt": 1795700519146,
+ "_savedAt": 1795700606924,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3393,7 +3393,7 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795700519147,
+  "at": 1795700606925,
   "sig": "en8brq:20115",
   "weekSel": 0,
   "meta": {
@@ -7197,7 +7197,7 @@
       "unserved": 1
      },
      "starts": 37,
-     "ms": 9284,
+     "ms": 8639,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
