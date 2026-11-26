@@ -29,8 +29,7 @@
    "kecepatan": 40,
    "maksShift": 1,
    "bbm": "Bensin",
-   "maksKmRit": null,
-   "maksRadiusKm": 10
+   "maksRadiusKm": 15
   }
  ],
  "stores": [
@@ -1403,9 +1402,11 @@
    "aktif": true,
    "tingkat": "sedang"
   },
-  "loadingHariPertama": "malam"
+  "optimasiMendalam": true,
+  "loadingHariPertama": "malam",
+  "mingguMulai": "2026-11-30"
  },
- "_savedAt": 1795664694720,
+ "_savedAt": 1795673962209,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
