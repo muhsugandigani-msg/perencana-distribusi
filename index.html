@@ -1269,6 +1269,86 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   return { ok, why, t0, shiftStart, shiftEff: shiftNo, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
+/* Zona pratinjau (tanpa kendaraan, Gandi 2026-11-27): store dikelompokkan ke zona sebanyak hari distribusi berdasarkan kedekatan,
+   total muatan tiap zona seimbang. Store >1x seminggu dibagi ke beberapa zona berbeda. Zona dipasangkan ke hari sesuai hari operasi store. */
+function zonePreview(state) {
+  const days = (state.params.hari || []).map((x, i) => x ? i : -1).filter(i => i >= 0);
+  const D = days.length; if (!D) return null;
+  const st = state.stores.filter(x => x.aktif !== false && x.antaran !== "Origin" && x.lat != null && x.lng != null);
+  if (!st.length) return null;
+  const pt = x => [x.lat, x.lng], kgOf = x => +x.beratKg || 0;
+  const fOf = x => Math.max(1, Math.min(D, Math.round(+x.frek >= 1 ? +x.frek : 1)));
+  const visits = []; st.forEach(x => { for (let k = 0; k < fOf(x); k++) visits.push(x); });
+  const tot = visits.reduce((a, x) => a + kgOf(x), 0), target = tot / D;
+  const ops = x => Array.isArray(x.hariOperasi) ? x.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
+  // pusat awal: titik terjauh berurutan, lalu k-means
+  const D0 = state.stores.find(x => x.antaran === "Origin" && x.lat != null) || st[0];
+  let C = [pt(st.slice().sort((a, b) => hav(pt(b), pt(D0)) - hav(pt(a), pt(D0)))[0])];
+  while (C.length < D) { let bs = null, bd = -1; for (const x of st) { const m = Math.min(...C.map(c => hav(pt(x), c))); if (m > bd) { bd = m; bs = x; } } C.push(pt(bs)); }
+  for (let it = 0; it < 8; it++) { const G = C.map(() => []); st.forEach(x => { let bi = 0; C.forEach((c, i) => { if (hav(pt(x), c) < hav(pt(x), C[bi])) bi = i; }); G[bi].push(x); }); C = C.map((c, i) => G[i].length ? [G[i].reduce((a, x) => a + x.lat, 0) / G[i].length, G[i].reduce((a, x) => a + x.lng, 0) / G[i].length] : c); }
+  const assignBal = () => {
+    const kg = C.map(() => 0), Z = new Map(); // Z: store id -> [zona]
+    const order = visits.map((x, j) => { const ds = C.map(c => hav(pt(x), c)).sort((a, b) => a - b); return { x, j, r: (ds[1] ?? ds[0]) - ds[0] }; }).sort((a, b) => b.r - a.r || a.j - b.j);
+    for (const { x } of order) {
+      const used = Z.get(x.id) || [];
+      const cand = C.map((c, i) => i).filter(i => !used.includes(i)).sort((a, b) => hav(pt(x), C[a]) - hav(pt(x), C[b]));
+      let pick = cand.find(i => kg[i] + kgOf(x) <= target * 1.06 + 1);
+      if (pick == null) pick = cand.slice().sort((a, b) => kg[a] - kg[b])[0];
+      Z.set(x.id, used.concat([pick])); kg[pick] += kgOf(x);
+    }
+    return { Z, kg };
+  };
+  let R = assignBal();
+  for (let it = 0; it < 8; it++) {
+    C = C.map((c, i) => { const m = st.filter(x => R.Z.get(x.id).includes(i)); return m.length ? [m.reduce((a, x) => a + x.lat, 0) / m.length, m.reduce((a, x) => a + x.lng, 0) / m.length] : c; });
+    R = assignBal();
+  }
+  // tukar dua store 1x antar zona bila lebih dekat ke pusat dan keseimbangan tidak memburuk
+  const single = st.filter(x => R.Z.get(x.id).length === 1);
+  for (let pass = 0; pass < 3; pass++) {
+    let any = false;
+    for (let a = 0; a < single.length; a++) for (let b = a + 1; b < single.length; b++) {
+      const x = single[a], y = single[b], zx = R.Z.get(x.id)[0], zy = R.Z.get(y.id)[0]; if (zx === zy) continue;
+      const gain = hav(pt(x), C[zx]) + hav(pt(y), C[zy]) - hav(pt(x), C[zy]) - hav(pt(y), C[zx]); if (gain < 0.05) continue;
+      const kx = R.kg[zx] - kgOf(x) + kgOf(y), ky = R.kg[zy] - kgOf(y) + kgOf(x), over = k => Math.max(0, k - target * 1.06);
+      if (over(kx) + over(ky) > over(R.kg[zx]) + over(R.kg[zy]) + 1) continue;
+      R.Z.set(x.id, [zy]); R.Z.set(y.id, [zx]); R.kg[zx] = kx; R.kg[zy] = ky; any = true;
+    }
+    if (!any) break;
+  }
+  // pemerataan muatan (Gandi: muatan tiap zona seimbang dengan zona lainnya): pindah / tukar store antar zona
+  // bila selisih muatan mengecil; jarak ke pusat zona ikut dihitung agar zona tetap rapat
+  { const BW = 4000, obj = () => R.kg.reduce((a, k) => a + BW * ((k - target) / target) ** 2, 0) + st.reduce((a, x) => a + R.Z.get(x.id).reduce((b, i) => b + hav(pt(x), C[i]), 0), 0);
+    let cur = obj();
+    for (let pass = 0; pass < 40; pass++) {
+      let best = null;
+      for (const x of st) for (const zi of R.Z.get(x.id)) for (let zj = 0; zj < D; zj++) {
+        if (zj === zi || R.Z.get(x.id).includes(zj)) continue;
+        const k1 = R.kg[zi] - kgOf(x), k2 = R.kg[zj] + kgOf(x);
+        const dB = BW * (((k1 - target) / target) ** 2 + ((k2 - target) / target) ** 2 - ((R.kg[zi] - target) / target) ** 2 - ((R.kg[zj] - target) / target) ** 2);
+        const dD = hav(pt(x), C[zj]) - hav(pt(x), C[zi]), dl = dB + dD;
+        if (dl < -1e-6 && (!best || dl < best.dl)) best = { dl, x, zi, zj, k1, k2 };
+        for (const y of st) { // tukar x (zi) dengan y (zj)
+          if (y === x || !R.Z.get(y.id).includes(zj) || R.Z.get(y.id).includes(zi)) continue;
+          const t1 = R.kg[zi] - kgOf(x) + kgOf(y), t2 = R.kg[zj] + kgOf(x) - kgOf(y);
+          const eB = BW * (((t1 - target) / target) ** 2 + ((t2 - target) / target) ** 2 - ((R.kg[zi] - target) / target) ** 2 - ((R.kg[zj] - target) / target) ** 2);
+          const eD = hav(pt(x), C[zj]) - hav(pt(x), C[zi]) + hav(pt(y), C[zi]) - hav(pt(y), C[zj]), el = eB + eD;
+          if (el < -1e-6 && (!best || el < best.dl)) best = { dl: el, x, zi, zj, y, k1: t1, k2: t2 };
+        }
+      }
+      if (!best) break;
+      R.Z.set(best.x.id, R.Z.get(best.x.id).map(i => i === best.zi ? best.zj : i));
+      if (best.y) R.Z.set(best.y.id, R.Z.get(best.y.id).map(i => i === best.zj ? best.zi : i));
+      R.kg[best.zi] = best.k1; R.kg[best.zj] = best.k2; cur += best.dl;
+    }
+  }
+  // pasangkan zona ke hari: paling sedikit store yang tutup di hari zonanya
+  let best = null; const perm = (arr, k) => { if (k === arr.length) { let c = 0; st.forEach(x => R.Z.get(x.id).forEach(i => { if (!ops(x).includes(arr[i])) c++; })); if (!best || c < best.c) best = { c, p: arr.slice() }; return; } for (let i = k; i < arr.length; i++) { [arr[k], arr[i]] = [arr[i], arr[k]]; perm(arr, k + 1); [arr[k], arr[i]] = [arr[i], arr[k]]; } };
+  if (D <= 7) perm(days.slice(), 0); else best = { c: 0, p: days.slice() };
+  const zones = C.map((c, i) => ({ day: best.p[i], kg: R.kg[i], n: st.filter(x => R.Z.get(x.id).includes(i)).length, center: c })).sort((a, b) => a.day - b.day);
+  const byStore = {}; st.forEach(x => { byStore[x.id] = R.Z.get(x.id).map(i => best.p[i]).sort((a, b) => a - b); });
+  return { zones, byStore, target, total: tot };
+}
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
 // Prioritas store: bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu (biaya "belum terlayani" lebih besar)
 function prioOf(s) { return s.prioritas === "Tinggi" ? 2 : s.prioritas === "Rendah" ? 0 : 1; }
@@ -2150,7 +2230,7 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined" && module.exports) module.exports = { gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined" && module.exports) module.exports = { zonePreview, gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
 
 const SAMPLE = {
  "vehicles": [
@@ -4751,9 +4831,17 @@ function drawPoints() {
   const bounds = [];
   const D = state.stores.find(x => x.antaran === "Origin" && x.aktif !== false && x.lat != null);
   const st = state.stores.filter(x => x.aktif !== false && x.antaran !== "Origin" && x.lat != null && x.lng != null);
-  st.forEach(x => { bounds.push([x.lat, x.lng]); L.marker([x.lat, x.lng], { icon: L.divIcon({ html: '<div class="storepin" style="background:#6b7280"></div>', className: "", iconSize: [12, 12] }) }).addTo(mapLayer).bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br><i>Belum ada rute</i>`); });
+  // zona pratinjau: dikelompokkan per kedekatan, muatan tiap zona seimbang, 1 zona = 1 hari distribusi (tanpa kendaraan)
+  let Z = null; try { Z = zonePreview(state); } catch (e) { console.error(e); }
+  st.forEach(x => {
+    bounds.push([x.lat, x.lng]);
+    const zd = Z && Z.byStore[x.id] ? Z.byStore[x.id] : [];
+    const col = !zd.length ? "#6b7280" : zd.length > 1 ? "#17201d" : dayColor(zd[0]);
+    L.marker([x.lat, x.lng], { icon: L.divIcon({ html: `<div class="storepin" style="background:${col}"></div>`, className: "", iconSize: [12, 12] }) }).addTo(mapLayer)
+      .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zd.length ? "<br>Zona: " + zd.map(d => HARI[d]).join(", ") : ""}<br><i>Belum ada rute</i>`);
+  });
   if (D) { bounds.push([D.lat, D.lng]); L.marker([D.lat, D.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(D.nama)}</b><br>Origin / gudang`); }
-  $("#mapLegend").innerHTML = `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
+  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${dayColor(z.day)}"></i>Zona ${HARI[z.day]} · ${fmtNum(z.kg / 1000, 1)} t · ${z.n} store</span>`).join("") + `<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store &gt;1x seminggu (masuk beberapa zona)</span><span class="hint">Belum ada rute: zona dibuat dari kedekatan titik, muatan tiap zona seimbang (rata-rata ${fmtNum(Z.target / 1000, 1)} t).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
   mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
   if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
 }
