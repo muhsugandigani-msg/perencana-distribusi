@@ -735,6 +735,9 @@ main { padding-block: 20px 60px; }
 .savestate { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .savestate.warn { color: var(--warn); font-weight: 600; }
 .savestate.warn::before { content: "●"; margin-right: 4px; }
+.weekbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.weekbar .hint { margin-left: 4px; }
+tr.sel td { background: var(--surface2); }
 .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .savestate.gh { color: var(--ok, #15803d); }
@@ -1029,6 +1032,41 @@ function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik ce
   };
 }
 
+
+/* ---------- Frekuensi lebih jarang dari seminggu (1x per 2–5 minggu) ----------
+   Disimpan sebagai frek pecahan: 0,5 = 1x/2 minggu, 0,333 = 1x/3 minggu, 0,25 = 1x/4 minggu, 0,2 = 1x/5 minggu.
+   Plan dibuat per minggu dalam satu siklus; minggu kirim tiap store dibagi rata otomatis (bisa dikunci lewat mingguKe). */
+function periodeOf(s) { const f = +s.frek; return f > 0 && f < 1 ? Math.max(2, Math.min(5, Math.round(1 / f))) : 1; }
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+function weekMeta(state) {
+  const stores = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
+  const per = stores.filter(s => periodeOf(s) > 1);
+  if (!per.length) return { H: 1, off: {}, exact: true };
+  const P = [...new Set(per.map(periodeOf))]; const L = P.reduce((a, b) => a * b / gcd(a, b), 1);
+  const H = L <= 12 ? L : Math.max(...P);
+  const base = stores.filter(s => periodeOf(s) === 1).reduce((a, s) => a + (+s.beratKg || 0) * Math.max(0, Math.round(+s.frek || 0)), 0);
+  const load = Array(H).fill(base), off = {};
+  const fixed = per.filter(s => +s.mingguKe >= 1 && +s.mingguKe <= periodeOf(s)), auto = per.filter(s => !fixed.includes(s));
+  const put = (s, o) => { off[s.id] = o; const N = periodeOf(s); for (let w = 0; w < H; w++) if (w % N === o) load[w] += +s.beratKg || 0; };
+  fixed.forEach(s => put(s, +s.mingguKe - 1));
+  auto.slice().sort((a, b) => (+b.beratKg || 0) - (+a.beratKg || 0) || String(a.id).localeCompare(String(b.id))).forEach(s => {
+    const N = periodeOf(s); let bo = 0, bs = Infinity;
+    for (let o = 0; o < N; o++) { const t = load.map((x, w) => w % N === o ? x + (+s.beratKg || 0) : x); const sc = Math.max(...t) * 1e6 + t.reduce((a, x) => a + x * x, 0) / 1e3; if (sc < bs - 1e-9) { bs = sc; bo = o; } }
+    put(s, bo);
+  });
+  return { H, off, exact: L <= 12, load };
+}
+function weekState(state, meta, w) { // w = 0..H-1
+  const stores = state.stores.filter(s => { if (s.antaran === "Origin" || periodeOf(s) === 1) return true; const o = meta.off[s.id]; return o != null && w % periodeOf(s) === o; })
+    .map(s => periodeOf(s) > 1 ? Object.assign({}, s, { frek: 1, _periode: periodeOf(s) }) : s);
+  return Object.assign({}, state, { stores });
+}
+function buildWeeks(state, opts) { // sinkron: array plan per minggu
+  const meta = weekMeta(state), out = [];
+  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P); }
+  out.meta = meta; return out;
+}
+
 /* ---------- Model waktu ---------- */
 function makeCtx(state, day) {
   const p = state.params, L = p.lalin;
@@ -1282,7 +1320,8 @@ function* buildPlanCore(state, opts) {
   valid.forEach(s => { NB[s.id] = new Set(valid.filter(u => u.id !== s.id).map(u => ({ id: u.id, d: hav([s.lat, s.lng], [u.lat, u.lng]) })).sort((a, b) => a.d - b.d).slice(0, 10).map(x => x.id)); });
   const near = (s, route) => route.some(x => NB[s.id] && NB[s.id].has(x.id));
   const deep = opts.mendalam != null ? !!opts.mendalam : state.params.optimasiMendalam === true;
-  let evals = 0, EVAL_MAX = deep ? 1500000 : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
+  const sk = Math.max(0.35, Math.min(1, +opts.skala || 1)); // siklus beberapa minggu: usaha per minggu dikurangi
+  let evals = 0, EVAL_MAX = deep ? Math.round(1500000 * sk) : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
 
   /* 1) Pembagian kunjungan ke hari. rnd = null -> deterministik (solusi awal); rnd -> variasi untuk multi-start */
   function assign(rnd) {
@@ -1589,8 +1628,8 @@ function* buildPlanCore(state, opts) {
   };
   const mInit = metric(initial);
   let best = null, bestCost = Infinity, starts = 0, rr = 0, rrOk = 0;
-  const nStart = deep ? Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
-  const nRR = deep ? Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) : 0;
+  const nStart = deep ? Math.max(8, Math.round(Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) * sk)) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  const nRR = deep ? Math.max(10, Math.round(Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) * sk)) : 0;
   const cloneSol = sol => { const o = {}; days.forEach(d => o[d] = { R: sol[d].R.map(L => L.map(r => r.slice())), left: sol[d].left.slice(), vc: sol[d].vc.slice() }); return o; };
   for (let k = 0; k < nStart; k++) {
     const rnd = k === 0 ? null : mulberry32(1000 + k * 7919);
@@ -1607,7 +1646,7 @@ function* buildPlanCore(state, opts) {
   bestCost = solCost(best);
   // mode mendalam: "bongkar & susun ulang" — keluarkan sebagian store dari satu hari lalu sisipkan ulang dengan pencarian lokal
   if (deep && best) {
-    const rnd = mulberry32(424242); EVAL_MAX = evals + 1200000; // anggaran kerja sendiri untuk tahap ini
+    const rnd = mulberry32(424242); EVAL_MAX = evals + Math.round(1200000 * sk); // anggaran kerja sendiri untuk tahap ini
     for (let it = 0; it < nRR && evals < EVAL_MAX; it++) {
       const cand = cloneSol(best), d = days[Math.floor(rnd() * days.length)], S = cand[d];
       const all = []; S.R.forEach((L, vi) => L.forEach((r, ri) => r.forEach((st, i) => all.push([vi, ri, st]))));
@@ -1653,7 +1692,7 @@ function* buildPlanCore(state, opts) {
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
 }
 
-if (typeof module !== "undefined" && module.exports) module.exports = { buildPlan, planGen, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined" && module.exports) module.exports = { buildPlan, planGen, buildWeeks, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
 
 const SAMPLE = {
  "vehicles": [
@@ -3040,6 +3079,7 @@ const JENIS = ["CDD Box", "CDD Bak", "CDE", "Traga Box", "Traga Bak", "Engkel", 
 
 let state = loadState();
 let plan = null, planDirty = true, ganttRs = null, ganttW = 0;
+let planWeeks = null, weekSel = 0; const weekCache = { meta: null }; // plan per minggu (siklus 1x per 2–5 minggu)
 let tab = "kendaraan";
 
 function loadState() {
@@ -3071,7 +3111,7 @@ function normalize(s) {
   s.params.lalin.jamSibuk = arrObj(s.params.lalin.jamSibuk);
   ["pusat", "fPusat", "fPusatLuar", "fPinggir"].forEach(k => delete s.params.lalin[k]);
   const num = v => v === "" || v == null || isNaN(+v) ? null : +v;
-  s.stores.forEach(x => { x.id = String(x.id || uid("s")); x.nama = String(x.nama ?? ""); const dl = v => [...new Set(v.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (!Array.isArray(x.hariOperasi)) x.hariOperasi = Array.isArray(x.hariTetap) && x.hariTetap.length ? x.hariTetap : [0, 1, 2, 3, 4, 5, 6]; x.hariOperasi = dl(x.hariOperasi); delete x.hariTetap; x.lat = num(x.lat); x.lng = num(x.lng); if (x.lat != null && (Math.abs(x.lat) > 90 || Math.abs(x.lng ?? 0) > 180)) { x.lat = null; x.lng = null; } x.beratKg = num(x.beratKg) ?? 0; x.frek = num(x.frek) ?? 1; });
+  s.stores.forEach(x => { x.id = String(x.id || uid("s")); x.nama = String(x.nama ?? ""); const dl = v => [...new Set(v.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (!Array.isArray(x.hariOperasi)) x.hariOperasi = Array.isArray(x.hariTetap) && x.hariTetap.length ? x.hariTetap : [0, 1, 2, 3, 4, 5, 6]; x.hariOperasi = dl(x.hariOperasi); delete x.hariTetap; x.lat = num(x.lat); x.lng = num(x.lng); if (x.lat != null && (Math.abs(x.lat) > 90 || Math.abs(x.lng ?? 0) > 180)) { x.lat = null; x.lng = null; } x.beratKg = num(x.beratKg) ?? 0; x.frek = num(x.frek) ?? 1; if (x.frek < 0) x.frek = 0; const mk = num(x.mingguKe); if (mk >= 1 && mk <= 5) x.mingguKe = Math.round(mk); else delete x.mingguKe; });
   // alamat lama "Makassar" pada store contoh -> pakai alamat hasil koordinat
   s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
@@ -3081,6 +3121,7 @@ function normalize(s) {
   s.params.prioritasSolar = Object.assign(clone(SAMPLE.params.prioritasSolar), isObj(s.params.prioritasSolar) ? s.params.prioritasSolar : {});
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s.params.mingguMulai || ""))) s.params.mingguMulai = SAMPLE.params.mingguMulai || "2026-11-30";
   s.params.jalanBlok = isObj(s.params.jalanBlok) ? s.params.jalanBlok : clone(SAMPLE.params.jalanBlok);
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   s.jarakJalan = cleanJarak(s.jarakJalan);
@@ -3124,7 +3165,7 @@ async function ghPutFile(data, sha) {
 function applyShared(f, quiet) {
   const keep = state.jarakJalan; state = normalize(f.data); mergeJarak(keep); try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {} shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-  unsaved = false; stopDeep(); plan = null; planDirty = true; renderTab(); saveStatus(); // plan baru dibuat saat tombol "Buat Plan" diklik
+  unsaved = false; stopDeep(); plan = null; planWeeks = null; planDirty = true; renderTab(); saveStatus(); // plan baru dibuat saat tombol "Buat Plan" diklik
   if (!quiet) toast("Data bersama terbaru dimuat dari GitHub.");
 }
 async function loadShared() { // saat web dibuka
@@ -3391,11 +3432,25 @@ function renderKendaraan() {
 }
 
 /* ---------- 2. Store ---------- */
+const PERIODE_VAL = { 2: 0.5, 3: 0.33333, 4: 0.25, 5: 0.2 };
+function frekText(s) { const N = periodeOf(s); if (N > 1) return "1x " + N + " minggu"; const f = Math.round(+s.frek || 0); return f > 0 ? f + "x seminggu" : "Tidak dikirim"; }
+function parseFrek(txt) { // "2x seminggu", "1x 2 minggu", "1x/3 minggu", "4 mingguan", "Tidak dikirim"
+  const t = String(txt || "").toLowerCase().trim();
+  if (/tidak/.test(t)) return 0;
+  let m = t.match(/(?:1\s*x\s*[/ ]?\s*)?(?:per|tiap|setiap)?\s*([2-5])\s*(?:minggu|mgg|pekan)/); if (m && !/seminggu/.test(t)) return PERIODE_VAL[+m[1]];
+  m = t.match(/(\d+)/); return m ? Math.max(0, Math.min(7, parseInt(m[1]))) : 0;
+}
 function frekOptions(v) {
-  const D = state.params.hari.filter(Boolean).length; v = Math.round(+v || 0);
+  const D = state.params.hari.filter(Boolean).length, N = periodeOf({ frek: v }); v = N > 1 ? -1 : Math.round(+v || 0);
   let h = `<option value="0" ${v === 0 ? "selected" : ""}>Tidak dikirim</option>`;
   for (let n = 1; n <= 7; n++) h += `<option value="${n}" ${v === n ? "selected" : ""}>${n}x seminggu${n === D ? " (tiap hari)" : n > D ? " – melebihi hari kerja" : ""}</option>`;
+  for (let k = 2; k <= 5; k++) h += `<option value="${PERIODE_VAL[k]}" ${N === k ? "selected" : ""}>1x ${k} minggu</option>`;
   return h;
+}
+function mingguSel(s, i) { // minggu kirim untuk store 1x per 2–5 minggu
+  const N = periodeOf(s); if (N < 2) return "";
+  const auto = weekCache.meta && weekCache.meta.off[s.id] != null ? " (" + (weekCache.meta.off[s.id] + 1) + ")" : "";
+  return `<div class="row" style="gap:6px;margin-top:4px"><span class="hint">Minggu ke</span><select class="in" data-k="stores.${i}.mingguKe" data-t="num" style="max-width:110px" title="Minggu pertama pengiriman dalam siklus ${N} minggu. Otomatis = dibagi rata agar beban tiap minggu seimbang."><option value="" ${!s.mingguKe ? "selected" : ""}>Otomatis${auto}</option>${Array.from({ length: N }, (_, k) => `<option value="${k + 1}" ${+s.mingguKe === k + 1 ? "selected" : ""}>${k + 1}</option>`).join("")}</select></div>`;
 }
 function opsNote(s) {
   const n = (s.hariOperasi || []).filter(d => state.params.hari[d]).length, f = Math.round(+s.frek || 0);
@@ -3405,6 +3460,13 @@ function opsNote(s) {
 }
 function jadwalCell(s) {
   if (!plan || plan.error || !plan.trips) return '<span class="off">klik Buat Plan</span>';
+  if (planWeeks && planWeeks.length > 1) { // tampilkan per minggu
+    const parts = []; let miss = 0;
+    planWeeks.forEach((P, w) => { if (!P || P.error) return; const ds = [...new Set(P.trips.filter(t => t.stops.some(x => x.store.id === s.id)).map(t => t.day))].sort((a, b) => a - b); miss += P.unserved.filter(u => u.store.id === s.id).length; if (ds.length) parts.push("M" + (w + 1) + ": " + ds.map(d => HARI3[d]).join(", ")); });
+    if (!parts.length && !miss) return '<span class="off">–</span>';
+    const txt = periodeOf(s) > 1 ? parts.join(" · ") : (parts.length === planWeeks.length && new Set(parts.map(x => x.split(": ")[1])).size === 1 ? "Tiap minggu: " + parts[0].split(": ")[1] : parts.join(" · "));
+    return `<span title="${esc(parts.join("\n"))}">${esc(txt)}</span>` + (miss ? ` <span class="pill bad">${miss} tak terlayani</span>` : "");
+  }
   const ds = [...new Set(plan.trips.filter(t => t.stops.some(x => x.store.id === s.id)).map(t => t.day))].sort((a, b) => a - b);
   const miss = plan.unserved.filter(u => u.store.id === s.id).length;
   if (!ds.length && !miss) return '<span class="off">–</span>';
@@ -3413,6 +3475,7 @@ function jadwalCell(s) {
 
 let storeFilter = "";
 function renderStore() {
+  try { weekCache.meta = weekMeta(state); } catch (e) {}
   const el = $("#p-store");
   const f = storeFilter.toLowerCase();
   const list = state.stores.map((s, i) => [s, i]).filter(([s]) => !f || (s.nama || "").toLowerCase().includes(f) || (s.alamat || "").toLowerCase().includes(f) || (s.kota || "").toLowerCase().includes(f));
@@ -3429,7 +3492,7 @@ function renderStore() {
     <td><input class="in mono" type="time" data-k="stores.${i}.buka" value="${esc(s.buka)}" style="min-width:86px"></td>
     <td><input class="in mono" type="time" data-k="stores.${i}.tutup" value="${esc(s.tutup)}" style="min-width:86px"></td>
     <td><input class="in num" type="number" min="0" step="any" data-t="num" data-k="stores.${i}.beratKg" data-ton="st${i}" value="${s.beratKg ?? ""}" ${origin ? "disabled" : ""} style="min-width:80px"><span class="sub" id="st${i}">${origin ? "" : ton(s.beratKg)}</span></td>
-    <td>${origin ? '<span class="off">–</span>' : `<select class="in" data-k="stores.${i}.frek" data-t="num" style="min-width:150px">${frekOptions(s.frek)}</select>`}</td>
+    <td>${origin ? '<span class="off">–</span>' : `<select class="in" data-k="stores.${i}.frek" data-t="num" data-rerender="1" style="min-width:150px">${frekOptions(s.frek)}</select>${mingguSel(s, i)}`}</td>
     <td class="mono" style="white-space:nowrap">${origin ? "" : jadwalCell(s)}</td>
     <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1" style="min-width:96px"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
     <td><select class="in" data-k="stores.${i}.loading" ${origin ? "disabled" : ""} style="min-width:150px"><option value="Menurunkan" ${s.loading !== "Menaikkan" ? "selected" : ""}>Menurunkan barang</option><option value="Menaikkan" ${s.loading === "Menaikkan" ? "selected" : ""}>Menaikkan barang</option></select></td>
@@ -3439,7 +3502,7 @@ function renderStore() {
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
   const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
-  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, kota/kabupaten, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu) menentukan berapa kali store dikunjungi; harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari beroperasi</b> = hari store buka/menerima kiriman; store hanya diantar di hari yang aktif (hitam). Hari kirim dipilih otomatis di antara hari aktif sesuai frekuensi, mis. aktif Sen–Jum dengan 2x seminggu = Senin &amp; Kamis.</details></div>
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, kota/kabupaten, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu, atau 1x per 2/3/4/5 minggu) menentukan berapa kali store dikunjungi. Untuk 1x per 2–5 minggu, plan dibuat per minggu dalam satu siklus dan minggu kirimnya dibagi rata otomatis (bisa dikunci di "Minggu ke"); harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari beroperasi</b> = hari store buka/menerima kiriman; store hanya diantar di hari yang aktif (hitam). Hari kirim dipilih otomatis di antara hari aktif sesuai frekuensi, mis. aktif Sen–Jum dengan 2x seminggu = Senin &amp; Kamis.</details></div>
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
     <button class="btn" type="button" id="geoAll" title="Isi alamat semua store dari koordinatnya">⟳ Isi alamat otomatis</button>
     </div>
@@ -3507,6 +3570,7 @@ function renderParameter() {
       <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang, termasuk aktivitas "setelah kembali" yang dicentang masuk jam shift.</span></div>
       <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
       <div class="field" ${p.aktivitas.some(a => a.waktu === "setelah") ? "" : "hidden"}><label for="pHari1">Hari distribusi pertama dalam minggu (untuk aktivitas "setelah kembali")</label><select id="pHari1" class="in" data-k="params.loadingHariPertama" style="max-width:480px"><option value="malam" ${p.loadingHariPertama !== "pagi" ? "selected" : ""}>Disiapkan di akhir hari terakhir minggu lalu (mis. Sabtu sore)</option><option value="pagi" ${p.loadingHariPertama === "pagi" ? "selected" : ""}>Dilakukan pagi hari, sebelum berangkat</option></select><span class="hint">Jika pilih pagi hari, hari distribusi terakhir (mis. Sabtu) tidak perlu loading sore untuk esok hari.</span></div>
+      <div class="field"><label for="pMgg">Minggu 1 siklus dimulai</label><input id="pMgg" class="in mono" type="date" data-k="params.mingguMulai" value="${esc(p.mingguMulai || "")}" style="max-width:170px"><span class="hint">Dipakai bila ada store 1x per 2–5 minggu: plan dibuat per minggu (Minggu 1, 2, …) dan label tanggalnya dihitung dari hari ini. Pilih hari Senin.</span></div>
       <div class="field"><label for="pRasio">Rasio waktu loading di store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
     </div>
   </div>
@@ -3547,7 +3611,8 @@ function stopDeep() { if (deepJob.g) { try { deepJob.g.return(); } catch (e) {} 
 function startDeep() {
   stopDeep(); if (!plan || plan.error || state.params.optimasiMendalam === false) return;
   const id = deepJob.id, base = plan.opt ? plan.opt.akhir : null;
-  let g; try { g = planGen(state, { mendalam: true }); } catch (e) { return; }
+  const baseW = planWeeks ? planWeeks.map(P => P && P.opt ? P.opt.akhir : null) : [base];
+  let g; try { g = deepWeeks(); } catch (e) { return; }
   Object.assign(deepJob, { run: true, k: 0, n: 0, fase: "variasi", g }); deepNote();
   const step = () => {
     if (id !== deepJob.id) return;
@@ -3556,11 +3621,13 @@ function startDeep() {
     catch (e) { console.error(e); deepJob.g = null; deepJob.run = false; deepNote(); return; }
     if (!r.done) { deepNote(); setTimeout(step, 0); return; }
     deepJob.g = null; deepJob.run = false;
-    const P = r.value; if (!P || P.error) { deepNote(); return; }
-    if (P.opt) P.opt.biasa = base;
-    plan = P; mapDrawn = null;
+    const W = r.value; if (!W || !W.length || W.some(P => !P || P.error)) { deepNote(); return; }
+    const quick = planWeeks || [];
+    W.forEach((P, w) => { const Q = quick[w]; if (Q && Q.opt && P.opt && Q.opt.cost < P.opt.cost) W[w] = Q; else if (P.opt) P.opt.biasa = baseW[w] || null; }); // jangan pernah lebih buruk dari plan cepat
+    planWeeks = W; weekCache.meta = W.meta; if (weekSel >= W.length) weekSel = 0; plan = W[weekSel]; mapDrawn = null;
     if (["plan", "gantt", "peta"].includes(tab)) renderTab(); else deepNote();
-    if (base) toast("Optimasi mendalam selesai: " + P.trips.length + " rit, " + fmtNum(P.trips.reduce((a, x) => a + x.km, 0)) + " km (plan biasa: " + base.rit + " rit, " + fmtNum(base.km) + " km).", 5000);
+    const tot = weeksTotal(W), b0 = baseW.filter(Boolean);
+    if (b0.length) toast("Optimasi mendalam selesai: " + tot.rit + " rit, " + fmtNum(tot.km) + " km" + (W.length > 1 ? " dalam " + W.length + " minggu" : "") + " (plan cepat: " + b0.reduce((a, x) => a + x.rit, 0) + " rit, " + fmtNum(b0.reduce((a, x) => a + x.km, 0)) + " km).", 5000);
   };
   setTimeout(step, 30);
 }
@@ -3576,17 +3643,46 @@ function deepNote() {
   const sb = document.getElementById("btnStopDeep"); if (sb && !sb.onclick) sb.onclick = () => { stopDeep(); toast("Optimasi mendalam dihentikan. Plan cepat tetap dipakai."); };
   const bp = document.getElementById("btnPlan"); if (bp) bp.textContent = deepJob.run ? "⏳ Mengoptimasi " + (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "%" : "▶ Buat Plan";
 }
+function* deepWeeks() { // optimasi mendalam untuk tiap minggu dalam siklus
+  const meta = weekMeta(state), out = [];
+  for (let w = 0; w < meta.H; w++) {
+    const g = planGen(weekState(state, meta, w), { mendalam: true, skala: 1 / meta.H }); let r;
+    while (!(r = g.next()).done) { const v = r.value; yield { fase: v.fase + (meta.H > 1 ? ", minggu " + (w + 1) + "/" + meta.H : ""), k: w * 100 + (v.n ? v.k / v.n * 100 : 0), n: meta.H * 100 }; }
+    const P = r.value; if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P);
+  }
+  out.meta = meta; return out;
+}
+function weeksTotal(W) { const T = { rit: 0, km: 0, jam: 0, kunj: 0, un: 0 }; (W || []).forEach(P => { if (!P || P.error) return; T.rit += P.trips.length; T.km += P.trips.reduce((a, t) => a + t.km, 0); T.jam += P.trips.reduce((a, t) => a + t.dur, 0) / 60; T.kunj += P.trips.reduce((a, t) => a + t.stops.length, 0); T.un += P.unserved.length; }); return T; }
+function weekDate(w, d) { const m = String(state.params.mingguMulai || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return null; return new Date(+m[1], +m[2] - 1, +m[3] + w * 7 + (d || 0)); }
+function weekLabel(w, short) {
+  const a = weekDate(w, 0), lastD = Math.max(0, ...state.params.hari.map((x, i) => x ? i : 0)), b = weekDate(w, lastD);
+  const f = x => x.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  return "Minggu " + (w + 1) + (a && !short ? " · " + f(a) + "–" + f(b) : "");
+}
+function weekBarHtml() {
+  if (!planWeeks || planWeeks.length < 2) return "";
+  return `<div class="weekbar" role="tablist" aria-label="Pilih minggu">${planWeeks.map((P, w) => `<button type="button" class="dchip big ${w === weekSel ? "on" : ""}" data-week="${w}" title="${esc(weekLabel(w))}">${esc(weekLabel(w))}${P && !P.error ? ` <span class="hint">${P.trips.length} rit</span>` : ""}</button>`).join("")}</div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-week]"); if (!b || !planWeeks) return; weekSel = +b.dataset.week; plan = planWeeks[weekSel]; mapDrawn = null; renderTab(); });
 function runPlan(silent) {
   stopDeep();
-  try { plan = buildPlan(state, { mendalam: false }); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
+  try { const W = buildWeeks(state, { mendalam: false }); planWeeks = W; weekCache.meta = W.meta; if (weekSel >= W.length) weekSel = 0; plan = W[weekSel] || W[0]; }
+  catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; planWeeks = null; console.error(e); }
   planDirty = false; mapDrawn = null;
   if (!plan.error && state.params.optimasiMendalam !== false) startDeep();
-  if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
+  if (!silent) { if (plan.error) toast(plan.error, 4000); else { const T = weeksTotal(planWeeks); toast("Plan dibuat: " + T.rit + " rit" + (planWeeks.length > 1 ? " dalam " + planWeeks.length + " minggu" : "") + (T.un ? ", " + T.un + " kunjungan belum terlayani" : "")); } }
   setTimeout(maybeHitungJarak, 0);
 }
 $("#btnSave").onclick = () => commitSave(); saveStatus();
 $("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
 
+function weeksCard() {
+  if (!planWeeks || planWeeks.length < 2) return "";
+  const T = weeksTotal(planWeeks), M = weekCache.meta || {};
+  const rows = planWeeks.map((P, w) => { const t = weeksTotal([P]); return `<tr class="${w === weekSel ? "sel" : ""}"><td><button type="button" class="btn sm ghost" data-week="${w}">${esc(weekLabel(w))}</button></td><td class="num mono">${t.rit}</td><td class="num mono">${t.kunj}</td><td class="num mono">${fmtNum(t.km)} km</td><td class="num mono">${fmtNum(t.jam, 1)} jam</td><td class="num mono" style="${t.un ? "color:var(--bad);font-weight:600" : ""}">${t.un}</td></tr>`; }).join("");
+  return `<div class="card pad" style="display:grid;gap:10px"><div><h3>Siklus ${planWeeks.length} minggu</h3><p class="hint" style="margin-top:4px">Ada store dengan frekuensi 1x per 2–5 minggu, jadi plan dibuat per minggu dan berulang setiap ${planWeeks.length} minggu${M.exact === false ? " (kombinasi periode terlalu panjang, siklus dipotong " + planWeeks.length + " minggu)" : ""}. Minggu kirim store dibagi rata otomatis agar beban tiap minggu seimbang; bisa dikunci di tab Store (kolom Minggu ke). Minggu 1 dimulai ${esc((weekDate(0) || new Date()).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))} (ubah di Parameter).</p></div>
+    <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Minggu</th><th class="num">Rit</th><th class="num">Kunjungan</th><th class="num">Jarak</th><th class="num">Jam kerja</th><th class="num">Belum terlayani</th></tr></thead><tbody>${rows}<tr class="tot"><td><b>Total siklus</b></td><td class="num mono"><b>${T.rit}</b></td><td class="num mono"><b>${T.kunj}</b></td><td class="num mono"><b>${fmtNum(T.km)} km</b></td><td class="num mono"><b>${fmtNum(T.jam, 1)} jam</b></td><td class="num mono"><b>${T.un}</b></td></tr></tbody></table></div></div>`;
+}
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
 function gmapsLink(t) {
   const d = plan.depot; const pts = [[d.lat, d.lng]].concat(t.stops.map(s => [s.store.lat, s.store.lng]), [[d.lat, d.lng]]);
@@ -3663,7 +3759,7 @@ function renderPlan() {
   const capUsed = T.length ? T.reduce((a, t) => a + Math.max(t.kgDel, t.kgPick) / (+t.veh.kapasitasKg || 1), 0) / T.length : 0;
   const nVisit = T.reduce((a, t) => a + t.stops.length, 0);
   const avgDur = T.length ? T.reduce((a, t) => a + t.dur, 0) / T.length : 0, avgPct = avgDur / (plan.H || 480);
-  let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
+  let html = weekBarHtml() + `<div class="head"><div><h2>Plan Distribusi Mingguan${planWeeks && planWeeks.length > 1 ? " · " + esc(weekLabel(weekSel)) : ""}</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
     <div id="deepNote">${deepNoteHtml()}</div>
@@ -3678,6 +3774,7 @@ function renderPlan() {
       <div class="tile"><div class="k">Rata-rata isi muatan</div><div class="v">${fmtNum(capUsed * 100)}<small>%</small></div></div>
       <div class="tile ${plan.unserved.length ? "alert" : ""}"><div class="k">Belum terlayani</div><div class="v">${plan.unserved.length}<small>kunjungan</small></div></div>
     </div>`;
+  html += weeksCard();
   html += vehTable(plan);
   html += fairCard(plan);
   if (plan.opt) html += optCard(plan);
@@ -3760,7 +3857,7 @@ function renderGantt() {
     });
   });
   svg += labels + `</svg>`;
-  el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2><p>Satu baris per kendaraan per shift per hari (Shift 1 dan Shift 2 terpisah). Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
+  el.innerHTML = weekBarHtml() + `<div class="head"><div><h2>Gantt Armada${planWeeks && planWeeks.length > 1 ? " · " + esc(weekLabel(weekSel)) : ""}</h2><p>Satu baris per kendaraan per shift per hari (Shift 1 dan Shift 2 terpisah). Arahkan kursor ke bar untuk detail. Garis putus merah = batas ${state.params.jamShift} jam shift.</p></div></div>
     ${dirtyBanner()}
     <div class="legend"><span><i class="sw" style="background:var(--seg-act)"></i>Aktivitas gudang (loading, BBM, dll.)</span><span><i class="sw" style="background:var(--seg-drive)"></i>Perjalanan</span><span><i class="sw" style="background:var(--seg-drop)"></i>Menurunkan barang</span><span><i class="sw" style="background:var(--seg-pick)"></i>Menaikkan barang</span><span><i class="sw" style="background:var(--seg-wait)"></i>Menunggu store buka</span><span><i class="sw" style="background:var(--brk);outline:1px solid var(--line)"></i>Istirahat</span></div>
     <div class="card gantt-wrap" id="gantt">${svg}</div>`;
@@ -3958,7 +4055,7 @@ function renderPeta() {
   if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan. Klik ▶ Buat Plan di kanan atas.")}</div>`; return; }
   if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
   if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
-  $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (hindari jalan yang diblok)</label>`;
+  $("#mapTools").innerHTML = (planWeeks && planWeeks.length > 1 ? weekBarHtml() + '<span style="flex-basis:100%"></span>' : "") + `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (hindari jalan yang diblok)</label>`;
   document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
   $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
   ensureMap();
@@ -4035,12 +4132,14 @@ function exportExcel() {
   if (!plan || plan.error) { toast("Belum ada plan. Klik ▶ Buat Plan dulu.", 3500); return; }
   if (plan.error) { toast(plan.error); return; }
   const wb = XLSX.utils.book_new();
-  const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
-  plan.trips.forEach(t => ring.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)]));
-  const det = [["Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kota/Kabupaten", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Jam berangkat", "Jam tiba", "Mulai bongkar/muat", "Jam selesai", "Istirahat terpotong (menit)", "Tunggu buka (menit)", "Jam buka", "Latitude", "Longitude"]];
-  plan.trips.forEach(t => { t.stops.forEach((s, i) => det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.kota || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", plan.depot.lat, plan.depot.lng]); });
-  const gan = [["Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
-  plan.trips.forEach(t => t.segs.forEach(s => gan.push([HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)])));
+  const WK = planWeeks && planWeeks.length > 1 ? planWeeks.filter(P => P && !P.error) : [plan], multi = WK.length > 1;
+  const H0 = multi ? ["Minggu"] : [], pre = P => multi ? [weekLabel(P.week)] : [];
+  const ring = [[...H0, "Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
+  WK.forEach(P => P.trips.forEach(t => ring.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, fmtJam(t.shiftStart), fmtJam(t.dep), fmtJam(t.ret), +(t.dur / 60).toFixed(2), t.stops.length, Math.round(t.kgDel), +(t.kgDel / 1000).toFixed(2), +t.veh.kapasitasKg, Math.round(t.kgDel / t.veh.kapasitasKg * 100), Math.round(t.kgPick), +t.km.toFixed(1), t.stops.map(s => s.store.nama).join(" > "), gmapsLink(t)])));
+  const det = [[...H0, "Hari", "Kendaraan", "Plat", "Shift", "Urutan", "Store", "Alamat", "Kota/Kabupaten", "Kegiatan", "Berat (kg)", "Berat (ton)", "Jarak dari titik sebelumnya (km)", "Waktu tempuh (menit)", "Jam berangkat", "Jam tiba", "Mulai bongkar/muat", "Jam selesai", "Istirahat terpotong (menit)", "Tunggu buka (menit)", "Jam buka", "Latitude", "Longitude"]];
+  WK.forEach(P => P.trips.forEach(t => { t.stops.forEach((s, i) => det.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, i + 1, s.store.nama, s.store.alamat || "", s.store.kota || "", s.store.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", +s.store.beratKg, +(s.store.beratKg / 1000).toFixed(3), +s.km.toFixed(1), Math.round(s.drive), fmtJam(s.depart), fmtJam(s.arr), fmtJam(s.start), fmtJam(s.fin), Math.round(s.brk), Math.round(s.wait), (s.store.buka || "") + "-" + (s.store.tutup || ""), s.store.lat, s.store.lng])); det.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, "↩", "Kembali ke " + plan.depot.nama, "", "", "Kembali ke gudang", "", "", +t.backKm.toFixed(1), Math.round(t.backMin), fmtJam(t.backDep), fmtJam(t.ret), "", "", Math.round(t.backBrk), "", "", P.depot.lat, P.depot.lng]); }));
+  const gan = [[...H0, "Hari", "Kendaraan", "Plat", "Shift", "Kegiatan", "Jenis", "Mulai", "Selesai", "Durasi (menit)"]];
+  WK.forEach(P => P.trips.forEach(t => t.segs.forEach(s => gan.push([...pre(P), HARI[t.day], t.veh.jenis, t.veh.plat, t.shift, s.label, s.type, fmtJam(s.start), fmtJam(s.end), Math.round(s.end - s.start)]))));
   const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Maks km/rit", "Maks radius dari gudang (km)", "Bahan bakar", "Aktif"]];
   state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, +v.maksKmRit > 0 ? +v.maksKmRit : "Bebas", +v.maksRadiusKm > 0 ? +v.maksRadiusKm : "Bebas", v.bbm || "Solar", v.aktif !== false ? "Ya" : "Tidak"]));
   const sto = storeRows();
@@ -4053,27 +4152,30 @@ function exportExcel() {
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
   HARI.forEach((h, d) => par.push([(state.breaks[d] || []).map(b => b.mulai + "-" + b.selesai).join(", ") || "-", h]));
-  if (plan.unserved.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); plan.unserved.forEach(u => par.push([u.store.nama, HARI[u.day], u.reason])); }
-  const VS = vehSummary(plan);
+  if (multi) par.push([], ["Siklus (minggu)", WK.length], ["Minggu 1 dimulai", state.params.mingguMulai]);
+  const UN = WK.flatMap(P => P.unserved.map(u => [u.store.nama, (multi ? weekLabel(P.week, true) + " · " : "") + HARI[u.day], u.reason]));
+  if (UN.length) { par.push([], ["Belum terlayani", "Hari", "Alasan"]); UN.forEach(r => par.push(r)); }
+  const VS = vehSummary(multi ? Object.assign({}, plan, { trips: WK.flatMap(P => P.trips) }) : plan);
   const vs = [["Jenis kendaraan", "Plat", "Total rit", "Total kunjungan", "Muatan diantar (kg)", "Muatan diantar (ton)", "Muatan dinaikkan (kg)", "Muatan dinaikkan (ton)", "Jarak tempuh (km)", "Total jam kerja", "% jam kerja (thd " + state.params.jamShift + " jam/shift)", "% muatan"]];
   const vsRow = (j, p, r) => [j, p, r.rit, r.kunj, Math.round(r.del), +(r.del / 1000).toFixed(2), Math.round(r.pick), +(r.pick / 1000).toFixed(2), +r.km.toFixed(1), +r.jam.toFixed(2), Math.round(r.jamPct * 100), Math.round(r.muatPct * 100)];
   VS.rows.forEach(r => vs.push(vsRow(r.v.jenis, r.v.plat, r)));
   vs.push(vsRow("TOTAL", "", VS.total));
   const add = (name, aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); XLSX.utils.book_append_sheet(wb, ws, name); };
+  if (multi) { const wk = [["Minggu", "Rit", "Kunjungan", "Jarak (km)", "Jam kerja", "Belum terlayani"]]; WK.forEach(P => { const t = weeksTotal([P]); wk.push([weekLabel(P.week), t.rit, t.kunj, +t.km.toFixed(1), +t.jam.toFixed(1), t.un]); }); const T = weeksTotal(WK); wk.push(["TOTAL SIKLUS", T.rit, T.kunj, +T.km.toFixed(1), +T.jam.toFixed(1), T.un]); add("Ringkasan per Minggu", wk, [30, 8, 11, 12, 11, 15]); }
   add("Ringkasan Kendaraan", vs, [16, 12, 9, 13, 16, 16, 18, 18, 15, 13, 22, 10]);
-  add("Ringkasan Rit", ring, [9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
-  add("Detail Rute", det, [9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 12, 9, 12, 10, 12, 12, 12, 11, 11]);
-  add("Gantt", gan, [9, 12, 12, 6, 44, 10, 8, 8, 10]);
+  add("Ringkasan Rit", ring, [...(multi ? [26] : []), 9, 12, 12, 6, 10, 10, 10, 10, 10, 14, 10, 12, 10, 12, 10, 80, 40]);
+  add("Detail Rute", det, [...(multi ? [26] : []), 9, 12, 12, 6, 7, 34, 20, 18, 10, 10, 14, 12, 12, 9, 12, 10, 12, 12, 12, 11, 11]);
+  add("Gantt", gan, [...(multi ? [26] : []), 9, 12, 12, 6, 44, 10, 8, 8, 10]);
   add("Kendaraan", veh, [12, 14, 14, 14, 16, 14, 8]);
   add("Store", sto, [8, 34, 22, 40, 11, 11, 8, 8, 10, 10, 9, 10, 18, 16]);
   add("Parameter", par, [40, 18, 30, 14, 14]);
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveFile("Plan_Distribusi_" + stamp() + ".xlsx", new Uint8Array(out), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
-const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Kota/Kabupaten", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari beroperasi"];
+const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Kota/Kabupaten", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari beroperasi", "Minggu kirim ke"];
 function storeRows() {
   const rows = [STORE_HEAD];
-  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.kota || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (+s.frek > 0 ? Math.round(+s.frek) + "x seminggu" : (s.antaran === "Origin" ? "" : "Tidak dikirim")), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", ((s.hariOperasi || []).length === 7 ? "Setiap hari" : (s.hariOperasi || []).map(d => HARI3[d]).join(", "))]));
+  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.kota || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (s.antaran === "Origin" ? "" : frekText(s)), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", ((s.hariOperasi || []).length === 7 ? "Setiap hari" : (s.hariOperasi || []).map(d => HARI3[d]).join(", ")), periodeOf(s) > 1 ? (s.mingguKe || "Otomatis") : ""]));
   return rows;
 }
 function parseNum(v, coord) {
@@ -4092,7 +4194,8 @@ function storeTemplate() {
   const contoh = [
     ["Ya", "Gudang Utama", "", "", "https://www.google.com/maps/place/@-5.1019978,119.4786111,17z", "", "", "06:00", "23:00", 0, "", "", "Origin", "Menurunkan barang", "Setiap hari"],
     ["Ya", "Store A", "", "", "https://www.google.com/maps/place/@-5.1631663,119.4525599,17z", "", "", "08:00", "21:00", 950, "", "2x seminggu", "Tujuan", "Menurunkan barang", "Sen, Sel, Rab, Kam, Jum"],
-    ["Ya", "Produksi", "", "", "", -5.1169668, 119.5093495, "07:00", "22:00", 1500, "", "5x seminggu", "Tujuan", "Menaikkan barang", "Sen, Sel, Rab, Kam, Jum, Sab"]];
+    ["Ya", "Produksi", "", "", "", -5.1169668, 119.5093495, "07:00", "22:00", 1500, "", "5x seminggu", "Tujuan", "Menaikkan barang", "Sen, Sel, Rab, Kam, Jum, Sab", ""],
+    ["Ya", "Store B", "", "", "https://www.google.com/maps/place/@-5.135,119.43,17z", "", "", "08:00", "21:00", 400, "", "1x 2 minggu", "Tujuan", "Menurunkan barang", "Setiap hari", "Otomatis"]];
   const ws = XLSX.utils.aoa_to_sheet([STORE_HEAD, ...contoh]);
   ws["!cols"] = STORE_HEAD.map(h => ({ wch: /Nama|Alamat|Link/.test(h) ? 30 : 16 }));
   XLSX.utils.book_append_sheet(wb, ws, "Store");
@@ -4103,7 +4206,8 @@ function storeTemplate() {
     ["Latitude, Longitude", "Opsional bila Link maps diisi."],
     ["Jam buka, Jam tutup", "Format JJ:MM, mis. 08:00."],
     ["Berat (kg)", "Muatan per kunjungan."],
-    ["Frekuensi kirim", "1x seminggu s/d 7x seminggu. Kosong = 1x (Origin = tidak dikirim)."],
+    ["Frekuensi kirim", "1x seminggu s/d 7x seminggu, atau 1x 2 minggu, 1x 3 minggu, 1x 4 minggu, 1x 5 minggu. Kosong = 1x seminggu (Origin = tidak dikirim)."],
+    ["Minggu kirim ke", "Hanya untuk 1x 2–5 minggu: minggu ke berapa dalam siklus store dikirim (1 = minggu pertama). Kosong / Otomatis = dibagi rata agar beban tiap minggu seimbang."],
     ["Jenis antaran", "Tujuan atau Origin (gudang asal)."],
     ["Jenis loading", "Menurunkan barang atau Menaikkan barang."],
     ["Hari beroperasi", "Hari store buka/menerima kiriman, mis. Sen, Sel, Rab, Kam, Jum. Kosong atau \"Setiap hari\" = semua hari. Hari kirim dipilih otomatis di antara hari ini sesuai frekuensi."],
@@ -4123,7 +4227,7 @@ function importStores(file) {
       if (!rows.length) throw new Error("file kosong");
       const head = rows[0].map(h => String(h).toLowerCase());
       const col = (...keys) => head.findIndex(h => keys.some(k => h.includes(k)));
-      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), kota: col("kota", "kabupaten"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari") };
+      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), kota: col("kota", "kabupaten"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari"), mgg: col("minggu kirim", "minggu ke") };
       if (c.nama < 0) throw new Error("kolom \"Nama store\" tidak ditemukan");
       const cell = (r, k) => c[k] >= 0 ? r[c[k]] : "";
       const has = (r, k) => c[k] >= 0 && String(r[c[k]] ?? "").trim() !== "";
@@ -4152,8 +4256,9 @@ function importStores(file) {
         if (has(r, "buka")) s.buka = normT(cell(r, "buka")) || s.buka;
         if (has(r, "tutup")) s.tutup = normT(cell(r, "tutup")) || s.tutup;
         if (has(r, "kg")) s.beratKg = parseNum(cell(r, "kg")) || 0;
-        if (has(r, "frek")) s.frek = /tidak/i.test(cell(r, "frek")) ? 0 : (parseInt(cell(r, "frek")) || 0);
+        if (has(r, "frek")) s.frek = parseFrek(cell(r, "frek"));
         else if (baru) s.frek = s.antaran === "Origin" ? 0 : 1;
+        if (has(r, "mgg")) { const v = parseInt(cell(r, "mgg")); if (v >= 1 && v <= 5) s.mingguKe = v; else delete s.mingguKe; }
         if (has(r, "loading")) s.loading = /naik|muat|pick/i.test(cell(r, "loading")) ? "Menaikkan" : "Menurunkan";
         if (has(r, "hari")) { const t = String(cell(r, "hari")).trim(); s.hariOperasi = /setiap|semua|tiap/i.test(t) ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(t.split(/[,;/ ]+/).map(x => HARI3.findIndex(h => x.toLowerCase().startsWith(h.toLowerCase()))).filter(i => i >= 0))].sort((a, b) => a - b); }
       }
@@ -4199,10 +4304,10 @@ $("#menuPop").addEventListener("click", e => {
   if (a === "template") storeTemplate();
   if (a === "github") ghDialog();
   if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); state._savedAt = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); unsaved = false; saveStatus(); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
-  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); stopDeep(); plan = null; renderTab(); toast("Contoh data dimuat. Klik ▶ Buat Plan untuk membuat plan."); }]]);
+  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); stopDeep(); plan = null; planWeeks = null; renderTab(); toast("Contoh data dimuat. Klik ▶ Buat Plan untuk membuat plan."); }]]);
   if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
 });
-$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); stopDeep(); plan = null; renderTab(); toast("Data input dimuat. Klik ▶ Buat Plan untuk membuat plan."); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
+$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); stopDeep(); plan = null; planWeeks = null; renderTab(); toast("Data input dimuat. Klik ▶ Buat Plan untuk membuat plan."); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
 $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStores(f); e.target.value = ""; };
 
 /* ---------- mulai ---------- */

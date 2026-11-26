@@ -64,6 +64,41 @@ function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik ce
   };
 }
 
+
+/* ---------- Frekuensi lebih jarang dari seminggu (1x per 2–5 minggu) ----------
+   Disimpan sebagai frek pecahan: 0,5 = 1x/2 minggu, 0,333 = 1x/3 minggu, 0,25 = 1x/4 minggu, 0,2 = 1x/5 minggu.
+   Plan dibuat per minggu dalam satu siklus; minggu kirim tiap store dibagi rata otomatis (bisa dikunci lewat mingguKe). */
+function periodeOf(s) { const f = +s.frek; return f > 0 && f < 1 ? Math.max(2, Math.min(5, Math.round(1 / f))) : 1; }
+function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+function weekMeta(state) {
+  const stores = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
+  const per = stores.filter(s => periodeOf(s) > 1);
+  if (!per.length) return { H: 1, off: {}, exact: true };
+  const P = [...new Set(per.map(periodeOf))]; const L = P.reduce((a, b) => a * b / gcd(a, b), 1);
+  const H = L <= 12 ? L : Math.max(...P);
+  const base = stores.filter(s => periodeOf(s) === 1).reduce((a, s) => a + (+s.beratKg || 0) * Math.max(0, Math.round(+s.frek || 0)), 0);
+  const load = Array(H).fill(base), off = {};
+  const fixed = per.filter(s => +s.mingguKe >= 1 && +s.mingguKe <= periodeOf(s)), auto = per.filter(s => !fixed.includes(s));
+  const put = (s, o) => { off[s.id] = o; const N = periodeOf(s); for (let w = 0; w < H; w++) if (w % N === o) load[w] += +s.beratKg || 0; };
+  fixed.forEach(s => put(s, +s.mingguKe - 1));
+  auto.slice().sort((a, b) => (+b.beratKg || 0) - (+a.beratKg || 0) || String(a.id).localeCompare(String(b.id))).forEach(s => {
+    const N = periodeOf(s); let bo = 0, bs = Infinity;
+    for (let o = 0; o < N; o++) { const t = load.map((x, w) => w % N === o ? x + (+s.beratKg || 0) : x); const sc = Math.max(...t) * 1e6 + t.reduce((a, x) => a + x * x, 0) / 1e3; if (sc < bs - 1e-9) { bs = sc; bo = o; } }
+    put(s, bo);
+  });
+  return { H, off, exact: L <= 12, load };
+}
+function weekState(state, meta, w) { // w = 0..H-1
+  const stores = state.stores.filter(s => { if (s.antaran === "Origin" || periodeOf(s) === 1) return true; const o = meta.off[s.id]; return o != null && w % periodeOf(s) === o; })
+    .map(s => periodeOf(s) > 1 ? Object.assign({}, s, { frek: 1, _periode: periodeOf(s) }) : s);
+  return Object.assign({}, state, { stores });
+}
+function buildWeeks(state, opts) { // sinkron: array plan per minggu
+  const meta = weekMeta(state), out = [];
+  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P); }
+  out.meta = meta; return out;
+}
+
 /* ---------- Model waktu ---------- */
 function makeCtx(state, day) {
   const p = state.params, L = p.lalin;
@@ -317,7 +352,8 @@ function* buildPlanCore(state, opts) {
   valid.forEach(s => { NB[s.id] = new Set(valid.filter(u => u.id !== s.id).map(u => ({ id: u.id, d: hav([s.lat, s.lng], [u.lat, u.lng]) })).sort((a, b) => a.d - b.d).slice(0, 10).map(x => x.id)); });
   const near = (s, route) => route.some(x => NB[s.id] && NB[s.id].has(x.id));
   const deep = opts.mendalam != null ? !!opts.mendalam : state.params.optimasiMendalam === true;
-  let evals = 0, EVAL_MAX = deep ? 1500000 : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
+  const sk = Math.max(0.35, Math.min(1, +opts.skala || 1)); // siklus beberapa minggu: usaha per minggu dikurangi
+  let evals = 0, EVAL_MAX = deep ? Math.round(1500000 * sk) : 250000; // batas kerja (deterministik, tidak bergantung kecepatan komputer)
 
   /* 1) Pembagian kunjungan ke hari. rnd = null -> deterministik (solusi awal); rnd -> variasi untuk multi-start */
   function assign(rnd) {
@@ -624,8 +660,8 @@ function* buildPlanCore(state, opts) {
   };
   const mInit = metric(initial);
   let best = null, bestCost = Infinity, starts = 0, rr = 0, rrOk = 0;
-  const nStart = deep ? Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
-  const nRR = deep ? Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) : 0;
+  const nStart = deep ? Math.max(8, Math.round(Math.max(12, Math.min(40, Math.round(2400 / Math.max(10, valid.length)))) * sk)) : Math.max(3, Math.min(10, Math.round(600 / Math.max(10, valid.length))));
+  const nRR = deep ? Math.max(10, Math.round(Math.max(20, Math.min(80, Math.round(3000 / Math.max(10, valid.length)))) * sk)) : 0;
   const cloneSol = sol => { const o = {}; days.forEach(d => o[d] = { R: sol[d].R.map(L => L.map(r => r.slice())), left: sol[d].left.slice(), vc: sol[d].vc.slice() }); return o; };
   for (let k = 0; k < nStart; k++) {
     const rnd = k === 0 ? null : mulberry32(1000 + k * 7919);
@@ -642,7 +678,7 @@ function* buildPlanCore(state, opts) {
   bestCost = solCost(best);
   // mode mendalam: "bongkar & susun ulang" — keluarkan sebagian store dari satu hari lalu sisipkan ulang dengan pencarian lokal
   if (deep && best) {
-    const rnd = mulberry32(424242); EVAL_MAX = evals + 1200000; // anggaran kerja sendiri untuk tahap ini
+    const rnd = mulberry32(424242); EVAL_MAX = evals + Math.round(1200000 * sk); // anggaran kerja sendiri untuk tahap ini
     for (let it = 0; it < nRR && evals < EVAL_MAX; it++) {
       const cand = cloneSol(best), d = days[Math.floor(rnd() * days.length)], S = cand[d];
       const all = []; S.R.forEach((L, vi) => L.forEach((r, ri) => r.forEach((st, i) => all.push([vi, ri, st]))));
@@ -688,4 +724,4 @@ function* buildPlanCore(state, opts) {
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
 }
 
-if (typeof module !== "undefined") module.exports = { buildPlan, planGen, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { buildPlan, planGen, buildWeeks, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
