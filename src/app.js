@@ -450,18 +450,24 @@ function aksesList(v) {
   return out;
 }
 function jenisKendaraan() { const out = []; state.vehicles.forEach(v => { const j = String(v.jenis || "").trim(); if (j && !out.some(y => normJenis(y) === normJenis(j))) out.push(j); }); return out; }
-function aksesCell(s, i) {
+function aksesCell(s, i, open) {
   const J = jenisKendaraan(), A = Array.isArray(s.akses) ? s.akses : [];
   const extra = A.filter(a => !J.some(j => normJenis(j) === normJenis(a)));
   const on = j => A.some(a => normJenis(a) === normJenis(j));
-  return `<div class="days" style="flex-wrap:wrap;gap:4px;min-width:220px"><button type="button" class="dchip txt ${A.length ? "" : "on"}" data-akses="${i}|*" title="Semua jenis kendaraan boleh melayani store ini">Semua</button>${J.map(j => `<button type="button" class="dchip txt ${on(j) ? "on" : ""}" data-akses="${i}|${esc(j)}">${esc(j)}</button>`).join("")}${extra.map(j => `<button type="button" class="dchip txt on" data-akses="${i}|${esc(j)}" title="Jenis ini tidak ada di tab Kendaraan. Klik untuk menghapus.">${esc(j)} ⚠</button>`).join("")}</div>`;
+  const lbl = A.length ? A.join(", ") : "Semua";
+  const opt = (j, chk, warn) => `<label class="akopt"><input type="checkbox" data-akses="${i}|${esc(j)}" ${chk ? "checked" : ""}> ${esc(j === "*" ? "Semua" : j)}${warn ? ' <span class="pill bad" title="Jenis ini tidak ada di tab Kendaraan">tidak ada</span>' : ""}</label>`;
+  return `<details class="akdd" ${open ? "open" : ""}><summary class="in" title="${esc(lbl)}">${esc(lbl)}</summary><div class="akpanel">${opt("*", !A.length)}${J.map(j => opt(j, on(j))).join("")}${extra.map(j => opt(j, true, true)).join("")}<div class="hint" style="margin-top:4px">Centang satu atau lebih jenis kendaraan.</div></div></details>`;
 }
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-akses]"); if (!b) return;
+function placeAkses(d) { const p = d.querySelector(".akpanel"), r = d.querySelector("summary").getBoundingClientRect(); if (!p) return; p.style.left = Math.max(8, Math.min(r.left, innerWidth - 240)) + "px"; const h = p.offsetHeight || 160; p.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 4) : r.bottom + 4) + "px"; }
+document.addEventListener("toggle", e => { const d = e.target; if (!d.classList || !d.classList.contains("akdd") || !d.open) return; document.querySelectorAll("details.akdd[open]").forEach(x => { if (x !== d) x.open = false; }); placeAkses(d); }, true);
+document.addEventListener("click", e => { if (!e.target.closest("details.akdd")) document.querySelectorAll("details.akdd[open]").forEach(x => x.open = false); });
+document.addEventListener("scroll", () => document.querySelectorAll("details.akdd[open]").forEach(x => x.open = false), true);
+document.addEventListener("change", e => {
+  const b = e.target.closest && e.target.closest("[data-akses]"); if (!b) return;
   const k = b.dataset.akses.indexOf("|"), i = +b.dataset.akses.slice(0, k), j = b.dataset.akses.slice(k + 1), s = state.stores[i]; if (!s) return;
   if (j === "*") delete s.akses;
   else { const A = aksesList(s.akses), at = A.findIndex(a => normJenis(a) === normJenis(j)); if (at >= 0) A.splice(at, 1); else A.push(j); if (A.length) s.akses = A; else delete s.akses; }
-  save(); const cell = b.closest("td"); if (cell) cell.innerHTML = aksesCell(s, i);
+  save(); const cell = b.closest("td"); if (cell) { cell.innerHTML = aksesCell(s, i, true); const d = cell.querySelector("details"); if (d) placeAkses(d); }
 });
 
 let storeFilter = "";

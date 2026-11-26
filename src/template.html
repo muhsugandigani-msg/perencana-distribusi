@@ -131,6 +131,14 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 .dchip.big { width: auto; padding: 8px 12px; font: 600 13px/1 var(--f-body); }
 .dchip:disabled { opacity: .45; cursor: not-allowed; }
 .dchip.txt { width: auto; padding: 6px 8px; white-space: nowrap; }
+details.akdd { min-width: 170px; max-width: 220px; }
+details.akdd > summary { list-style: none; cursor: pointer; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 22px; position: relative; }
+details.akdd > summary::-webkit-details-marker { display: none; }
+details.akdd > summary::after { content: "▾"; position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+details.akdd[open] > summary { border-color: var(--sel); }
+.akpanel { position: fixed; z-index: 60; width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 8px; display: grid; gap: 2px; }
+.akopt { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.akopt:hover { background: var(--surface2); }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 16px; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 12px; }
 .field { display: grid; gap: 5px; }
