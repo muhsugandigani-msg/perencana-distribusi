@@ -1436,9 +1436,10 @@
    "kota": "Kota Makassar"
   },
   "loadMuatanV1": true,
-  "posLoadingGudang": 1
+  "posLoadingGudang": 1,
+  "tingkatOptimasi": "tinggi"
  },
- "_savedAt": 1795730156142,
+ "_savedAt": 1795731035525,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3384,8 +3385,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795730156142,
-  "sig": "4maqnf:20162",
+  "at": 1795731035525,
+  "sig": "1dm7r83:20189",
   "weekSel": 0,
   "meta": {
    "H": 1,
