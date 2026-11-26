@@ -7,7 +7,7 @@
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
    "kecepatan": 40,
-   "maksShift": 1,
+   "maksShift": 2,
    "bbm": "Solar"
   },
   {
@@ -33,7 +33,7 @@
   },
   {
    "id": "vfaooj7",
-   "aktif": true,
+   "aktif": false,
    "jenis": "CDD Box",
    "plat": "DD 0004 LZ",
    "kapasitasKg": 6000,
@@ -1447,7 +1447,7 @@
   "mingguMulai": "2026-11-30",
   "titikGudang": "https://www.google.com/maps/place/5%C2%B006'07.5%22S+119%C2%B028'39.3%22E/@-5.102094,119.477585,17z/data=!3m1!4b1!4m4!3m3!8m2!3d-5.102094!4d119.477585?entry=ttu&g_ep=EgoyMDI2MTEyMy4wIKXMDSoASAFQAw%3D%3D"
  },
- "_savedAt": 1795702305898,
+ "_savedAt": 1795702322762,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3393,8 +3393,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795702305898,
-  "sig": "1dmgv6z:20114",
+  "at": 1795702322762,
+  "sig": "167iryv:20115",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3440,7 +3440,7 @@
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
        "kecepatan": 40,
-       "maksShift": 1,
+       "maksShift": 2,
        "bbm": "Solar"
       }
      },
@@ -3460,7 +3460,7 @@
      {
       "$v": "vfaooj7",
       "d": {
-       "aktif": true,
+       "aktif": false,
        "jenis": "CDD Box",
        "plat": "DD 0004 LZ",
        "kapasitasKg": 6000,
@@ -3740,7 +3740,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -4065,7 +4065,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
@@ -4382,7 +4382,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -4750,7 +4750,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
@@ -5019,7 +5019,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -5385,7 +5385,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
@@ -5704,7 +5704,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6068,7 +6068,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
@@ -6284,7 +6284,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -6603,7 +6603,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
@@ -6872,7 +6872,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 1,
+        "maksShift": 2,
         "bbm": "Solar"
        }
       },
@@ -7134,7 +7134,7 @@
       "veh": {
        "$v": "vfaooj7",
        "d": {
-        "aktif": true,
+        "aktif": false,
         "jenis": "CDD Box",
         "plat": "DD 0004 LZ",
         "kapasitasKg": 6000,
