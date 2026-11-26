@@ -2,7 +2,7 @@
  "vehicles": [
   {
    "id": "v1",
-   "aktif": false,
+   "aktif": true,
    "jenis": "CDD Box",
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
@@ -12,7 +12,7 @@
   },
   {
    "id": "vtt5ge9",
-   "aktif": false,
+   "aktif": true,
    "jenis": "Pickup Box",
    "plat": "DD 0002 LZ",
    "kapasitasKg": 1500,
@@ -1443,7 +1443,7 @@
   "metodeZona": true,
   "subZona": true
  },
- "_savedAt": 1795734698255,
+ "_savedAt": 1795734876017,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
