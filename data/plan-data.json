@@ -1387,14 +1387,14 @@
    ]
   },
   "fairness": {
-   "aktif": false,
+   "aktif": true,
    "tingkat": "sedang",
    "rit": true,
    "toko": true,
    "jam": true,
    "kg": true,
-   "km": false,
-   "s2": false,
+   "km": true,
+   "s2": true,
    "kgRelatif": true
   },
   "prioritasSolar": {
@@ -1403,5 +1403,5 @@
   },
   "loadingHariPertama": "malam"
  },
- "_savedAt": 1795661001161
+ "_savedAt": 1795661152784
 }
