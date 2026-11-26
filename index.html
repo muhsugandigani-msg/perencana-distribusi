@@ -3730,8 +3730,9 @@ async function valhallaMatrix(src, tgt) {
   lastRouteReq = Date.now();
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
   try {
-    const r = await fetch("https://valhalla1.openstreetmap.de/sources_to_targets", { method: "POST", body: JSON.stringify(body), signal: ctl.signal }); // text/plain: tanpa preflight CORS
-    const j = await r.json(); if (!j.sources_to_targets) throw new Error(j.error || ("HTTP " + r.status)); return j.sources_to_targets;
+    // GET ?json= (cara yang sama dengan rute di peta, sudah terbukti lolos CORS); blok kecil agar URL tetap pendek
+    const r = await fetch("https://valhalla1.openstreetmap.de/sources_to_targets?json=" + encodeURIComponent(JSON.stringify(body)), { signal: ctl.signal });
+    let j; try { j = await r.json(); } catch (e) { throw new Error("HTTP " + r.status); } if (!j.sources_to_targets) throw new Error(j.error || ("HTTP " + r.status)); return j.sources_to_targets;
   } finally { clearTimeout(to); }
 }
 async function hitungJarak(manual) {
@@ -3739,11 +3740,11 @@ async function hitungJarak(manual) {
   const { pts, miss } = jarakMissing(); if (!miss.length) { if (manual) toast("Semua jarak sudah memakai rute jalan sebenarnya."); return; }
   const cfg = roadCfgKey(state); if (!state.jarakJalan || state.jarakJalan.cfg !== cfg) state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
   const J = state.jarakJalan, idx = new Map(J.k.map((k, i) => [k, i])); const at = k => { let i = idx.get(k); if (i == null) { i = J.k.length; J.k.push(k); idx.set(k, i); } return i; };
-  // permintaan seminimal mungkin: baris penuh untuk titik baru, sisanya per kolom; tiap permintaan maks. 2.500 pasangan
+  // permintaan seminimal mungkin: baris penuh untuk titik baru, sisanya per kolom; tiap permintaan maks. 20 × 20 titik
   const bySrc = new Map(); miss.forEach(([a, b]) => { if (!bySrc.has(a)) bySrc.set(a, new Set()); bySrc.get(a).add(b); });
   const full = pts.filter(a => bySrc.has(a) && bySrc.get(a).size > pts.length / 2), fullSet = new Set(full);
   const rest = miss.filter(([a]) => !fullSet.has(a)), blocks = [];
-  const chunk = (S, T) => { for (let j = 0; j < T.length; j += 50) { const Tc = T.slice(j, j + 50), n = Math.max(1, Math.floor(2500 / Tc.length)); for (let i = 0; i < S.length; i += n) blocks.push([S.slice(i, i + n), Tc]); } };
+  const chunk = (S, T) => { for (let j = 0; j < T.length; j += 20) { const Tc = T.slice(j, j + 20), n = 20; for (let i = 0; i < S.length; i += n) blocks.push([S.slice(i, i + n), Tc]); } };
   if (full.length) chunk(full, pts);
   if (rest.length) chunk([...new Set(rest.map(x => x[0]))], [...new Set(rest.map(x => x[1]))]);
   const wasUnsaved = unsaved; let got = 0, failed = 0;

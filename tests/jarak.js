@@ -6,7 +6,7 @@ function hav(a,b){const R=6371,r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r
   const errs = []; let calls = 0, mode = 'ok', lastBody = null;
   await ctx.route('https://api.github.com/**', r => r.fulfill({ status: 404, headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
   await ctx.route('https://valhalla1.openstreetmap.de/sources_to_targets**', async r => {
-    calls++; const body = JSON.parse(r.request().postData()); lastBody = body;
+    calls++; const body = JSON.parse(new URL(r.request().url()).searchParams.get('json')); lastBody = body;
     if (mode === 'fail') return r.fulfill({ status: 500, headers: { 'access-control-allow-origin': '*' }, body: '{"error":"Too Many Requests"}' });
     await new Promise(z => setTimeout(z, 300));
     const rows = body.sources.map((s, i) => body.targets.map((t, j) => ({ from_index: i, to_index: j, distance: mode === 'partial' && (i + j) % 7 === 0 ? null : +(hav([s.lat, s.lon], [t.lat, t.lon]) * 1.4).toFixed(3), time: 1 })));
