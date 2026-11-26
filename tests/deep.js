@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1400, height: 900 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.route('https://**', r => r.abort());
-  await p.goto('file://' + __dirname + '/local.html#plan'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(1500);
+  await p.goto('file://' + __dirname + '/local.html#plan'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(800); console.log('0 tanpa plan otomatis:', await p.evaluate(() => plan === null && !deepJob.run)); await p.click('#btnPlan'); await p.waitForTimeout(700);
   const quick = await p.evaluate(() => ({ rit: plan.trips.length, deep: plan.opt.mendalam }));
   console.log('1 plan cepat:', JSON.stringify(quick), '| banner:', (await p.textContent('#deepNote')).trim().slice(0, 60), '| tombol:', await p.textContent('#btnPlan'));
   // UI tetap responsif: pindah tab saat berjalan

@@ -3124,7 +3124,7 @@ async function ghPutFile(data, sha) {
 function applyShared(f, quiet) {
   const keep = state.jarakJalan; state = normalize(f.data); mergeJarak(keep); try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {} shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-  unsaved = false; plan = null; planDirty = true; runPlan(true); renderTab(); saveStatus();
+  unsaved = false; stopDeep(); plan = null; planDirty = true; renderTab(); saveStatus(); // plan baru dibuat saat tombol "Buat Plan" diklik
   if (!quiet) toast("Data bersama terbaru dimuat dari GitHub.");
 }
 async function loadShared() { // saat web dibuka
@@ -3330,7 +3330,6 @@ function setTab(t) {
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"));
   document.querySelectorAll("main > .panel").forEach(p => p.hidden = p.id !== "p-" + t);
   try { localStorage.setItem(LS_KEY + "-tab", t); } catch (e) {}
-  if (["plan", "gantt", "peta"].includes(t) && (planDirty || !plan)) runPlan(true);
   renderTab();
   try { if (location.hash.slice(1) !== t) history.replaceState(null, "", "#" + t); } catch (e) {}
 }
@@ -3657,7 +3656,7 @@ function fairCard(plan) {
 }
 function renderPlan() {
   const el = $("#p-plan");
-  if (!plan) { el.innerHTML = '<div class="empty">Klik "Buat Plan".</div>'; return; }
+  if (!plan) { el.innerHTML = '<div class="head"><div><h2>Plan Distribusi Mingguan</h2></div></div><div class="empty">Belum ada plan. Periksa data di tab 1–4, lalu klik <b>▶ Buat Plan</b> di kanan atas.</div>'; return; }
   if (plan.error) { el.innerHTML = `<div class="head"><div><h2>Plan Distribusi</h2></div></div><div class="banner bad"><b>Plan belum bisa dibuat.</b> ${esc(plan.error)}</div>`; return; }
   const T = plan.trips;
   const kg = T.reduce((a, t) => a + t.kgDel, 0), pk = T.reduce((a, t) => a + t.kgPick, 0), km = T.reduce((a, t) => a + t.km, 0);
@@ -3709,7 +3708,7 @@ function renderPlan() {
 /* ---------- Gantt ---------- */
 function renderGantt() {
   const el = $("#p-gantt");
-  if (!plan || plan.error) { el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2></div></div><div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  if (!plan || plan.error) { el.innerHTML = `<div class="head"><div><h2>Gantt Armada</h2></div></div><div class="banner bad">${esc(plan ? plan.error : "Belum ada plan. Klik ▶ Buat Plan di kanan atas.")}</div>`; return; }
   const rows = [];
   // satu baris per hari × kendaraan × shift
   let grp = 0;
@@ -3842,7 +3841,7 @@ async function hitungJarak(manual) {
   if (failed || got < miss.length) roadJob.failKey = cfg + "|" + pts.length;
   saveJarakLocal();
   if (got) {
-    runPlan(true); renderTab();
+    if (plan && !plan.error) runPlan(true); renderTab();
     if (ghToken() && !wasUnsaved) { await commitSave(); }
     else if (ghToken()) { save(); toast("Jarak jalan sebenarnya sudah dipakai. Tekan 💾 Simpan agar tersimpan untuk semua.", 5000); }
     else toast("Plan dihitung ulang memakai jarak jalan sebenarnya (" + got + " pasangan titik).", 4000);
@@ -3956,7 +3955,7 @@ async function osrmRoute(pts) {
   } catch (e) { return null; }
 }
 function renderPeta() {
-  if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan")}</div>`; return; }
+  if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan. Klik ▶ Buat Plan di kanan atas.")}</div>`; return; }
   if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
   if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
   $("#mapTools").innerHTML = `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (hindari jalan yang diblok)</label>`;
@@ -4033,7 +4032,7 @@ async function saveFile(name, data, mime) {
 function stamp() { const d = new Date(); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0"); }
 function exportExcel() {
   if (typeof XLSX === "undefined") { toast("Library Excel gagal dimuat."); return; }
-  if (!plan || planDirty) runPlan(true);
+  if (!plan || plan.error) { toast("Belum ada plan. Klik ▶ Buat Plan dulu.", 3500); return; }
   if (plan.error) { toast(plan.error); return; }
   const wb = XLSX.utils.book_new();
   const ring = [["Hari", "Kendaraan", "Plat", "Shift", "Mulai shift", "Berangkat", "Kembali", "Durasi (jam)", "Jumlah titik", "Muatan diantar (kg)", "Muatan (ton)", "Kapasitas (kg)", "Isi muatan (%)", "Dinaikkan (kg)", "Jarak (km)", "Rute", "Link Google Maps"]];
@@ -4200,10 +4199,10 @@ $("#menuPop").addEventListener("click", e => {
   if (a === "template") storeTemplate();
   if (a === "github") ghDialog();
   if (a === "html") { let h = PRISTINE; state._stamp = Date.now(); state._savedAt = Date.now(); try { localStorage.setItem(LS_KEY, JSON.stringify(state)); unsaved = false; saveStatus(); } catch (e) {} const inj = "<script>window.INIT_STATE=" + JSON.stringify(state).replace(/</g, "\\u003c") + ";<\/script>\n"; const at = h.indexOf("<script>\n/*BOOT*/"); if (at >= 0) h = h.slice(0, at) + inj + h.slice(at); saveFile("Perencana_Distribusi.html", h, "text/html"); }
-  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); runPlan(); renderTab(); }]]);
+  if (a === "sample") askConfirm("Ganti semua data input dengan contoh data Lazuna?", [["Ya, muat contoh", () => { state = normalize(clone(SAMPLE)); save(); stopDeep(); plan = null; renderTab(); toast("Contoh data dimuat. Klik ▶ Buat Plan untuk membuat plan."); }]]);
   if (a === "clear") askConfirm("Kosongkan semua kendaraan dan store? Parameter dan jam istirahat tetap.", [["Ya, kosongkan", () => { state.vehicles = []; state.stores = []; save(); plan = null; renderTab(); }]]);
 });
-$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); runPlan(true); renderTab(); toast("Data input dimuat"); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
+$("#fileJson").onchange = e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { state = normalize(JSON.parse(rd.result)); save(); stopDeep(); plan = null; renderTab(); toast("Data input dimuat. Klik ▶ Buat Plan untuk membuat plan."); } catch (er) { toast("File JSON tidak valid", 4000); } }; rd.readAsText(f); e.target.value = ""; };
 $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStores(f); e.target.value = ""; };
 
 /* ---------- mulai ---------- */
@@ -4212,8 +4211,7 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   if (!document.getElementById("p-" + t)) { try { t = localStorage.getItem(LS_KEY + "-tab") || "plan"; } catch (e) { t = "plan"; } }
   if (!document.getElementById("p-" + t)) t = "plan";
   try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {}
-  runPlan(true);
-  setTab(t);
+  setTab(t); // plan tidak dibuat otomatis saat web dibuka; tunggu tombol "Buat Plan"
   loadShared();
 })();
 window.addEventListener("resize", () => { clearTimeout(ganttRs); ganttRs = setTimeout(() => { const w = $("#p-gantt").clientWidth; if (tab === "gantt" && plan && Math.abs(w - ganttW) > 40) renderGantt(); }, 200); });

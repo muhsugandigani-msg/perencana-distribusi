@@ -3,7 +3,7 @@ const log=(...a)=>console.log('•',...a);
 (async () => {
   const b = await chromium.launch(); const ctx = await b.newContext({ locale:'id-ID', viewport:{width:1400,height:900}, acceptDownloads:true });
   const p = await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push('PAGEERR '+e.message)); p.on('console',m=>{if(m.type()==='error'&&!/TUNNEL|Failed to load/.test(m.text()))errs.push(m.text())});
-  await p.goto('file://'+__dirname+'/local.html'); await p.evaluate(()=>localStorage.clear()); await p.reload(); await p.waitForTimeout(500);
+  await p.goto('file://'+__dirname+'/local.html'); await p.evaluate(()=>localStorage.clear()); await p.reload(); await p.waitForTimeout(500); log('tanpa plan otomatis saat dibuka', await p.evaluate(()=>plan===null)); await p.click('#btnPlan'); await p.waitForTimeout(300);
   const menu=async act=>{await p.click('#btnMenu');await p.click(`[data-act="${act}"]`);};
   const dl=async (fn)=>{const [d]=await Promise.all([p.waitForEvent('download'),fn()]);const f='dl/'+d.suggestedFilename();await d.saveAs(f);return f;};
   // 1 clear
@@ -58,7 +58,7 @@ const log=(...a)=>console.log('•',...a);
   // json import
   await p.click('#btnMenu'); const [fc3]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="import"]')]); await fc3.setFiles(fj); await p.waitForTimeout(300); log('json import stores', await p.evaluate(()=>state.stores.length));
   // sample reload
-  await menu('sample'); await p.click('[data-ci="0"]'); await p.waitForTimeout(300); log('sample trips', await p.evaluate(()=>plan.trips.length));
+  await menu('sample'); await p.click('[data-ci="0"]'); await p.waitForTimeout(300); log('sample: plan dikosongkan', await p.evaluate(()=>plan===null)); await p.click('#btnPlan'); await p.waitForTimeout(300); log('sample trips', await p.evaluate(()=>plan.trips.length));
   // mobile overflow
   await p.setViewportSize({width:390,height:844});
   for(const t of ['kendaraan','store','istirahat','parameter','plan','gantt','peta']){await p.click(`[data-tab="${t}"]`);await p.waitForTimeout(200);const o=await p.evaluate(()=>document.documentElement.scrollWidth-innerWidth);if(o>0)log('OVERFLOW',t,o);}
@@ -66,6 +66,6 @@ const log=(...a)=>console.log('•',...a);
   // downloaded html opens with state
   const p2 = await ctx.newPage(); p2.on('pageerror',e=>errs.push('P2 '+e.message));p2.on('console',m=>{if(!/Failed to load/.test(m.text()))errs.push('P2c '+m.text())});
   let h=fs.readFileSync(fh,'utf8').replace(/ integrity="[^"]*" crossorigin="anonymous" referrerpolicy="no-referrer"/g,'').replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js','../deps/leaflet/dist/leaflet.js').replace('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js','../deps/xlsx/dist/xlsx.full.min.js'); fs.writeFileSync('dl/reopen.html',h);
-  await p2.goto('file://'+__dirname+'/dl/reopen.html#plan'); await p2.waitForTimeout(500); log('reopened html: stores', await p2.evaluate(()=>state.stores.map(s=>s.nama).join(',')), 'trips', await p2.evaluate(()=>plan.trips.length));
+  await p2.goto('file://'+__dirname+'/dl/reopen.html#plan'); await p2.waitForTimeout(500); await p2.click('#btnPlan'); await p2.waitForTimeout(300); log('reopened html: stores', await p2.evaluate(()=>state.stores.map(s=>s.nama).join(',')), 'trips', await p2.evaluate(()=>plan.trips.length));
   console.log('ERRORS:', errs.join('\n')||'none'); await b.close();
 })();

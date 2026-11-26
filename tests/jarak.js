@@ -16,12 +16,12 @@ function hav(a,b){const R=6371,r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
   const idle = async () => { await p.waitForTimeout(400); await p.waitForFunction(() => !roadJob.run, null, { timeout: 30000 }); await p.waitForTimeout(200); };
   const info = () => p.evaluate(() => ({ rit: plan.trips.length, km: Math.round(plan.trips.reduce((a, t) => a + t.km, 0) * 10) / 10, jarak: plan.jarak, pairs: state.jarakJalan ? Object.keys(state.jarakJalan.d).length : 0, unsaved }));
-  await p.goto('file://' + __dirname + '/local.html#plan'); await p.evaluate(() => localStorage.clear()); await p.reload();
+  await p.goto('file://' + __dirname + '/local.html#plan'); await p.evaluate(() => localStorage.clear()); await p.reload(); await p.waitForTimeout(500); await p.click('#btnPlan');
   await p.waitForTimeout(700); console.log('1 progres:', (await p.textContent('#roadNote')).trim().slice(0, 80));
   await idle(); console.log('2 selesai:', JSON.stringify(await info()), 'calls', calls, 'tol?', JSON.stringify(lastBody.costing_options));
   console.log('  catatan:', (await p.textContent('#roadNote')).trim());
   // reload: dari cache, tanpa request baru
-  const c0 = calls; await p.reload(); await p.waitForTimeout(1500); await idle(); console.log('3 reload cache:', JSON.stringify(await info()), 'calls baru', calls - c0);
+  const c0 = calls; await p.reload(); await p.waitForTimeout(800); await p.click('#btnPlan'); await p.waitForTimeout(700); await idle(); console.log('3 reload cache:', JSON.stringify(await info()), 'calls baru', calls - c0);
   // tambah store baru -> hanya pasangan baru
   await p.evaluate(() => { state.stores.push({ id: 'sx', nama: 'Baru', lat: -5.15, lng: 119.43, beratKg: 100, frek: 1, antaran: 'Tujuan', aktif: true, hariOperasi: [0,1,2,3,4,5,6], buka: '08:00', tutup: '20:00' }); save(); runPlan(true); renderTab(); });
   await idle(); console.log('4 store baru:', JSON.stringify(await info()), 'calls', calls, 'sumber di req terakhir', lastBody.sources.length, 'x', lastBody.targets.length);

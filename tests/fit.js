@@ -1,6 +1,6 @@
 const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const errs=[];
 for (const [w,h] of [[1920,972],[1366,768],[390,844]]){const p=await b.newPage({viewport:{width:w,height:h}});p.on('pageerror',e=>errs.push(e.message));
-await p.goto('file://'+process.cwd()+'/local.html#peta');await p.waitForTimeout(800);
+await p.goto('file://'+process.cwd()+'/local.html#peta');await p.waitForTimeout(800);await p.click('#btnPlan');await p.waitForTimeout(800);
 const r=await p.evaluate(()=>({sh:document.documentElement.scrollHeight,ih:innerHeight,map:document.getElementById('map').getBoundingClientRect().height}));
 await p.screenshot({path:`fit_peta_${w}.png`});
 await p.click('[data-tab=gantt]');await p.waitForTimeout(300);
