@@ -667,7 +667,7 @@ function renderParameter() {
     </div>
   </div>
   <div class="card pad" style="display:grid;gap:12px">
-    <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
+    <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div></div>
     <div class="field"><label>Jalur keluar/masuk gudang</label>
       <div class="gategrid">
         <div><span class="hint">Link titik Maps</span><input class="in" data-k="params.titikGudang" value="${esc(p.titikGudang || "")}" title="${esc(p.titikGudang || "")}" placeholder="Tempel link Google Maps"></div>
@@ -677,6 +677,7 @@ function renderParameter() {
         <div><span class="hint">Longitude</span><input class="in mono" id="gLng" data-gate="lng" value="${(() => { const g = parseKoordinat(p.titikGudang); return g && g.lat != null ? g.lng : ""; })()}" placeholder="119.48"></div>
       </div>
       <p class="hint">Semua rit berangkat dari gudang lewat titik ini dan pulang lewat titik ini juga (mis. simpang masuk jalan lingkar barat). Tempel link Maps, atau isi latitude &amp; longitude; alamat dan kota terisi otomatis. Kosongkan bila kendaraan bebas lewat jalan mana saja. <span id="gMsg" class="msg">${(() => { const g = parseKoordinat(p.titikGudang); return !p.titikGudang ? "" : g && g.lat != null ? "" : g && g.short ? "Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau isi latitude &amp; longitude." : "Koordinat tidak terbaca dari link."; })()}</span></p></div>
+    <div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-k="params.jalanBlok.semuaTol" ${p.jalanBlok.semuaTol !== false ? "checked" : ""}> <span><b>Blok semua jalan tol</b> <span class="hint">(Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan, dan tol lain)</span></span></label>
     <div style="display:grid;gap:6px">${p.jalanBlok.daftar.map((j, i) => `<div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto"><input type="checkbox" data-k="params.jalanBlok.daftar.${i}.aktif" ${j.aktif !== false ? "checked" : ""} aria-label="Aktif"><input class="in" data-k="params.jalanBlok.daftar.${i}.nama" value="${esc(j.nama || "")}" placeholder="Nama jalan, mis. Tol Reformasi"><button class="btn icon" type="button" data-del="params.jalanBlok.daftar|${i}" aria-label="Hapus">✕</button></div>`).join("") || '<span class="off">Belum ada jalan yang diblok.</span>'}</div>
   </div>
