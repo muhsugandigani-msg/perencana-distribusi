@@ -1475,6 +1475,7 @@ function* buildPlanCore(state, opts) {
   const FW = { ringan: 600, sedang: 2000, kuat: 6000 }[FP.tingkat] || 2000;
   const fKeys = fairOn ? ["rit", "toko", "jam", "kg", "km", "s2"].filter(k => FP[k]) : [];
   const capV = vehicles.map(v => +v.kapasitasKg || 1);
+  const IDLE = Math.max(1500, FW); // penalti satu unit aktif tanpa rit di satu hari distribusi
   function fairPen(T) { // T: array per kendaraan {rit,toko,jam,kg,km,s2}
     if (!fKeys.length) return 0;
     let pen = 0;
@@ -1629,7 +1630,9 @@ function* buildPlanCore(state, opts) {
                 const stB = vehStats(d, vb, Lb); if (!stB) continue;
                 const T2 = T.map(x => ({ ...x }));
                 T2[va] = add(sub(T[va], stA0), stA); T2[vb] = add(sub(T[vb], stB0), stB);
-                const delta = (stA.cost - stA0.cost) + (stB.cost - stB0.cost) + fairPen(T2) - pen;
+                // tiap unit aktif harus kebagian rit di setiap hari distribusi: unit yang menganggur di hari itu kena penalti
+                const idleD = (stA.rit === 0 && stA0.rit > 0 ? IDLE : 0) - (stB0.rit === 0 && stB.rit > 0 ? IDLE : 0);
+                const delta = (stA.cost - stA0.cost) + (stB.cost - stB0.cost) + fairPen(T2) - pen + idleD;
                 if (delta < -1 && (!best || delta < best.delta)) best = { delta, vb, Lb, T2 };
               }
             }
@@ -1794,7 +1797,11 @@ function* buildPlanCore(state, opts) {
   days.forEach(d => res[d].trips.forEach(t => trips.push(t)));
   // Fairness aktif: semua unit aktif harus kebagian distribusi; beri tahu bila ada yang menganggur dan kenapa
   if (fairOn) vehicles.forEach((v, vi) => {
-    if (trips.some(t => t.vIdx === vi)) return;
+    if (trips.some(t => t.vIdx === vi)) {
+      const kosong = days.filter(d => !trips.some(t => t.vIdx === vi && t.day === d));
+      if (kosong.length) warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit pada hari " + kosong.map(d => HARI[d]).join(", ") + " karena store hari itu tidak cukup untuk semua unit atau tidak bisa dilayani unit ini (akses, radius, kapasitas, jam kerja).");
+      return;
+    }
     const vj = normJenis(v.jenis), bisa = valid.filter(s => aksesOk(s, vj) && simFlex(ctxOf[days[0]], depot, v, ctxOf[days[0]].start, 1, [s], false).ok).length;
     warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit minggu ini" + (bisa ? " (beban sudah habis terbagi ke unit lain; naikkan tingkat fairness bila perlu)." : " karena tidak ada store yang bisa dilayaninya (cek akses kendaraan, radius/maks km, atau kapasitas)."));
   });
