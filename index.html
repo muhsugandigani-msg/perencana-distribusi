@@ -666,6 +666,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		}
 	}
 
+.mvbtns{display:flex;gap:4px;align-items:center;justify-content:flex-end}.mvbtns .btn.sm{padding:4px 7px;font-size:11px;line-height:1}.mvbtns .btn:disabled{opacity:.3;cursor:default}
 </style>
 <style>
 /* Layout: header berisi aksi utama, tab langkah 1-4 untuk input, tab hasil (Plan, Gantt, Peta). Nuansa rambu jalan + papan logistik. */
@@ -3560,6 +3561,14 @@ document.addEventListener("click", e => {
     const m = path.match(/^stores\.(\d+)\.hariOperasi$/); if (m) { const n = document.getElementById("op" + m[1]); if (n) n.innerHTML = opsNote(state.stores[+m[1]]); }
     return;
   }
+  const mv = e.target.closest("[data-mv]");
+  if (mv) { // pindahkan baris ke atas/bawah (urutan ikut tersimpan saat Simpan)
+    const [path, idx, dir] = mv.dataset.mv.split("|"); const arr = getPath(path), i = +idx, j = i + (+dir);
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]]; save(); renderTab();
+    const b = document.querySelector(`[data-mv="${path}|${j}|${dir}"]`) || document.querySelector(`[data-mv="${path}|${j}|${-dir}"]`); if (b) b.focus();
+    return;
+  }
   const del = e.target.closest("[data-del]");
   if (del) { const [path, idx] = del.dataset.del.split("|"); getPath(path).splice(+idx, 1); save(); renderTab(); return; }
 });
@@ -3745,7 +3754,7 @@ function renderKendaraan() {
     <td><input class="in num" type="number" min="0" step="1" data-t="num" data-k="vehicles.${i}.maksRadiusKm" value="${v.maksRadiusKm ?? ""}" placeholder="bebas" style="min-width:80px"></td>
     <td><select class="in" data-k="vehicles.${i}.bbm" style="min-width:100px">${["Solar", "Bensin"].map(b => `<option ${v.bbm === b ? "selected" : ""}>${b}</option>`).join("")}</select></td>
     <td>${hariAktifCell(v, i)}</td>
-    <td><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></td></tr>`).join("");
+    <td><div class="mvbtns"><button class="btn icon sm" type="button" data-mv="vehicles|${i}|-1" aria-label="Pindah ke atas" title="Pindah ke atas" ${i === 0 ? "disabled" : ""}>▲</button><button class="btn icon sm" type="button" data-mv="vehicles|${i}|1" aria-label="Pindah ke bawah" title="Pindah ke bawah" ${i === state.vehicles.length - 1 ? "disabled" : ""}>▼</button><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></div></td></tr>`).join("");
   const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
   el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari. <b>Bahan bakar</b>: kendaraan solar diutamakan mendapat tugas. <b>Maks km/rit</b> dan <b>Maks radius</b> (km jalan dari gudang) membatasi kendaraan ke rute pendek, misalnya pickup agar hemat BBM. Kosongkan bila tanpa batas. <b>Hari aktif distribusi</b> = hari unit ini boleh dijadwalkan (mis. servis tiap Rabu); default semua hari.</p></div>
     <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
@@ -3854,7 +3863,7 @@ function renderStore() {
     <td>${origin ? '<span class="off">gudang</span>' : `<div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${s.hariOperasi.includes(d) ? "on" : ""}" data-mode="list" data-chip="stores.${i}.hariOperasi|${d}" title="${HARI[d]}${state.params.hari[d] ? "" : " (bukan hari distribusi)"}" ${state.params.hari[d] ? "" : "disabled"}>${h}</button>`).join("")}</div><div class="msg" id="op${i}">${opsNote(s)}</div>`}</td>
     <td>${origin ? '<span class="off">–</span>' : `<select class="in" data-k="stores.${i}.prioritas" style="min-width:96px" title="Bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu">${["Tinggi", "Normal", "Rendah"].map(o => `<option ${(s.prioritas || "Normal") === o ? "selected" : ""}>${o}</option>`).join("")}</select>`}</td>
     <td>${origin ? '<span class="off">–</span>' : aksesCell(s, i)}</td>
-    <td><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></td></tr>`;
+    <td><div class="mvbtns"><button class="btn icon sm" type="button" data-mv="stores|${i}|-1" aria-label="Pindah ke atas" title="Pindah ke atas" ${i === 0 ? "disabled" : ""}>▲</button><button class="btn icon sm" type="button" data-mv="stores|${i}|1" aria-label="Pindah ke bawah" title="Pindah ke bawah" ${i === state.stores.length - 1 ? "disabled" : ""}>▼</button><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></div></td></tr>`;
   }).join("");
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);

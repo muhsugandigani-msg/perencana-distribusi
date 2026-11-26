@@ -1,0 +1,23 @@
+const { chromium } = require('playwright'); const fs = require('fs');
+const DATA = JSON.parse(fs.readFileSync('/home/user/perencana-distribusi/data/plan-data.json', 'utf8'));
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1300, height: 900 } }); const errs=[]; p.on('pageerror', e => errs.push(e.message));
+  await p.route(/api\.github\.com|valhalla|tile|nominatim/, r => r.abort());
+  await p.goto('file://' + __dirname + '/local.html');
+  await p.evaluate(d => { localStorage.clear(); localStorage.setItem(LS_KEY, JSON.stringify(d.state || d)); }, DATA); await p.reload(); await p.waitForTimeout(800);
+  await p.click('[data-tab="kendaraan"]'); await p.waitForTimeout(300);
+  const order = () => p.evaluate(() => state.vehicles.map(v => v.plat).join(' | '));
+  console.log('• awal:', await order());
+  await p.click('[data-mv="vehicles|3|-1"]'); console.log('• CDD 0004 naik:', await order());
+  await p.click('[data-mv="vehicles|0|1"]'); console.log('• baris 1 turun:', await order());
+  console.log('• tombol atas baris 1 nonaktif:', await p.$eval('[data-mv="vehicles|0|-1"]', b => b.disabled), '| bawah baris terakhir nonaktif:', await p.evaluate(() => document.querySelector(`[data-mv="vehicles|${state.vehicles.length-1}|1"]`).disabled));
+  await p.click('[data-tab="store"]'); await p.waitForTimeout(300);
+  const so = () => p.evaluate(() => state.stores.slice(0,4).map(s => s.nama.replace('Lazuna Chicken ','')).join(' | '));
+  console.log('• store awal:', await so()); await p.click('[data-mv="stores|2|-1"]'); console.log('• store 3 naik:', await so());
+  await p.click('#btnSave'); await p.waitForTimeout(500); await p.reload(); await p.waitForTimeout(800);
+  console.log('• setelah simpan & muat ulang:', await order(), '/', await so());
+  await p.setViewportSize({ width: 390, height: 800 }); await p.click('[data-tab="kendaraan"]'); await p.waitForTimeout(300);
+  console.log('• overflow HP:', await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1));
+  await p.screenshot({ path: __dirname + '/../move.png', clip: { x: 0, y: 0, width: 390, height: 800 } });
+  console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none'); await b.close();
+})();
