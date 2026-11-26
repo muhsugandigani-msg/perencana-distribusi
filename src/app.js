@@ -370,7 +370,8 @@ function tugasCard(p) {
         <p class="hint">Beban dibuat lebih adil antar kendaraan, setelah semua store terlayani. Makin kuat, makin merata, tetapi jarak & jam kerja total bisa sedikit bertambah.${PS.aktif !== false ? " Bila prioritas solar aktif, kendaraan bensin mendapat porsi lebih kecil." : ""}</p>
         ${F.aktif ? `<div class="row"><span class="hint" style="min-width:80px">Tingkat</span>${lvl("params.fairness.tingkat", F.tingkat)}</div>
         <div class="fairk">${FAIR_K.map(([k, l]) => `<label class="chk"><input type="checkbox" data-k="params.fairness.${k}" ${F[k] ? "checked" : ""}> ${l}</label>`).join("")}</div>
-        <label class="chk"><input type="checkbox" data-k="params.fairness.kgRelatif" ${F.kgRelatif !== false ? "checked" : ""}> Muatan dihitung sebagai % kapasitas kendaraan <span class="hint">(disarankan bila kapasitas kendaraan berbeda)</span></label>` : ""}</div>
+        <label class="chk"><input type="checkbox" data-k="params.fairness.kgRelatif" ${F.kgRelatif !== false ? "checked" : ""}> Muatan dihitung sebagai % kapasitas kendaraan <span class="hint">(disarankan bila kapasitas kendaraan berbeda)</span></label>
+        <label class="chk"><input type="checkbox" data-k="params.fairness.kapasitasBesar" ${F.kapasitasBesar !== false ? "checked" : ""}> Prioritaskan kendaraan kapasitas besar <span class="hint">(tugas diisi ke kendaraan besar dulu dan porsinya sebanding kapasitas; tiap unit tetap kebagian rit setiap hari)</span></label>` : ""}</div>
     </div>`;
 }
 
@@ -1155,7 +1156,7 @@ function exportExcel() {
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   { const F = state.params.fairness, PS = state.params.prioritasSolar;
     par.push([], ["Pembagian tugas kendaraan", ""], ["Utamakan kendaraan solar", PS.aktif !== false ? "Ya (" + (PS.tingkat || "sedang") + ")" : "Tidak"], ["Fairness", F.aktif ? "Ya (" + (F.tingkat || "sedang") + ")" : "Tidak"]);
-    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"]); }
+    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); }
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);

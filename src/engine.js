@@ -475,8 +475,15 @@ function* buildPlanCore(state, opts) {
   const psOn = PS.aktif !== false;
   const psF = { ringan: 1.15, sedang: 1.35, kuat: 1.8 }[PS.tingkat] || 1.35;
   const isBensin = v => /bensin|pertalite|pertamax|gasoline/i.test(v.bbm || "");
-  const fuelF = vehicles.map(v => psOn && isBensin(v) ? psF : 1);
-  const share = fuelF.map((f, vi) => Math.max(0.05, days.filter(d => vehOnDay(vehicles[vi], d)).length / days.length) / f); // porsi adil: kendaraan bensin & yang hari aktifnya lebih sedikit mendapat porsi lebih kecil
+  const fuelOnly = vehicles.map(v => psOn && isBensin(v) ? psF : 1);
+  // Fairness: kendaraan berkapasitas besar diprioritaskan (biaya sedikit lebih murah) dan mendapat porsi beban sebanding kapasitasnya
+  const FP0 = state.params.fairness || {}, capPrio = !!FP0.aktif && FP0.kapasitasBesar !== false && vehicles.length > 1;
+  const maxCapV = Math.max(...vehicles.map(v => +v.kapasitasKg || 1));
+  const capF = vehicles.map(v => capPrio ? 1 + 0.12 * (1 - (+v.kapasitasKg || 1) / maxCapV) : 1);
+  const fuelF = fuelOnly.map((f, i) => f * capF[i]);
+  const meanCap = vehicles.reduce((a, v) => a + (+v.kapasitasKg || 1), 0) / vehicles.length;
+  const capShare = vehicles.map(v => capPrio ? (+v.kapasitasKg || 1) / meanCap : 1);
+  const share = fuelOnly.map((f, vi) => Math.max(0.05, days.filter(d => vehOnDay(vehicles[vi], d)).length / days.length) / f); // porsi adil: kendaraan bensin & yang hari aktifnya lebih sedikit mendapat porsi lebih kecil
   // statistik satu kendaraan di satu hari (untuk fairness)
   const stCache = new Map();
   function vehStats(d, vi, list) {
@@ -510,7 +517,8 @@ function* buildPlanCore(state, opts) {
       let idx = vehicles.map((v, i) => i);
       if (k === "s2") idx = idx.filter(i => (+vehicles[i].maksShift || 1) >= 2);
       if (idx.length < 2) continue;
-      const xs = idx.map(i => (k === "kg" && FP.kgRelatif !== false ? T[i].kg / capV[i] : T[i][k]) / (k === "s2" ? 1 : share[i]));
+      const rel = k === "kg" && FP.kgRelatif !== false;
+      const xs = idx.map(i => (rel ? T[i].kg / capV[i] : T[i][k]) / (k === "s2" ? 1 : share[i] * (rel ? 1 : capShare[i])));
       const m = xs.reduce((a, b) => a + b, 0) / xs.length; if (m <= 1e-9) continue;
       pen += FW * xs.reduce((a, x) => a + ((x - m) / m) ** 2, 0) / xs.length;
     }
