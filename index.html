@@ -4640,7 +4640,7 @@ try { localStorage.removeItem(LS_KEY + "-osrm"); Object.assign(osrmCache, JSON.p
 function ensureMap() {
   if (map || typeof L === "undefined") return;
   const el = $("#map"); el.innerHTML = ""; el.classList.add("map-gray");
-  map = L.map(el, { preferCanvas: false, zoomControl: true, zoomSnap: 0.25, zoomDelta: 0.5 }).setView([plan.depot.lat, plan.depot.lng], 12);
+  map = L.map(el, { preferCanvas: false, zoomControl: true, zoomSnap: 0.25, zoomDelta: 0.5 }).setView((() => { const D = plan && plan.depot ? plan.depot : state.stores.find(x => x.antaran === "Origin" && x.lat != null) || state.stores.find(x => x.lat != null); return D ? [D.lat, D.lng] : [-5.14, 119.43]; })(), 12);
   if (window.ResizeObserver) { let rt = null; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { if (!map || tab !== "peta") return; map.invalidateSize(); if (mapBounds && !map._userMoved) map.fitBounds(mapBounds, { padding: [30, 30] }); }, 80); }).observe(el); }
   map.on("dragstart", () => { map._userMoved = true; }); el.addEventListener("wheel", () => { map._userMoved = true; }, { passive: true });
   const tl = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }).addTo(map);
@@ -4724,7 +4724,12 @@ async function osrmRoute(pts) {
   } catch (e) { return null; }
 }
 function renderPeta() {
-  if (!plan || plan.error) { if (mapLayer) mapLayer.clearLayers(); $("#mapTools").innerHTML = ""; $("#mapLegend").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan. Klik ▶ Buat Plan di kanan atas.")}</div>`; return; }
+  if (!plan || plan.error) { // belum ada plan / tidak ada kendaraan aktif: semua titik store tetap ditampilkan tanpa rute
+    $("#mapTools").innerHTML = ""; $("#mapNote").innerHTML = `<div class="banner bad">${esc(plan ? plan.error : "Belum ada plan. Klik ▶ Buat Plan di kanan atas.")} Peta menampilkan semua titik store aktif tanpa rute.</div>`;
+    if (typeof L === "undefined") { $("#mapLegend").innerHTML = ""; return; }
+    ensureMap(); mapDrawn = null; setTimeout(() => map && map.invalidateSize(), 60);
+    drawPoints(); return;
+  }
   if (mapDay !== "all" && !plan.days.includes(+mapDay)) mapDay = "all";
   if (typeof L === "undefined") { $("#mapNote").innerHTML = `<div class="banner bad">Library peta (Leaflet) gagal dimuat. Periksa koneksi internet.</div>`; return; }
   $("#mapTools").innerHTML = (planWeeks && planWeeks.length > 1 ? weekBarHtml() + '<span style="flex-basis:100%"></span>' : "") + `<button type="button" class="dchip big ${mapDay === "all" ? "on" : ""}" data-mday="all">Semua hari</button>` + plan.days.map(d => `<button type="button" class="dchip big ${mapDay === String(d) ? "on" : ""}" data-mday="${d}"><span class="dot" style="background:var(--d${d});margin-right:6px;width:9px;height:9px"></span>${HARI[d]}</button>`).join("") + `<label class="hint" style="display:flex;gap:6px;align-items:center;margin-left:auto"><input type="checkbox" id="useRoad" ${useRoad ? "checked" : ""}> Rute ikuti jalan (hindari jalan yang diblok)</label>`;
@@ -4738,6 +4743,19 @@ function renderPeta() {
   if (mapDrawn === sig) return;
   mapDrawn = sig;
   drawMap();
+}
+function drawPoints() {
+  if (!map) return;
+  if (!mapLayer) mapLayer = L.layerGroup().addTo(map);
+  mapLayer.clearLayers();
+  const bounds = [];
+  const D = state.stores.find(x => x.antaran === "Origin" && x.aktif !== false && x.lat != null);
+  const st = state.stores.filter(x => x.aktif !== false && x.antaran !== "Origin" && x.lat != null && x.lng != null);
+  st.forEach(x => { bounds.push([x.lat, x.lng]); L.marker([x.lat, x.lng], { icon: L.divIcon({ html: '<div class="storepin" style="background:#6b7280"></div>', className: "", iconSize: [12, 12] }) }).addTo(mapLayer).bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br><i>Belum ada rute</i>`); });
+  if (D) { bounds.push([D.lat, D.lng]); L.marker([D.lat, D.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(D.nama)}</b><br>Origin / gudang`); }
+  $("#mapLegend").innerHTML = `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
+  mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
+  if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
 }
 async function drawMap() {
   const sig = mapDrawn;
