@@ -7,7 +7,7 @@
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
    "kecepatan": 40,
-   "maksShift": 2,
+   "maksShift": 1,
    "bbm": "Solar"
   },
   {
@@ -23,7 +23,7 @@
   },
   {
    "id": "vfaooj7",
-   "aktif": false,
+   "aktif": true,
    "jenis": "CDD Box",
    "plat": "DD 0003 LZ",
    "kapasitasKg": 6000,
@@ -1453,7 +1453,7 @@
    "kota": "Kota Makassar"
   }
  },
- "_savedAt": 1795704093221,
+ "_savedAt": 1795704137609,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3399,8 +3399,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795704093222,
-  "sig": "1cqmvme:20244",
+  "at": 1795704137609,
+  "sig": "1x98yoa:20243",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3446,7 +3446,7 @@
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
        "kecepatan": 40,
-       "maksShift": 2,
+       "maksShift": 1,
        "bbm": "Solar"
       }
      },
@@ -3677,7 +3677,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -3935,7 +3935,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -4354,7 +4354,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -4612,7 +4612,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5035,7 +5035,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5345,7 +5345,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -5719,7 +5719,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6027,7 +6027,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6392,7 +6392,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6598,7 +6598,7 @@
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
         "kecepatan": 40,
-        "maksShift": 2,
+        "maksShift": 1,
         "bbm": "Solar"
        }
       },
@@ -6857,7 +6857,7 @@
       "unserved": 4
      },
      "starts": 10,
-     "ms": 1027,
+     "ms": 1010,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
