@@ -1063,7 +1063,7 @@ function weekState(state, meta, w) { // w = 0..H-1
 }
 function buildWeeks(state, opts) { // sinkron: array plan per minggu
   const meta = weekMeta(state), out = [];
-  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P); }
+  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.nMinggu = meta.H; } out.push(P); }
   out.meta = meta; return out;
 }
 
@@ -3210,6 +3210,7 @@ function unpackPlans(SP) {
     const r = {}; for (const k in o) r[k] = fix(o[k]); return r;
   };
   const W = SP.weeks.map(fix); if (W.some(P => !isObj(P) || !Array.isArray(P.trips) || !Array.isArray(P.unserved) || !isObj(P.depot))) throw new Error("plan tersimpan rusak");
+  W.forEach(P => { if (!(+P.H >= 60)) { P.nMinggu = P.H; P.H = (+state.params.jamShift || 8) * 60; } }); // plan lama: H sempat terisi jumlah minggu
   W.meta = isObj(SP.meta) ? SP.meta : { H: W.length, off: {} }; return W;
 }
 function loadSavedPlan() { // tampilkan plan terakhir yang disimpan (tanpa menghitung ulang)
@@ -3683,7 +3684,7 @@ function* deepWeeks() { // optimasi mendalam untuk tiap minggu dalam siklus
   for (let w = 0; w < meta.H; w++) {
     const g = planGen(weekState(state, meta, w), { mendalam: true, skala: 1 / meta.H }); let r;
     while (!(r = g.next()).done) { const v = r.value; yield { fase: v.fase + (meta.H > 1 ? ", minggu " + (w + 1) + "/" + meta.H : ""), k: w * 100 + (v.n ? v.k / v.n * 100 : 0), n: meta.H * 100 }; }
-    const P = r.value; if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P);
+    const P = r.value; if (P && !P.error) { P.week = w; P.nMinggu = meta.H; } out.push(P);
   }
   out.meta = meta; return out;
 }

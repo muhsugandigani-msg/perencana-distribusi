@@ -95,7 +95,7 @@ function weekState(state, meta, w) { // w = 0..H-1
 }
 function buildWeeks(state, opts) { // sinkron: array plan per minggu
   const meta = weekMeta(state), out = [];
-  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.H = meta.H; } out.push(P); }
+  for (let w = 0; w < meta.H; w++) { const P = buildPlan(weekState(state, meta, w), opts); if (P && !P.error) { P.week = w; P.nMinggu = meta.H; } out.push(P); }
   out.meta = meta; return out;
 }
 
