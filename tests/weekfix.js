@@ -1,0 +1,14 @@
+const fs=require('fs');
+const [eng,data,mode]=process.argv.slice(2);
+const E=require(eng); let st=JSON.parse(fs.readFileSync(data,'utf8')); if(st.state) st=st.state;
+st.stores.forEach(s=>{ if(s.frek==null) s.frek=1; });
+const t=Date.now(); const W=E.buildWeeks(st,{mendalam:mode==='deep'});
+const per=st.stores.filter(s=>s.aktif!==false&&s.antaran!=='Origin'); 
+console.log('weeks',W.length,'multi-week stores',per.filter(s=>E.periodeOf(s)>1).length,'ms',Date.now()-t);
+let rit=0,km=0,un=0; const sig={}; const wk=[];
+W.forEach((P,w)=>{ if(P.error){console.log(P.error);return;} rit+=P.trips.length; km+=P.trips.reduce((a,x)=>a+x.km,0); un+=P.unserved.length;
+ console.log(' minggu',w+1,P.trips.length,'rit',P.trips.reduce((a,x)=>a+x.km,0).toFixed(1),'km un',P.unserved.length);
+ P.trips.forEach(T=>{ const reg=T.stops.filter(x=>E.periodeOf(per.find(s=>s.id===x.store.id)||{frek:1})===1).map(x=>x.store.id); reg.forEach(id=>{ (wk[w]=wk[w]||{}, wk[w][id]=(wk[w][id]||[]).concat(T.day+'|'+T.vIdx+'|'+T.shift+'|'+reg.join('>'))); }); }); });
+wk.forEach(o=>Object.keys(o).forEach(id=>(sig[id]=sig[id]||new Set()).add(o[id].sort().join(' ; '))));
+const regs=Object.keys(sig); const changed=regs.filter(id=>sig[id].size>1).length;
+console.log('TOTAL',rit,'rit',km.toFixed(1),'km un',un,'| store mingguan yg rutenya berubah antar minggu:',changed,'/',regs.length);

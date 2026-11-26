@@ -591,7 +591,10 @@ function startDeep() {
     deepJob.g = null; deepJob.run = false;
     const W = r.value; if (!W || !W.length || W.some(P => !P || P.error)) { deepNote(); return; }
     const quick = planWeeks || [];
-    W.forEach((P, w) => { const Q = quick[w]; if (Q && Q.opt && P.opt && Q.opt.cost < P.opt.cost) W[w] = Q; else if (P.opt) P.opt.biasa = baseW[w] || null; }); // jangan pernah lebih buruk dari plan cepat
+    // jangan pernah lebih buruk dari plan cepat; dibandingkan per siklus agar rute mingguan tetap sama di semua minggu
+    const cyc = A => A.reduce((a, P) => a + (P && P.opt ? P.opt.cost : Infinity), 0);
+    if (quick.length === W.length && cyc(quick) <= cyc(W)) { deepNote(); toast("Optimasi mendalam selesai: plan cepat sudah yang paling efisien.", 4000); return; }
+    W.forEach((P, w) => { if (P.opt) P.opt.biasa = baseW[w] || null; });
     planWeeks = W; weekCache.meta = W.meta; if (weekSel >= W.length) weekSel = 0; plan = W[weekSel]; mapDrawn = null;
     if (["plan", "gantt", "peta"].includes(tab)) renderTab(); else deepNote();
     const tot = weeksTotal(W), b0 = baseW.filter(Boolean);
@@ -611,14 +614,10 @@ function deepNote() {
   const sb = document.getElementById("btnStopDeep"); if (sb && !sb.onclick) sb.onclick = () => { stopDeep(); toast("Optimasi mendalam dihentikan. Plan cepat tetap dipakai."); };
   const bp = document.getElementById("btnPlan"); if (bp) bp.textContent = deepJob.run ? "⏳ Mengoptimasi " + (deepJob.n ? Math.round(deepJob.k / deepJob.n * 100) : 0) + "%" : "▶ Buat Plan";
 }
-function* deepWeeks() { // optimasi mendalam untuk tiap minggu dalam siklus
-  const meta = weekMeta(state), out = [];
-  for (let w = 0; w < meta.H; w++) {
-    const g = planGen(weekState(state, meta, w), { mendalam: true, skala: 1 / meta.H }); let r;
-    while (!(r = g.next()).done) { const v = r.value; yield { fase: v.fase + (meta.H > 1 ? ", minggu " + (w + 1) + "/" + meta.H : ""), k: w * 100 + (v.n ? v.k / v.n * 100 : 0), n: meta.H * 100 }; }
-    const P = r.value; if (P && !P.error) { P.week = w; P.nMinggu = meta.H; } out.push(P);
-  }
-  out.meta = meta; return out;
+function* deepWeeks() { // optimasi mendalam: rute dasar store mingguan dioptimasi mendalam, lalu store 2–5 mingguan disisipkan per minggu
+  const g = weeksGen(state, { mendalam: true }); let r;
+  while (!(r = g.next()).done) { const v = r.value; yield { fase: v.fase, k: v.n ? v.k / v.n * 100 : 0, n: 100 }; }
+  return r.value;
 }
 function weeksTotal(W) { const T = { rit: 0, km: 0, jam: 0, kunj: 0, un: 0 }; (W || []).forEach(P => { if (!P || P.error) return; T.rit += P.trips.length; T.km += P.trips.reduce((a, t) => a + t.km, 0); T.jam += P.trips.reduce((a, t) => a + t.dur, 0) / 60; T.kunj += P.trips.reduce((a, t) => a + t.stops.length, 0); T.un += P.unserved.length; }); return T; }
 function weekDate(w, d) { const m = String(state.params.mingguMulai || "").match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!m) return null; return new Date(+m[1], +m[2] - 1, +m[3] + w * 7 + (d || 0)); }
@@ -649,7 +648,7 @@ function weeksCard() {
   if (!planWeeks || planWeeks.length < 2) return "";
   const T = weeksTotal(planWeeks), M = weekCache.meta || {};
   const rows = planWeeks.map((P, w) => { const t = weeksTotal([P]); return `<tr class="${w === weekSel ? "sel" : ""}"><td><button type="button" class="btn sm ghost" data-week="${w}">${esc(weekLabel(w))}</button></td><td class="num mono">${t.rit}</td><td class="num mono">${t.kunj}</td><td class="num mono">${fmtNum(t.km)} km</td><td class="num mono">${fmtNum(t.jam, 1)} jam</td><td class="num mono" style="${t.un ? "color:var(--bad);font-weight:600" : ""}">${t.un}</td></tr>`; }).join("");
-  return `<div class="card pad" style="display:grid;gap:10px"><div><h3>Siklus ${planWeeks.length} minggu</h3><p class="hint" style="margin-top:4px">Ada store dengan frekuensi 1x per 2–5 minggu, jadi plan dibuat per minggu dan berulang setiap ${planWeeks.length} minggu${M.exact === false ? " (kombinasi periode terlalu panjang, siklus dipotong " + planWeeks.length + " minggu)" : ""}. Minggu kirim store dibagi rata otomatis agar beban tiap minggu seimbang; bisa dikunci di tab Store (kolom Minggu ke). Minggu 1 dimulai ${esc((weekDate(0) || new Date()).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))} (ubah di Parameter).</p></div>
+  return `<div class="card pad" style="display:grid;gap:10px"><div><h3>Siklus ${planWeeks.length} minggu</h3><p class="hint" style="margin-top:4px">Ada store dengan frekuensi 1x per 2–5 minggu, jadi plan dibuat per minggu dan berulang setiap ${planWeeks.length} minggu${M.exact === false ? " (kombinasi periode terlalu panjang, siklus dipotong " + planWeeks.length + " minggu)" : ""}. Rute store mingguan (hari, kendaraan, rit dan urutan) sama setiap minggu; store 1x per 2–5 minggu disisipkan ke rute itu pada minggu kirimnya, dengan rit tambahan bila tidak muat. Minggu kirim store dibagi rata otomatis agar beban tiap minggu seimbang; bisa dikunci di tab Store (kolom Minggu ke). Minggu 1 dimulai ${esc((weekDate(0) || new Date()).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))} (ubah di Parameter).</p></div>
     <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Minggu</th><th class="num">Rit</th><th class="num">Kunjungan</th><th class="num">Jarak</th><th class="num">Jam kerja</th><th class="num">Belum terlayani</th></tr></thead><tbody>${rows}<tr class="tot"><td><b>Total siklus</b></td><td class="num mono"><b>${T.rit}</b></td><td class="num mono"><b>${T.kunj}</b></td><td class="num mono"><b>${fmtNum(T.km)} km</b></td><td class="num mono"><b>${fmtNum(T.jam, 1)} jam</b></td><td class="num mono"><b>${T.un}</b></td></tr></tbody></table></div></div>`;
 }
 function vehLabel(v) { return (v.jenis || "Kendaraan") + (v.plat ? " · " + v.plat : ""); }
@@ -683,14 +682,14 @@ function vehTable(plan) {
 }
 
 function optCard(plan) {
-  const A = plan.opt.awal, B = plan.opt.akhir;
+  const O = plan.opt.dasar && plan.opt.dasarInfo ? plan.opt.dasarInfo : plan.opt, A = O.awal, B = O.akhir;
   const row = (lbl, a, b, fmt, unit, lowerBetter = true) => {
     const ch = a ? (b - a) / a * 100 : 0; const good = lowerBetter ? b < a - 1e-9 : b > a + 1e-9; const bad = lowerBetter ? b > a + 1e-9 : b < a - 1e-9;
     return `<tr><td>${lbl}</td><td class="num mono">${fmt(a)} ${unit}</td><td class="num mono"><b>${fmt(b)} ${unit}</b></td><td class="num mono" style="color:${good ? "var(--ok)" : bad ? "var(--bad)" : "var(--muted)"}">${Math.abs(ch) < 0.05 ? "–" : (ch > 0 ? "+" : "") + fmtNum(ch, 1) + "%"}</td></tr>`;
   };
   const f0 = x => fmtNum(x), f1 = x => fmtNum(x, 1), fp = x => fmtNum(x * 100);
   return `<div class="card pad" style="display:grid;gap:12px">
-    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${plan.opt.starts} variasi${plan.opt.mendalam ? " + " + plan.opt.rr + " kali susun ulang (optimasi mendalam)" : ""} dalam ${fmtNum(plan.opt.ms / 1000, 1)} detik.${plan.opt.biasa ? " Dibanding plan cepat: " + plan.opt.biasa.rit + " → " + plan.opt.akhir.rit + " rit, " + fmtNum(plan.opt.biasa.km) + " → " + fmtNum(plan.opt.akhir.km) + " km, " + fmtNum(plan.opt.biasa.jam, 1) + " → " + fmtNum(plan.opt.akhir.jam, 1) + " jam kerja." : ""} Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
+    <div class="head"><div><h3>Hasil optimasi otomatis</h3><p class="hint" style="margin-top:4px">${O !== plan.opt ? "Angka di bawah untuk rute dasar store mingguan, yang dipakai sama setiap minggu. " : ""}Dibandingkan dengan rute awal (penyusunan biasa tanpa optimasi). Mesin mencoba ${O.starts} variasi${O.mendalam ? " + " + O.rr + " kali susun ulang (optimasi mendalam)" : ""} dalam ${fmtNum(O.ms / 1000, 1)} detik.${plan.opt.biasa ? " Dibanding plan cepat: " + plan.opt.biasa.rit + " → " + plan.opt.akhir.rit + " rit, " + fmtNum(plan.opt.biasa.km) + " → " + fmtNum(plan.opt.akhir.km) + " km, " + fmtNum(plan.opt.biasa.jam, 1) + " → " + fmtNum(plan.opt.akhir.jam, 1) + " jam kerja." : ""} Urutan prioritas: semua store terlayani, lalu jumlah rit paling sedikit, lalu jam kerja dan jarak paling pendek.</p></div></div>
     <div>
       <div class="tbl-wrap" style="max-width:760px"><table><thead><tr><th>Ukuran</th><th class="num">Rute awal</th><th class="num">Hasil optimasi</th><th class="num">Perubahan</th></tr></thead><tbody>
         ${row("Belum terlayani", A.unserved, B.unserved, f0, "kunjungan")}
