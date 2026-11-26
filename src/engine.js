@@ -223,6 +223,9 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
 }
 
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
+// Prioritas store: bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu (biaya "belum terlayani" lebih besar)
+function prioOf(s) { return s.prioritas === "Tinggi" ? 2 : s.prioritas === "Rendah" ? 0 : 1; }
+function unsCost(s) { return W.unserved * [0.5, 1, 3][prioOf(s)]; }
 function normJenis(x) { return String(x || "").trim().toLowerCase().replace(/\s+/g, " "); }
 function aksesOk(s, vj) { return !Array.isArray(s.akses) || !s.akses.length || s.akses.some(a => normJenis(a) === vj); }
 /* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
@@ -535,7 +538,7 @@ function* buildPlanCore(state, opts) {
     const vc = R.map((L, vi) => vehEval(d, vi, L, false).cost);
     return { R, left: left.slice(), vc };
   }
-  const dayCost = S => S.vc.reduce((a, b) => a + b, 0) + W.unserved * S.left.length;
+  const dayCost = S => S.vc.reduce((a, b) => a + b, 0) + S.left.reduce((a, st) => a + unsCost(st), 0);
   const solCost = sol => days.reduce((a, d) => a + dayCost(sol[d]), 0);
 
   /* 3) Pencarian lokal per hari: sisipkan yang belum terlayani, pindah & tukar store antar rit/kendaraan, rapikan urutan */
@@ -547,7 +550,8 @@ function* buildPlanCore(state, opts) {
     let improved = true, rounds = 0;
     while (improved && rounds++ < 25 && evals < EVAL_MAX) {
       improved = false;
-      // (a) sisipkan store yang belum terlayani
+      // (a) sisipkan store yang belum terlayani (prioritas tinggi dulu)
+      left.sort((a, b) => prioOf(a) - prioOf(b));
       for (let k = left.length - 1; k >= 0; k--) {
         const s = left[k]; let best = null;
         for (let vi = 0; vi < vehicles.length; vi++) for (const ri of slots(vi)) {
@@ -561,6 +565,20 @@ function* buildPlanCore(state, opts) {
           }
         }
         if (best) { R[best.vi] = best.L.filter(r => r.length); vc[best.vi] = best.c; left.splice(k, 1); improved = true; }
+        else if (prioOf(s) > 0) { // tidak muat: tukar dengan store berprioritas lebih rendah di hari ini (yang tergeser jadi belum terlayani)
+          let ej = null;
+          for (let vi = 0; vi < vehicles.length; vi++) for (let ri = 0; ri < R[vi].length; ri++) for (let i = 0; i < R[vi][ri].length; i++) {
+            const u = R[vi][ri][i]; if (prioOf(u) >= prioOf(s)) continue;
+            const base = R[vi][ri].filter((x, j) => j !== i);
+            for (let p = 0; p <= base.length; p++) {
+              const L = withRoute(vi, ri, base.slice(0, p).concat([s], base.slice(p)));
+              const c = tryVeh(vi, L); if (c == null) continue;
+              const delta = c - vc[vi] + unsCost(u) - unsCost(s);
+              if (delta < -1 && (!ej || delta < ej.delta)) ej = { delta, vi, L, c, u };
+            }
+          }
+          if (ej) { R[ej.vi] = ej.L.filter(r => r.length); vc[ej.vi] = ej.c; left.splice(k, 1, ej.u); improved = true; }
+        }
       }
       // (b) pindahkan satu store ke rit lain (boleh kendaraan lain / rit baru)
       for (let va = 0; va < vehicles.length; va++) for (let ra = 0; ra < R[va].length; ra++) for (let i = 0; i < (R[va][ra] || []).length; i++) {
@@ -731,7 +749,7 @@ function* buildPlanCore(state, opts) {
     };
     const put = b => { sol[b.d].R[b.vi] = b.L; sol[b.d].vc[b.vi] = b.c; };
     const where = {}; // id -> hari tempat store tambahan disisipkan
-    extra.slice().sort((a, b) => (+b.beratKg || 0) - (+a.beratKg || 0) || okDays(a).length - okDays(b).length).forEach(s => {
+    extra.slice().sort((a, b) => prioOf(b) - prioOf(a) || (+b.beratKg || 0) - (+a.beratKg || 0) || okDays(a).length - okDays(b).length).forEach(s => {
       const b = ins(s); if (b) { put(b); where[s.id] = b.d; } else { const d = okDays(s)[0]; sol[d].left.push(s); }
     });
     // perbaiki: keluarkan satu store tambahan lalu sisipkan ulang bila ada posisi lebih murah
@@ -931,4 +949,4 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };

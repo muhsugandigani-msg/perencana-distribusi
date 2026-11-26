@@ -43,7 +43,7 @@ function normalize(s) {
   s.params.lalin.jamSibuk = arrObj(s.params.lalin.jamSibuk);
   ["pusat", "fPusat", "fPusatLuar", "fPinggir"].forEach(k => delete s.params.lalin[k]);
   const num = v => v === "" || v == null || isNaN(+v) ? null : +v;
-  s.stores.forEach(x => { x.id = String(x.id || uid("s")); x.nama = String(x.nama ?? ""); const dl = v => [...new Set(v.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (!Array.isArray(x.hariOperasi)) x.hariOperasi = Array.isArray(x.hariTetap) && x.hariTetap.length ? x.hariTetap : [0, 1, 2, 3, 4, 5, 6]; x.hariOperasi = dl(x.hariOperasi); delete x.hariTetap; x.lat = num(x.lat); x.lng = num(x.lng); if (x.lat != null && (Math.abs(x.lat) > 90 || Math.abs(x.lng ?? 0) > 180)) { x.lat = null; x.lng = null; } x.beratKg = num(x.beratKg) ?? 0; x.frek = num(x.frek) ?? 1; if (x.frek < 0) x.frek = 0; const mk = num(x.mingguKe); if (mk >= 1 && mk <= 5) x.mingguKe = Math.round(mk); else delete x.mingguKe; const ak = aksesList(x.akses); if (ak.length) x.akses = ak; else delete x.akses; });
+  s.stores.forEach(x => { x.id = String(x.id || uid("s")); x.nama = String(x.nama ?? ""); const dl = v => [...new Set(v.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (!Array.isArray(x.hariOperasi)) x.hariOperasi = Array.isArray(x.hariTetap) && x.hariTetap.length ? x.hariTetap : [0, 1, 2, 3, 4, 5, 6]; x.hariOperasi = dl(x.hariOperasi); delete x.hariTetap; x.lat = num(x.lat); x.lng = num(x.lng); if (x.lat != null && (Math.abs(x.lat) > 90 || Math.abs(x.lng ?? 0) > 180)) { x.lat = null; x.lng = null; } x.beratKg = num(x.beratKg) ?? 0; x.frek = num(x.frek) ?? 1; if (x.frek < 0) x.frek = 0; const mk = num(x.mingguKe); if (mk >= 1 && mk <= 5) x.mingguKe = Math.round(mk); else delete x.mingguKe; const ak = aksesList(x.akses); if (ak.length) x.akses = ak; else delete x.akses; if (x.prioritas !== "Tinggi" && x.prioritas !== "Rendah") delete x.prioritas; });
   // alamat lama "Makassar" pada store contoh -> pakai alamat hasil koordinat
   s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
@@ -231,6 +231,7 @@ document.addEventListener("input", e => {
   else if (el.dataset.t === "num") v = el.value === "" ? null : parseFloat(String(el.value).replace(",", "."));
   else v = el.value;
   setPath(el.dataset.k, v);
+  { const m = el.dataset.k.match(/^stores\.(\d+)\.prioritas$/); if (m && v === "Normal") delete state.stores[+m[1]].prioritas; } // Normal = bawaan, tidak disimpan
   // tampilan turunan
   if (el.dataset.ton) { const s = document.getElementById(el.dataset.ton); if (s) s.textContent = ton(v); }
   if (el.dataset.link) onLink(el, v);
@@ -376,6 +377,53 @@ function tugasCard(p) {
 }
 
 /* ---------- 1. Kendaraan ---------- */
+/* Saran armada: coba beberapa susunan armada dengan mesin plan yang sama, rekomendasikan yang paling hemat */
+let saranRes = null, saranRun = false, saranSig = "";
+function saranCands() {
+  const V = state.vehicles, cp = () => V.map(v => JSON.parse(JSON.stringify(v)));
+  const ok = v => v.aktif !== false && +v.kapasitasKg > 0;
+  const C = [{ label: "Armada sekarang", veh: cp(), now: true }];
+  V.forEach((v, i) => { if (ok(v)) { const x = cp(); x[i].aktif = false; C.push({ label: "Tanpa " + vehLabel(v), veh: x, d: -1 }); } });
+  V.forEach((v, i) => { if (!ok(v) && +v.kapasitasKg > 0) { const x = cp(); x[i].aktif = true; C.push({ label: "Aktifkan " + vehLabel(v), veh: x, d: 1 }); } });
+  jenisKendaraan().forEach(j => { const t = V.find(v => ok(v) && normJenis(v.jenis) === normJenis(j)); if (!t) return; const x = cp(); x.push(Object.assign(JSON.parse(JSON.stringify(t)), { id: uid("v"), plat: "(baru)", aktif: true })); C.push({ label: "Tambah 1 " + j, veh: x, d: 1 }); });
+  // ganti satu unit dengan jenis lain (mis. Traga diganti Pickup)
+  const tpl = []; V.forEach(v => { if (+v.kapasitasKg > 0 && !tpl.some(t => normJenis(t.jenis) === normJenis(v.jenis))) tpl.push(v); });
+  V.forEach((v, i) => { if (!ok(v)) return; tpl.forEach(t => { if (normJenis(t.jenis) === normJenis(v.jenis)) return; const x = cp(); x[i] = Object.assign(JSON.parse(JSON.stringify(t)), { id: uid("v"), plat: "(baru)", aktif: true }); C.push({ label: "Ganti " + vehLabel(v) + " dengan " + t.jenis, veh: x, d: 0 }); }); });
+  return C;
+}
+function saranScore(r) { return r.T.un * 1e9 + r.unit * 1e6 + r.T.km; }
+function hitungSaran() {
+  if (saranRun) return; const C = saranCands(); saranRun = true; saranRes = []; saranSig = inputSig(state); let k = 0;
+  const step = () => {
+    if (k >= C.length) { saranRun = false; const el = document.getElementById("saranOut"); if (el) el.innerHTML = saranHtml(); return; }
+    const c = C[k++], st = Object.assign({}, state, { vehicles: c.veh });
+    try { const W = buildWeeks(st, { mendalam: false }); if (!W.some(P => !P || P.error)) { const T = weeksTotal(W), unit = c.veh.filter(v => v.aktif !== false && +v.kapasitasKg > 0).length, cap = c.veh.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0); saranRes.push(Object.assign({}, c, { T, unit, cap, nW: W.length })); } else saranRes.push(Object.assign({}, c, { err: (W.find(P => P && P.error) || {}).error || "gagal" })); }
+    catch (e) { saranRes.push(Object.assign({}, c, { err: e.message })); }
+    const el = document.getElementById("saranOut"); if (el) el.innerHTML = `<p class="hint"><span class="spin" aria-hidden="true"></span> Menghitung ${k}/${C.length}: ${esc(c.label)}…</p>`;
+    setTimeout(step, 20);
+  };
+  step();
+}
+function saranHtml() {
+  if (saranRun) return `<p class="hint"><span class="spin" aria-hidden="true"></span> Menghitung…</p>`;
+  if (!saranRes) return `<p class="hint">Klik tombol untuk menghitung. Butuh sekitar 1 detik per susunan.</p>`;
+  const ok = saranRes.filter(r => !r.err).sort((a, b) => saranScore(a) - saranScore(b)); const now = saranRes.find(r => r.now && !r.err);
+  if (!ok.length) return `<p class="hint">Tidak ada susunan yang bisa dihitung.</p>`;
+  let best = ok[0];
+  // beda tipis (< 3% jarak, unit & layanan sama) dianggap tidak layak mengubah armada
+  if (now && !best.now && best.T.un >= now.T.un && best.unit >= now.unit && best.T.km > now.T.km * 0.97) best = now;
+  const per = best.nW > 1 ? " per siklus " + best.nW + " minggu" : " per minggu";
+  const dif = (a, b, f, u) => { const x = a - b; return Math.abs(x) < 1e-9 ? "" : ` <span class="hint">(${x > 0 ? "+" : ""}${f(x)}${u})</span>`; };
+  const rows = ok.map(r => `<tr class="${r === best ? "sel" : ""}"><td>${r === best ? "⭐ " : ""}${esc(r.label)}</td><td class="num mono">${r.unit}</td><td class="num mono">${fmtNum(r.cap)} kg</td><td class="num mono">${r.T.rit}${now ? dif(r.T.rit, now.T.rit, x => x, "") : ""}</td><td class="num mono">${fmtNum(r.T.km)} km${now ? dif(r.T.km, now.T.km, x => fmtNum(x), "") : ""}</td><td class="num mono">${fmtNum(r.T.jam, 1)} jam</td><td class="num mono" style="${r.T.un ? "color:var(--bad);font-weight:600" : ""}">${r.T.un}</td><td>${r.now ? '<span class="hint">dipakai</span>' : `<button class="btn sm" type="button" data-saran="${saranRes.indexOf(r)}">Pakai</button>`}</td></tr>`).join("");
+  const msg = best.now ? "Armada sekarang sudah susunan yang paling pas: tidak ada susunan lain yang melayani semua store dengan unit lebih sedikit atau jarak lebih hemat dari 3%." : `Rekomendasi: <b>${esc(best.label)}</b>` + (now ? ` (${best.unit} unit, ${best.T.rit} rit, ${fmtNum(best.T.km)} km${per}; armada sekarang ${now.unit} unit, ${now.T.rit} rit, ${fmtNum(now.T.km)} km${now.T.un ? ", " + now.T.un + " kunjungan belum terlayani" : ""}).` : ".");
+  const stale = saranSig && saranSig !== inputSig(state) ? `<div class="banner warn" style="margin:0">Data sudah berubah sejak saran dihitung. Klik Hitung saran armada lagi.</div>` : "";
+  return stale + `<div class="banner ${best.now ? "info" : "warn"}" style="margin:0">${msg}</div><div class="tbl-wrap"><table><thead><tr><th>Susunan armada</th><th class="num">Unit</th><th class="num">Kapasitas</th><th class="num">Rit</th><th class="num">Jarak${esc(per)}</th><th class="num">Jam kerja</th><th class="num">Belum terlayani</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="hint">Dihitung dengan mode cepat dan aturan yang berlaku sekarang (termasuk fairness). Tombol Pakai mengubah data kendaraan; setelah itu klik Buat Plan.</p>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-saran]"); if (!b || !saranRes) return; const r = saranRes[+b.dataset.saran]; if (!r) return;
+  state.vehicles = JSON.parse(JSON.stringify(r.veh)); saranRes = null; save(); renderKendaraan(); toast("Armada diganti: " + r.label + ". Klik Buat Plan untuk membuat plan baru.", 5000);
+});
+
 /* Hari aktif distribusi per kendaraan: dropdown centang (tidak diisi = semua hari) */
 function hariAktifLabel(v) { if (!Array.isArray(v.hariAktif)) return "Semua hari"; const on = v.hariAktif.filter(d => state.params.hari[d]); return on.length ? on.map(d => HARI3[d]).join(", ") : "Tidak ada hari"; }
 function hariAktifCell(v, i, open) {
@@ -411,7 +459,9 @@ function renderKendaraan() {
     <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Kendaraan solar diutamakan mendapat tugas (atur di tab Parameter)">Bahan bakar</th><th title="Hari kendaraan ini boleh dijadwalkan distribusi. Default semua hari.">Hari aktif distribusi</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="11" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
     <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
-    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
+    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>
+    <div class="card pad" style="display:grid;gap:10px;margin-top:16px"><div class="head" style="margin:0"><div><h3>Saran armada</h3><p class="hint" style="margin-top:4px">Membandingkan beberapa susunan armada (armada sekarang, tanpa salah satu unit, tambah satu unit, mengaktifkan unit nonaktif) memakai data store dan aturan yang sama, lalu memilih yang paling hemat: semua store terlayani dengan unit paling sedikit, lalu jarak terpendek.</p></div><button class="btn primary" type="button" id="btnSaran">🔍 Hitung saran armada</button></div><div id="saranOut">${saranHtml()}</div></div>`;
+  $("#btnSaran").onclick = hitungSaran;
   $("#addV").onclick = () => { state.vehicles.push({ id: uid("v"), aktif: true, jenis: "Pickup", plat: "", kapasitasKg: 1000, kecepatan: 40, maksShift: 1, bbm: "Solar" }); save(); renderKendaraan(); };
 }
 
@@ -510,13 +560,14 @@ function renderStore() {
     <td><select class="in" data-k="stores.${i}.antaran" data-rerender="1" style="min-width:96px"><option ${!origin ? "selected" : ""}>Tujuan</option><option ${origin ? "selected" : ""}>Origin</option></select></td>
     <td><select class="in" data-k="stores.${i}.loading" ${origin ? "disabled" : ""} style="min-width:150px"><option value="Menurunkan" ${s.loading !== "Menaikkan" ? "selected" : ""}>Menurunkan barang</option><option value="Menaikkan" ${s.loading === "Menaikkan" ? "selected" : ""}>Menaikkan barang</option></select></td>
     <td>${origin ? '<span class="off">gudang</span>' : `<div class="days">${HARI3.map((h, d) => `<button type="button" class="dchip ${s.hariOperasi.includes(d) ? "on" : ""}" data-mode="list" data-chip="stores.${i}.hariOperasi|${d}" title="${HARI[d]}${state.params.hari[d] ? "" : " (bukan hari distribusi)"}" ${state.params.hari[d] ? "" : "disabled"}>${h}</button>`).join("")}</div><div class="msg" id="op${i}">${opsNote(s)}</div>`}</td>
+    <td>${origin ? '<span class="off">–</span>' : `<select class="in" data-k="stores.${i}.prioritas" style="min-width:96px" title="Bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu">${["Tinggi", "Normal", "Rendah"].map(o => `<option ${(s.prioritas || "Normal") === o ? "selected" : ""}>${o}</option>`).join("")}</select>`}</td>
     <td>${origin ? '<span class="off">–</span>' : aksesCell(s, i)}</td>
     <td><button class="btn icon" type="button" data-del="stores|${i}" aria-label="Hapus">✕</button></td></tr>`;
   }).join("");
   const act = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const wk = act.reduce((a, s) => a + (+s.beratKg || 0) * (+s.frek || 0), 0);
   const nOrigin = state.stores.filter(s => s.aktif !== false && s.antaran === "Origin").length;
-  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, kota/kabupaten, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu, atau 1x per 2/3/4/5 minggu) menentukan berapa kali store dikunjungi. Untuk 1x per 2–5 minggu, plan dibuat per minggu dalam satu siklus dan minggu kirimnya dibagi rata otomatis (bisa dikunci di "Minggu ke"); harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari beroperasi</b> = hari store buka/menerima kiriman; store hanya diantar di hari yang aktif (hitam). Hari kirim dipilih otomatis di antara hari aktif sesuai frekuensi, mis. aktif Sen–Jum dengan 2x seminggu = Senin &amp; Kamis. <b>Akses kendaraan</b> = jenis kendaraan yang boleh masuk ke store (mis. jalan sempit hanya Pickup). Default <b>Semua</b>; pilihannya otomatis mengikuti jenis kendaraan di tab Kendaraan.</details></div>
+  el.innerHTML = `<div class="head"><div><h2>2 · Data Store</h2><p>Tempel link Google Maps: alamat, kota/kabupaten, latitude, dan longitude terisi otomatis. Satu baris <b>Origin</b> = gudang asal.</p><details class="help"><summary>Petunjuk kolom</summary>Jenis Antaran <b>Origin</b> = gudang asal (titik berangkat &amp; kembali). Loading <b>Menaikkan barang</b> (mis. ambil dari PRODUKSI) selalu jadi titik terakhir rit. <b>Frekuensi kirim</b> (1x–7x seminggu, atau 1x per 2/3/4/5 minggu) menentukan berapa kali store dikunjungi. Untuk 1x per 2–5 minggu, plan dibuat per minggu dalam satu siklus dan minggu kirimnya dibagi rata otomatis (bisa dikunci di "Minggu ke"); harinya dibagi rata otomatis (mis. 2x = Senin &amp; Kamis, 3x = Senin, Rabu, Jumat) sambil menyeimbangkan beban armada. <b>Hari beroperasi</b> = hari store buka/menerima kiriman; store hanya diantar di hari yang aktif (hitam). Hari kirim dipilih otomatis di antara hari aktif sesuai frekuensi, mis. aktif Sen–Jum dengan 2x seminggu = Senin &amp; Kamis. <b>Akses kendaraan</b> = jenis kendaraan yang boleh masuk ke store (mis. jalan sempit hanya Pickup). Default <b>Semua</b>; pilihannya otomatis mengikuti jenis kendaraan di tab Kendaraan. <b>Prioritas</b> = bila armada tidak cukup, store Tinggi dilayani lebih dulu dan store Rendah yang pertama dilepas.</details></div>
     <input class="in" id="storeSearch" placeholder="Cari store…" value="${esc(storeFilter)}" style="max-width:200px;padding:9px">
     <button class="btn" type="button" id="geoAll" title="Isi alamat semua store dari koordinatnya">⟳ Isi alamat otomatis</button>
     </div>
@@ -526,8 +577,8 @@ function renderStore() {
     </div>
     ${nOrigin === 0 ? `<div class="banner bad"><b>Belum ada Origin.</b> Tandai gudang dengan Jenis Antaran "Origin".</div>` : nOrigin > 1 ? `<div class="banner warn">Ada ${nOrigin} titik Origin aktif. Yang dipakai hanya yang paling atas.</div>` : ""}
     <div class="card tbl-wrap lock pin2"><table>
-    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Kota/Kabupaten</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th>Frekuensi kirim</th><th title="Hari kirim yang dibentuk otomatis saat Buat Plan">Jadwal hasil plan</th><th>Antaran</th><th>Jenis loading</th><th title="Hari store buka/menerima kiriman. Store hanya diantar di hari yang aktif.">Hari beroperasi</th><th title="Jenis kendaraan yang boleh melayani store ini. Semua = tanpa batasan. Pilihan mengikuti jenis kendaraan di tab Kendaraan.">Akses kendaraan</th><th></th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="17" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
+    <thead><tr><th>Aktif</th><th>Nama store</th><th>Alamat</th><th>Kota/Kabupaten</th><th>Link titik Maps</th><th class="num">Latitude</th><th class="num">Longitude</th><th>Buka</th><th>Tutup</th><th class="num">Berat (kg)</th><th>Frekuensi kirim</th><th title="Hari kirim yang dibentuk otomatis saat Buat Plan">Jadwal hasil plan</th><th>Antaran</th><th>Jenis loading</th><th title="Hari store buka/menerima kiriman. Store hanya diantar di hari yang aktif.">Hari beroperasi</th><th title="Bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu; prioritas rendah yang pertama dilepas.">Prioritas</th><th title="Jenis kendaraan yang boleh melayani store ini. Semua = tanpa batasan. Pilihan mengikuti jenis kendaraan di tab Kendaraan.">Akses kendaraan</th><th></th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="18" class="empty">Tidak ada store.</td></tr>`}</tbody></table></div>
     <p class="hint">${act.length} store tujuan aktif · total muatan per minggu <b>${fmtNum(wk)} kg (${ton(wk)})</b>. Link pendek (maps.app.goo.gl) tidak bisa dibaca langsung: buka dulu di browser lalu salin URL lengkapnya, atau isi latitude/longitude manual. Untuk banyak store sekaligus, pakai <b>Cara 2 · Upload Excel</b> di atas.</p>`;
   $("#tplS").onclick = storeTemplate;
   $("#upS").onclick = () => { if (typeof XLSX === "undefined") return toast("Library Excel gagal dimuat."); $("#fileStore").click(); };
@@ -1181,10 +1232,10 @@ function exportExcel() {
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveFile("Plan_Distribusi_" + stamp() + ".xlsx", new Uint8Array(out), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 }
-const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Kota/Kabupaten", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari beroperasi", "Minggu kirim ke", "Akses kendaraan"];
+const STORE_HEAD = ["Aktif", "Nama store", "Alamat", "Kota/Kabupaten", "Link maps", "Latitude", "Longitude", "Jam buka", "Jam tutup", "Berat (kg)", "Berat (ton)", "Frekuensi kirim", "Jenis antaran", "Jenis loading", "Hari beroperasi", "Minggu kirim ke", "Akses kendaraan", "Prioritas"];
 function storeRows() {
   const rows = [STORE_HEAD];
-  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.kota || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (s.antaran === "Origin" ? "" : frekText(s)), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", ((s.hariOperasi || []).length === 7 ? "Setiap hari" : (s.hariOperasi || []).map(d => HARI3[d]).join(", ")), periodeOf(s) > 1 ? (s.mingguKe || "Otomatis") : "", s.antaran === "Origin" ? "" : (aksesList(s.akses).join(", ") || "Semua")]));
+  state.stores.forEach(s => rows.push([s.aktif !== false ? "Ya" : "Tidak", s.nama, s.alamat || "", s.kota || "", s.link || "", s.lat, s.lng, s.buka, s.tutup, +s.beratKg || 0, +((+s.beratKg || 0) / 1000).toFixed(3), (s.antaran === "Origin" ? "" : frekText(s)), s.antaran, s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang", ((s.hariOperasi || []).length === 7 ? "Setiap hari" : (s.hariOperasi || []).map(d => HARI3[d]).join(", ")), periodeOf(s) > 1 ? (s.mingguKe || "Otomatis") : "", s.antaran === "Origin" ? "" : (aksesList(s.akses).join(", ") || "Semua"), s.antaran === "Origin" ? "" : (s.prioritas || "Normal")]));
   return rows;
 }
 function parseNum(v, coord) {
@@ -1221,6 +1272,7 @@ function storeTemplate() {
     ["Jenis loading", "Menurunkan barang atau Menaikkan barang."],
     ["Hari beroperasi", "Hari store buka/menerima kiriman, mis. Sen, Sel, Rab, Kam, Jum. Kosong atau \"Setiap hari\" = semua hari. Hari kirim dipilih otomatis di antara hari ini sesuai frekuensi."],
     ["Akses kendaraan", "Jenis kendaraan yang boleh melayani store, dipisah koma, mis. Pickup atau CDD Box, Traga. Kosong / \"Semua\" = semua kendaraan. Jenis yang tersedia: " + (jenisKendaraan().join(", ") || "-") + "."],
+    ["Prioritas", "Tinggi, Normal, atau Rendah. Kosong = Normal. Bila armada tidak cukup, store Tinggi dilayani lebih dulu dan store Rendah yang pertama dilepas."],
     ["", ""],
     ["Aturan upload", "Store yang sama = diperbarui dengan data terbaru. Store baru = ditambahkan. Store yang tidak ada di file = tetap ada (tidak dihapus). Sel kosong tidak menimpa data lama."]];
   const wp = XLSX.utils.aoa_to_sheet(pet); wp["!cols"] = [{ wch: 24 }, { wch: 110 }];
@@ -1237,7 +1289,7 @@ function importStores(file) {
       if (!rows.length) throw new Error("file kosong");
       const head = rows[0].map(h => String(h).toLowerCase());
       const col = (...keys) => head.findIndex(h => keys.some(k => h.includes(k)));
-      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), kota: col("kota", "kabupaten"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari"), mgg: col("minggu kirim", "minggu ke"), akses: col("akses") };
+      const c = { aktif: col("aktif"), nama: col("nama"), alamat: col("alamat"), kota: col("kota", "kabupaten"), link: col("link", "maps", "url"), lat: col("lat"), lng: col("long", "lng", "lon"), buka: col("buka", "mulai"), tutup: col("tutup"), kg: col("kg", "berat", "muatan"), frek: col("frek"), antaran: col("antaran", "jenis antar"), loading: col("loading"), hari: col("hari"), mgg: col("minggu kirim", "minggu ke"), akses: col("akses"), prio: col("prioritas") };
       if (c.nama < 0) throw new Error("kolom \"Nama store\" tidak ditemukan");
       const cell = (r, k) => c[k] >= 0 ? r[c[k]] : "";
       const has = (r, k) => c[k] >= 0 && String(r[c[k]] ?? "").trim() !== "";
@@ -1270,6 +1322,7 @@ function importStores(file) {
         else if (baru) s.frek = s.antaran === "Origin" ? 0 : 1;
         if (has(r, "mgg")) { const v = parseInt(cell(r, "mgg")); if (v >= 1 && v <= 5) s.mingguKe = v; else delete s.mingguKe; }
         if (has(r, "akses")) { const J = jenisKendaraan(), A = aksesList(cell(r, "akses")).map(a => J.find(j => normJenis(j) === normJenis(a)) || a); if (A.length) s.akses = A; else delete s.akses; }
+        if (has(r, "prio")) { const t = String(cell(r, "prio")).trim().toLowerCase(); if (/^(t|high|1)/.test(t)) s.prioritas = "Tinggi"; else if (/^(r|low|3)/.test(t)) s.prioritas = "Rendah"; else delete s.prioritas; }
         if (has(r, "loading")) s.loading = /naik|muat|pick/i.test(cell(r, "loading")) ? "Menaikkan" : "Menurunkan";
         if (has(r, "hari")) { const t = String(cell(r, "hari")).trim(); s.hariOperasi = /setiap|semua|tiap/i.test(t) ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(t.split(/[,;/ ]+/).map(x => HARI3.findIndex(h => x.toLowerCase().startsWith(h.toLowerCase()))).filter(i => i >= 0))].sort((a, b) => a - b); }
       }
