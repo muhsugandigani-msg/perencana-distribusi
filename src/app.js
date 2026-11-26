@@ -1218,6 +1218,7 @@ function renderPeta() {
   mapDrawn = sig;
   drawMap();
 }
+const zoneColor = n => ["#2563eb", "#e11d48", "#16a34a", "#9333ea", "#ea8c00", "#0891b2", "#be185d", "#4d7c0f", "#7c3aed", "#c2410c"][(n - 1) % 10];
 function drawPoints() {
   if (!map) return;
   if (!mapLayer) mapLayer = L.layerGroup().addTo(map);
@@ -1229,13 +1230,13 @@ function drawPoints() {
   let Z = null; try { Z = zonePreview(state); } catch (e) { console.error(e); }
   st.forEach(x => {
     bounds.push([x.lat, x.lng]);
-    const zd = Z && Z.byStore[x.id] ? Z.byStore[x.id] : [];
-    const col = !zd.length ? "#6b7280" : zd.length > 1 ? "#17201d" : dayColor(zd[0]);
+    const zn = Z ? Z.byStore[x.id] : null;
+    const col = zn ? zoneColor(zn) : "#6b7280";
     L.marker([x.lat, x.lng], { icon: L.divIcon({ html: `<div class="storepin" style="background:${col}"></div>`, className: "", iconSize: [12, 12] }) }).addTo(mapLayer)
-      .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zd.length ? "<br>Zona: " + zd.map(d => HARI[d]).join(", ") : ""}<br><i>Belum ada rute</i>`);
+      .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zn ? "<br>Zona " + zn : ""}<br><i>Belum ada rute</i>`);
   });
   if (D) { bounds.push([D.lat, D.lng]); L.marker([D.lat, D.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(D.nama)}</b><br>Origin / gudang`); }
-  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${dayColor(z.day)}"></i>Zona ${HARI[z.day]} · ${fmtNum(z.kg / 1000, 1)} t · ${z.n} store</span>`).join("") + `<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store &gt;1x seminggu (masuk beberapa zona)</span><span class="hint">Belum ada rute: zona dibuat dari kedekatan titik, muatan tiap zona seimbang (rata-rata ${fmtNum(Z.target / 1000, 1)} t).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
+  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${zoneColor(z.no)}"></i>Zona ${z.no} · ${fmtNum(z.kg)} kg · ${z.n} store</span>`).join("") + `<span class="hint">Belum ada rute: zona dibuat dari jarak titik terdekat, muatan per kirim antar zona seimbang (rata-rata ${fmtNum(Z.target)} kg).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
   mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
   if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
 }

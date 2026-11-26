@@ -288,15 +288,15 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   return { ok, why, t0, shiftStart, shiftEff: shiftNo, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
-/* Zona pratinjau (tanpa kendaraan, Gandi 2026-11-27): store dikelompokkan ke zona sebanyak hari distribusi berdasarkan kedekatan,
-   total muatan tiap zona seimbang. Store >1x seminggu dibagi ke beberapa zona berbeda. Zona dipasangkan ke hari sesuai hari operasi store. */
+/* Zona pratinjau (tanpa kendaraan, Gandi 2026-11-27): tiap store satu titik & satu zona, dikelompokkan berdasarkan jarak terdekat,
+   muatan per kirim antar zona seimbang. Frekuensi kirim dan hari belum dipakai (rute belum dibuat). Jumlah zona = jumlah hari distribusi. */
 function zonePreview(state) {
   const days = (state.params.hari || []).map((x, i) => x ? i : -1).filter(i => i >= 0);
   const D = days.length; if (!D) return null;
   const st = state.stores.filter(x => x.aktif !== false && x.antaran !== "Origin" && x.lat != null && x.lng != null);
   if (!st.length) return null;
   const pt = x => [x.lat, x.lng], kgOf = x => +x.beratKg || 0;
-  const fOf = x => Math.max(1, Math.min(D, Math.round(+x.frek >= 1 ? +x.frek : 1)));
+  const fOf = () => 1;
   const visits = []; st.forEach(x => { for (let k = 0; k < fOf(x); k++) visits.push(x); });
   const tot = visits.reduce((a, x) => a + kgOf(x), 0), target = tot / D;
   const ops = x => Array.isArray(x.hariOperasi) ? x.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
@@ -361,11 +361,11 @@ function zonePreview(state) {
       R.kg[best.zi] = best.k1; R.kg[best.zj] = best.k2; cur += best.dl;
     }
   }
-  // pasangkan zona ke hari: paling sedikit store yang tutup di hari zonanya
-  let best = null; const perm = (arr, k) => { if (k === arr.length) { let c = 0; st.forEach(x => R.Z.get(x.id).forEach(i => { if (!ops(x).includes(arr[i])) c++; })); if (!best || c < best.c) best = { c, p: arr.slice() }; return; } for (let i = k; i < arr.length; i++) { [arr[k], arr[i]] = [arr[i], arr[k]]; perm(arr, k + 1); [arr[k], arr[i]] = [arr[i], arr[k]]; } };
-  if (D <= 7) perm(days.slice(), 0); else best = { c: 0, p: days.slice() };
-  const zones = C.map((c, i) => ({ day: best.p[i], kg: R.kg[i], n: st.filter(x => R.Z.get(x.id).includes(i)).length, center: c })).sort((a, b) => a.day - b.day);
-  const byStore = {}; st.forEach(x => { byStore[x.id] = R.Z.get(x.id).map(i => best.p[i]).sort((a, b) => a - b); });
+  // nomor zona berurutan searah jarum jam dari gudang
+  const ang = c => Math.atan2(c[0] - D0.lat, c[1] - D0.lng);
+  const ord = C.map((c, i) => i).sort((a, b) => ang(C[b]) - ang(C[a]));
+  const zones = ord.map((i, k) => ({ no: k + 1, kg: R.kg[i], n: st.filter(x => R.Z.get(x.id)[0] === i).length, center: C[i] }));
+  const byStore = {}; st.forEach(x => { byStore[x.id] = ord.indexOf(R.Z.get(x.id)[0]) + 1; });
   return { zones, byStore, target, total: tot };
 }
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
