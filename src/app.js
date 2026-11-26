@@ -362,6 +362,8 @@ function tugasCard(p) {
   const nB = state.vehicles.filter(v => v.aktif !== false && v.bbm === "Bensin").length, nS = state.vehicles.filter(v => v.aktif !== false && v.bbm !== "Bensin").length;
   return `<div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Pembagian tugas kendaraan</h3>
+      <div class="field"><label class="chk"><input type="checkbox" data-k="params.metodeZona" ${p.metodeZona !== false ? "checked" : ""}> <b>Susun per zona hari</b></label>
+        <p class="hint">Titik store dikelompokkan menurut jarak terdekat menjadi satu zona per hari distribusi (6 hari = 6 zona), berat muatan &amp; jumlah store tiap zona seimbang sebanding jam kerja harinya. Tiap zona lalu dibagi ke armada aktif (kapasitas besar dulu) dan dirapikan berulang kali; keseimbangan zona dijaga ±10% selama optimasi.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
         <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius, solar, fairness) tetap dipatuhi.</p></div>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.prioritasSolar.aktif" ${PS.aktif !== false ? "checked" : ""} data-rerender="1"> <b>Utamakan kendaraan solar</b></label>
@@ -1207,7 +1209,7 @@ function exportExcel() {
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   { const F = state.params.fairness, PS = state.params.prioritasSolar;
     par.push([], ["Pembagian tugas kendaraan", ""], ["Utamakan kendaraan solar", PS.aktif !== false ? "Ya (" + (PS.tingkat || "sedang") + ")" : "Tidak"], ["Fairness", F.aktif ? "Ya (" + (F.tingkat || "sedang") + ")" : "Tidak"]);
-    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); }
+    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); } par.push(["Susun per zona hari", state.params.metodeZona !== false ? "Ya" : "Tidak"]);
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
