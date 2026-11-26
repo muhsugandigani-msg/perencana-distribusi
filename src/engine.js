@@ -456,8 +456,33 @@ function* buildPlanCore(state, opts) {
          Store >1x seminggu sudah dibagi rata ke beberapa hari lebih dulu (tidak bisa masuk satu zona saja);
          store yang hari operasinya terbatas hanya boleh masuk zona hari yang ia buka. */
   const zoneMode = state.params.metodeZona !== false;
+  // Store >1x seminggu: hari kirimnya dipilih mengikuti zona (pola hari berjarak rata yang sama seperti biasa,
+  // tapi dipilih yang hari-harinya punya pusat zona paling dekat dengan store), lalu zona dibentuk ulang.
+  const zonaMulti = state.params.zonaMulti !== false;
   function zoneAssign(rnd) {
-    const A = assign(rnd, true); // hanya store >1x seminggu / hari terbatas yang multi (sudah ditaruh di harinya)
+    const A0 = assign(rnd, true);
+    if (!zonaMulti || !A0.placed.size) return zoneCore(A0, rnd);
+    const r1 = zoneCore({ perDay: Object.fromEntries(days.map(d => [d, A0.perDay[d].slice()])), load: Object.assign({}, A0.load), placed: A0.placed }, rnd);
+    if (!r1.C) return r1;
+    const cen = {}; r1.zDay.forEach((d, i) => cen[d] = r1.C[i]);
+    const perDay = {}, load = {}; days.forEach(d => { perDay[d] = []; load[d] = 0; });
+    const M = multi.filter(x => freqOf(x) > 1).slice().sort((a, b) => okDays(a).length - okDays(b).length);
+    for (const s of M) {
+      const Ad = okDays(s), K = Ad.length; const f = Math.min(freqOf(s), K), w = work(s);
+      let best = null;
+      for (let o = 0; o < K; o++) {
+        const set = []; for (let i = 0; i < f; i++) set.push(Ad[(o + Math.round(i * K / f)) % K]);
+        const key = set.slice().sort((a, b) => a - b);
+        const dz = key.reduce((a, d) => a + (cen[d] ? hav([s.lat, s.lng], cen[d]) : 0), 0);
+        const ld = Math.max(...key.map(d => (load[d] + w) / Math.max(1, cap[d])));
+        const sc = (s.loading === "Menaikkan" ? 0 : dz) + ld * 3;
+        if (!best || sc < best.sc - 1e-9) best = { sc, key };
+      }
+      best.key.forEach(d => { perDay[d].push(s); load[d] += w; });
+    }
+    return zoneCore({ perDay, load, placed: A0.placed }, rnd);
+  }
+  function zoneCore(A, rnd) {
     const { perDay, load } = A;
     const F = valid.filter(s => !A.placed.has(s.id)); // frekuensi 1x: dibagi lewat zona
     if (!F.length) return A;
@@ -515,7 +540,7 @@ function* buildPlanCore(state, opts) {
       if (!any) break;
     }
     F.forEach(s => { const d = zDay[Z.get(s.id)]; perDay[d].push(s); load[d] += work(s); });
-    return { perDay, load };
+    return { perDay, load, C, zDay };
   }
 
   /* 2) Rute per hari + pindahkan kunjungan yang tidak muat ke hari lain */
