@@ -587,6 +587,13 @@ function* buildPlanCore(state, opts) {
   }
 
   /* --- representasi solusi harian: R[vi] = daftar rit (array store) berurutan shift --- */
+  // Sub-zona per kendaraan: tiap rit diusahakan satu kelompok yang rapat (biaya tambahan = jumlah jarak store ke titik tengah rit)
+  const SUBZ = state.params.subZona === false ? 0 : (+state.params._subZonaW || 8);
+  function spreadCost(stops) {
+    if (!SUBZ) return 0; const X = stops.filter(x => x.loading !== "Menaikkan"); if (X.length < 2) return 0;
+    const c = [X.reduce((a, x) => a + x.lat, 0) / X.length, X.reduce((a, x) => a + x.lng, 0) / X.length];
+    return SUBZ * X.reduce((a, x) => a + hav([x.lat, x.lng], c), 0);
+  }
   function vehEval(d, vi, list, detail) {
     const ctx = ctxOf[d], v = vehicles[vi]; evals++;
     let t = ctx.start, sh = 0, cost = 0; const trips = [];
@@ -595,7 +602,7 @@ function* buildPlanCore(state, opts) {
       sh++; if (sh > (+v.maksShift || 1)) return null;
       const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), detail);
       if (!r.ok) return null;
-      cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi];
+      cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi] + spreadCost(stops);
       if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: sh }));
       t = r.end;
     }
