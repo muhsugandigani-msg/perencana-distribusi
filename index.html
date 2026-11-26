@@ -1779,7 +1779,57 @@ function* buildPlanCore(state, opts) {
   }
   const mNoFair = fairOn ? metric0(best) : null; const TnoFair = fairOn ? totals(best) : null;
   if (fairOn) fairLS(best);
-  return finish(best, mInit, { starts, rr, rrOk, cost: bestCost, mNoFair, TnoFair });
+  const pairMoved = pairPass(best);
+  return finish(best, mInit, { starts, rr, rrOk, cost: pairMoved ? solCost(best) : bestCost, mNoFair, TnoFair, pairMoved });
+
+  /* 6) Store yang sangat berdekatan (≤ 1 km) diusahakan dikirim di hari yang sama: pindah satu store ke hari pasangannya,
+        bila perlu ditukar dengan store lain dari hari itu, selama total biaya (termasuk fairness) tidak memburuk. */
+  function pairPass(sol) {
+    const PAIR_KM = 1.0, AFF = 40;
+    const P2 = [];
+    for (let i = 0; i < valid.length; i++) for (let j = i + 1; j < valid.length; j++) {
+      const a = valid[i], b = valid[j];
+      if (hav([a.lat, a.lng], [b.lat, b.lng]) <= PAIR_KM && okDays(a).some(d => okDays(b).includes(d))) P2.push([a, b]);
+    }
+    if (!P2.length) return 0;
+    EVAL_MAX = evals + Math.round(400000 * sk);
+    const daysOf = (S, id) => days.filter(d => S[d].R.some(L => L.some(r => r.some(x => x.id === id))));
+    const obj = S => {
+      let c = solCost(S);
+      if (fairOn) { c += fairPen(totals(S)); days.forEach(d => vehicles.forEach((v, vi) => { if (vehOnDay(v, d) && !S[d].R[vi].some(r => r.length)) c += IDLE; })); }
+      P2.forEach(([a, b]) => { const A = daysOf(S, a.id), B = daysOf(S, b.id); if (A.some(x => B.includes(x))) c -= AFF; });
+      return c;
+    };
+    const without = (S, d, st) => { const R = S[d].R.map(L => L.map(r => r.filter(x => x.id !== st.id)).filter(r => r.length)); const vc = R.map((L, vi) => { const r = vehEval(d, vi, L, false); return r ? r.cost : Infinity; }); return dayLS(d, { R, left: S[d].left.slice(), vc }); };
+    const withS = (S, d, st) => dayLS(d, { R: S[d].R, left: S[d].left.concat([st]), vc: S[d].vc });
+    let cur = obj(sol), moved = 0;
+    for (const [a, b] of P2) {
+      if (evals > EVAL_MAX) break;
+      const A = daysOf(sol, a.id), B = daysOf(sol, b.id);
+      if (!A.length || !B.length || A.some(x => B.includes(x))) continue;
+      let best = null;
+      for (const [st, mate] of [[a, b], [b, a]]) {
+        if (fixedIds.has(st.id)) continue;
+        const ds = daysOf(sol, st.id); if (ds.length !== 1) continue; const d = ds[0];
+        for (const o of daysOf(sol, mate.id).filter(x => okDays(st).includes(x))) {
+          const Sd = without(sol, d, st), So = withS(sol, o, st);
+          if (So.left.some(x => x.id === st.id)) continue;
+          const tryC = (Dd, Do) => { const C = Object.assign({}, sol); C[d] = Dd; C[o] = Do; return { C, c: obj(C) }; };
+          const r0 = tryC(Sd, So); if (r0.c < cur - 1 && (!best || r0.c < best.c)) best = r0;
+          // tukar: satu store lain dari hari o pindah ke hari d (menjaga beban & fairness harian)
+          const others = []; So.R.forEach(L => L.forEach(r => r.forEach(u => { if (u.id !== st.id && u.id !== mate.id && !fixedIds.has(u.id) && okDays(u).includes(d) && daysOf(sol, u.id).length === 1) others.push(u); })));
+          for (const u of others) {
+            if (evals > EVAL_MAX) break;
+            const Do = without({ [o]: So }, o, u), Dd = withS({ [d]: Sd }, d, u);
+            if (Dd.left.some(x => x.id === u.id)) continue;
+            const r1 = tryC(Dd, Do); if (r1.c < cur - 1 && (!best || r1.c < best.c)) best = r1;
+          }
+        }
+      }
+      if (best) { days.forEach(d => sol[d] = best.C[d]); cur = best.c; moved++; }
+    }
+    return moved;
+  }
   function finish(best, mInit, X) {
   const { starts, rr, rrOk, mNoFair, TnoFair } = X; const bestCost = X.cost;
   const res = {};
