@@ -3814,7 +3814,7 @@ function renderPlan() {
     </div>`;
   html += weeksCard();
   html += vehTable(plan);
-  html += fairCard(plan);
+  // kartu "Fairness antar kendaraan" disembunyikan atas permintaan Gandi (pengaturan fairness di Parameter tetap berlaku)
   if (plan.opt) html += optCard(plan);
   if (plan.unserved.length) html += `<div class="banner bad"><div><b>${plan.unserved.length} kunjungan tidak muat di jadwal.</b> <br>${plan.unserved.map(u => "• " + esc(u.store.nama) + " (" + HARI[u.day] + "): " + esc(u.reason)).join("<br>")}<br>Coba tambah kendaraan/shift, tambah hari beroperasi store, atau perpanjang jam kerja shift.</div></div>`;
   if (plan.warn.length) html += `<div class="banner warn"><div>${plan.warn.map(esc).join("<br>")}</div></div>`;
