@@ -19,7 +19,7 @@
    "kecepatan": 40,
    "maksShift": 1,
    "bbm": "Bensin",
-   "maksRadiusKm": 15
+   "maksRadiusKm": null
   },
   {
    "id": "vfaooj7",
@@ -1451,7 +1451,7 @@
    "kota": "Kota Makassar"
   }
  },
- "_savedAt": 1795727100413,
+ "_savedAt": 1795727162737,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3397,8 +3397,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795727100413,
-  "sig": "uhf670:20240",
+  "at": 1795727162737,
+  "sig": "1r3t6hd:20242",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3458,7 +3458,7 @@
        "kecepatan": 40,
        "maksShift": 1,
        "bbm": "Bensin",
-       "maksRadiusKm": 15
+       "maksRadiusKm": null
       }
      }
     ],
@@ -4353,7 +4353,7 @@
         "kecepatan": 40,
         "maksShift": 1,
         "bbm": "Bensin",
-        "maksRadiusKm": 15
+        "maksRadiusKm": null
        }
       },
       "shift": 1
@@ -5084,7 +5084,7 @@
         "kecepatan": 40,
         "maksShift": 1,
         "bbm": "Bensin",
-        "maksRadiusKm": 15
+        "maksRadiusKm": null
        }
       },
       "shift": 1
@@ -5716,7 +5716,7 @@
         "kecepatan": 40,
         "maksShift": 1,
         "bbm": "Bensin",
-        "maksRadiusKm": 15
+        "maksRadiusKm": null
        }
       },
       "shift": 1
@@ -6965,7 +6965,7 @@
         "kecepatan": 40,
         "maksShift": 1,
         "bbm": "Bensin",
-        "maksRadiusKm": 15
+        "maksRadiusKm": null
        }
       },
       "shift": 1
