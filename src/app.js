@@ -354,7 +354,7 @@ function markDirty() {
 }
 function dirtyBanner() { return `<div class="banner warn" id="dirtyBanner" ${planDirty ? "" : "hidden"}><b>Data input berubah.</b> Hasil di bawah memakai data lama. <button class="btn sm" type="button" onclick="runPlan();renderTab()">Buat ulang plan</button></div>`; }
 
-/* Parameter: pembagian tugas kendaraan (prioritas solar & fairness) */
+/* Parameter: pembagian tugas kendaraan (optimasi mendalam) */
 const FAIR_K = [["rit", "Jumlah shift (rit)"], ["toko", "Jumlah toko dikunjungi"], ["jam", "Jam kerja"], ["kg", "Total muatan"], ["km", "Jarak tempuh"], ["s2", "Jumlah Shift 2 (pulang malam)"]];
 function tugasCard(p) {
   const F = p.fairness, PS = p.prioritasSolar;
@@ -363,16 +363,7 @@ function tugasCard(p) {
   return `<div class="card pad" style="display:grid;gap:14px;align-content:start">
       <h3>Pembagian tugas kendaraan</h3>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
-        <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius, solar, fairness) tetap dipatuhi.</p></div>
-      <div class="field"><label class="chk"><input type="checkbox" data-k="params.prioritasSolar.aktif" ${PS.aktif !== false ? "checked" : ""} data-rerender="1"> <b>Utamakan kendaraan solar</b></label>
-        <p class="hint">Tugas lebih banyak diberikan ke kendaraan berbahan bakar solar; kendaraan bensin dipakai bila perlu. Saat ini: ${nS} solar, ${nB} bensin (atur di tab Kendaraan).${nB && nS ? "" : " <i>Belum berpengaruh karena semua kendaraan aktif berbahan bakar sama.</i>"}</p>
-        ${PS.aktif !== false ? `<div class="row"><span class="hint" style="min-width:80px">Tingkat</span>${lvl("params.prioritasSolar.tingkat", PS.tingkat)}</div>` : ""}</div>
-      <div class="field"><label class="chk"><input type="checkbox" data-k="params.fairness.aktif" ${F.aktif ? "checked" : ""} data-rerender="1"> <b>Fairness (pemerataan beban antar kendaraan)</b></label>
-        <p class="hint">Beban dibuat lebih adil antar kendaraan, setelah semua store terlayani. Makin kuat, makin merata, tetapi jarak & jam kerja total bisa sedikit bertambah.${PS.aktif !== false ? " Bila prioritas solar aktif, kendaraan bensin mendapat porsi lebih kecil." : ""}</p>
-        ${F.aktif ? `<div class="row"><span class="hint" style="min-width:80px">Tingkat</span>${lvl("params.fairness.tingkat", F.tingkat)}</div>
-        <div class="fairk">${FAIR_K.map(([k, l]) => `<label class="chk"><input type="checkbox" data-k="params.fairness.${k}" ${F[k] ? "checked" : ""}> ${l}</label>`).join("")}</div>
-        <label class="chk"><input type="checkbox" data-k="params.fairness.kgRelatif" ${F.kgRelatif !== false ? "checked" : ""}> Muatan dihitung sebagai % kapasitas kendaraan <span class="hint">(disarankan bila kapasitas kendaraan berbeda)</span></label>
-        <label class="chk"><input type="checkbox" data-k="params.fairness.kapasitasBesar" ${F.kapasitasBesar !== false ? "checked" : ""}> Prioritaskan kendaraan kapasitas besar <span class="hint">(tugas diisi ke kendaraan besar dulu dan porsinya sebanding kapasitas; tiap unit tetap kebagian rit setiap hari)</span></label>` : ""}</div>
+        <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius) tetap dipatuhi.</p></div>
     </div>`;
 }
 
@@ -459,9 +450,7 @@ function renderKendaraan() {
     <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Kendaraan solar diutamakan mendapat tugas (atur di tab Parameter)">Bahan bakar</th><th title="Hari kendaraan ini boleh dijadwalkan distribusi. Default semua hari.">Hari aktif distribusi</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="11" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
     <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
-    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>
-    <div class="card pad" style="display:grid;gap:10px;margin-top:16px"><div class="head" style="margin:0"><div><h3>Saran armada</h3><p class="hint" style="margin-top:4px">Membandingkan beberapa susunan armada (armada sekarang, tanpa salah satu unit, tambah satu unit, mengaktifkan unit nonaktif) memakai data store dan aturan yang sama, lalu memilih yang paling hemat: semua store terlayani dengan unit paling sedikit, lalu jarak terpendek.</p></div><button class="btn primary" type="button" id="btnSaran">🔍 Hitung saran armada</button></div><div id="saranOut">${saranHtml()}</div></div>`;
-  $("#btnSaran").onclick = hitungSaran;
+    <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
   $("#addV").onclick = () => { state.vehicles.push({ id: uid("v"), aktif: true, jenis: "Pickup", plat: "", kapasitasKg: 1000, kecepatan: 40, maksShift: 1, bbm: "Solar" }); save(); renderKendaraan(); };
 }
 
@@ -1205,9 +1194,7 @@ function exportExcel() {
   const sto = storeRows();
   const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
-  { const F = state.params.fairness, PS = state.params.prioritasSolar;
-    par.push([], ["Pembagian tugas kendaraan", ""], ["Utamakan kendaraan solar", PS.aktif !== false ? "Ya (" + (PS.tingkat || "sedang") + ")" : "Tidak"], ["Fairness", F.aktif ? "Ya (" + (F.tingkat || "sedang") + ")" : "Tidak"]);
-    if (F.aktif) par.push(["Kriteria fairness", FAIR_K.filter(([k]) => F[k]).map(x => x[1]).join(", ")], ["Muatan sebagai % kapasitas", F.kgRelatif !== false ? "Ya" : "Tidak"], ["Prioritas kapasitas besar", F.kapasitasBesar !== false ? "Ya" : "Tidak"]); }
+  // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);

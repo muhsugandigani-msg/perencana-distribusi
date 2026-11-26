@@ -475,12 +475,12 @@ function* buildPlanCore(state, opts) {
   }
   // Prioritas bahan bakar: kendaraan bensin diberi biaya lebih tinggi agar tugas diutamakan ke kendaraan solar
   const PS = state.params.prioritasSolar || {};
-  const psOn = PS.aktif !== false;
+  const psOn = false; // prioritas solar dihapus (Gandi 2026-11-26)
   const psF = { ringan: 1.15, sedang: 1.35, kuat: 1.8 }[PS.tingkat] || 1.35;
   const isBensin = v => /bensin|pertalite|pertamax|gasoline/i.test(v.bbm || "");
   const fuelOnly = vehicles.map(v => psOn && isBensin(v) ? psF : 1);
   // Fairness: kendaraan berkapasitas besar diprioritaskan (biaya sedikit lebih murah) dan mendapat porsi beban sebanding kapasitasnya
-  const FP0 = state.params.fairness || {}, capPrio = !!FP0.aktif && FP0.kapasitasBesar !== false && vehicles.length > 1;
+  const FP0 = state.params.fairness || {}, capPrio = false; // bagian dari fairness, dihapus
   const maxCapV = Math.max(...vehicles.map(v => +v.kapasitasKg || 1));
   const capF = vehicles.map(v => capPrio ? 1 + 0.12 * (1 - (+v.kapasitasKg || 1) / maxCapV) : 1);
   const fuelF = fuelOnly.map((f, i) => f * capF[i]);
@@ -508,7 +508,7 @@ function* buildPlanCore(state, opts) {
   }
   // Fairness: pemerataan beban antar kendaraan (penalti = simpangan relatif kuadrat terhadap rata-rata)
   const FP = state.params.fairness || {};
-  const fairOn = !!FP.aktif && vehicles.length > 1;
+  const fairOn = false; // fairness dihapus (Gandi 2026-11-26)
   const FW = { ringan: 600, sedang: 2000, kuat: 6000 }[FP.tingkat] || 2000;
   const fKeys = fairOn ? ["rit", "toko", "jam", "kg", "km", "s2"].filter(k => FP[k]) : [];
   const capV = vehicles.map(v => +v.kapasitasKg || 1);
