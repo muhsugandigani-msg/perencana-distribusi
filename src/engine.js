@@ -154,6 +154,11 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   if (kgDel > cap + 1e-6) { ok = false; why = "Muatan melebihi kapasitas"; }
   if (kgPick > cap + 1e-6) { ok = false; why = "Barang yang dinaikkan melebihi kapasitas"; }
   if (stops.length && endCounted - shiftStart > ctx.H + 1e-6) { ok = false; why = "Melebihi jam kerja shift"; }
+  // Batas rute pendek per kendaraan (mis. pickup hemat BBM): kosong = tanpa batas
+  const vnm = (veh.jenis || "Kendaraan") + (veh.plat ? " " + veh.plat : "");
+  const maxR = +veh.maksRadiusKm, maxK = +veh.maksKmRit;
+  if (maxR > 0) for (const s of stops) { const rk = ctx.leg([depot.lat, depot.lng], [s.lat, s.lng], null, speed).km; if (rk > maxR + 1e-6) { ok = false; why = s.nama + " berjarak " + rk.toFixed(1) + " km dari gudang, di luar radius maks " + vnm + " (" + maxR + " km)"; break; } }
+  if (maxK > 0 && km > maxK + 1e-6) { ok = false; why = "Rit " + km.toFixed(1) + " km melebihi maks jarak per rit " + vnm + " (" + maxK + " km)"; }
   if (end > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
   return { ok, why, t0, shiftStart, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
@@ -641,7 +646,7 @@ function buildPlanCore(state) {
     if (+s.beratKg > maxCap) reason = "Berat melebihi kapasitas kendaraan terbesar";
     else {
       const tries = vehicles.map(v => simFlex(ctx, depot, v, ctx.start, 1, [s], false));
-      if (!tries.some(r => r.ok)) reason = (tries.find(r => +vehicles[tries.indexOf(r)].kapasitasKg >= +s.beratKg) || tries[0]).why || reason;
+      if (!tries.some(r => r.ok)) reason = [...new Set(tries.map(r => r.why).filter(Boolean))].join("; ") || reason;
     }
     unserved.push({ day: d, store: s, reason });
   }));
