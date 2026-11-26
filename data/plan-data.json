@@ -1438,7 +1438,7 @@
   "loadMuatanV1": true,
   "posLoadingGudang": 1
  },
- "_savedAt": 1795729920477,
+ "_savedAt": 1795730156142,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3384,7 +3384,7 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795729920477,
+  "at": 1795730156142,
   "sig": "4maqnf:20162",
   "weekSel": 0,
   "meta": {
@@ -7047,7 +7047,7 @@
       "unserved": 10
      },
      "starts": 40,
-     "ms": 6854,
+     "ms": 6974,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
