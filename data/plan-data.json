@@ -1205,7 +1205,8 @@
     6
    ],
    "kota": "Kota Makassar",
-   "alamatAuto": true
+   "alamatAuto": true,
+   "zonaManual": 4
   }
  ],
  "breaks": {
@@ -1442,7 +1443,7 @@
   "metodeZona": true,
   "subZona": true
  },
- "_savedAt": 1795734033745,
+ "_savedAt": 1795734698255,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
