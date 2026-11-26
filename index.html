@@ -874,6 +874,7 @@ details.akdd[open] > summary { border-color: var(--sel); }
 .storepin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
 .depotpin { width: 22px; height: 22px; background: #17201d; color: #f2b705; border: 2px solid #f2b705; transform: rotate(45deg); border-radius: 3px; display: grid; place-items: center; }
 .depotpin span { transform: rotate(-45deg); font: 700 11px/1 var(--f-display); }
+.unpin { width: 18px; height: 18px; border-radius: 50%; border: 2px dashed #d92d20; background: #fff; color: #d92d20; font: 800 11px/14px var(--f-mono); text-align: center; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
 .seqpin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; color: #fff; font: 700 10px/14px var(--f-mono); text-align: center; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
 .maptools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .maplist { display: grid; gap: 6px; }
@@ -4770,6 +4771,15 @@ async function drawMap() {
     const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
     L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}`);
   });
+  // store yang belum terlayani tetap tampil di peta (penanda merah bergaris, tanpa garis rute)
+  const unG = {};
+  (plan.unserved || []).filter(u => u.store && u.store.lat != null && (mapDay === "all" || String(u.day) === mapDay)).forEach(u => { (unG[u.store.id] = unG[u.store.id] || { s: u.store, list: [] }).list.push(u); });
+  Object.values(unG).forEach(({ s, list }) => {
+    bounds.push([s.lat, s.lng]);
+    L.marker([s.lat, s.lng], { icon: L.divIcon({ html: '<div class="unpin">!</div>', className: "", iconSize: [18, 18] }), zIndexOffset: 500 }).addTo(mapLayer)
+      .bindPopup(`<b>${esc(s.nama)}</b><br><span style="color:var(--bad)"><b>Belum terlayani</b></span><br>${list.map(u => esc(HARI[u.day]) + ": " + esc(u.reason || "")).join("<br>")}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}`);
+  });
+  if (Object.keys(unG).length) legend.push(`<span><i class="sw" style="background:#fff;border:2px dashed var(--bad);border-radius:50%;width:10px;height:10px"></i>Belum terlayani (${Object.keys(unG).length})</span>`);
   L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
   if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);
   $("#mapLegend").innerHTML = legend.join("");
