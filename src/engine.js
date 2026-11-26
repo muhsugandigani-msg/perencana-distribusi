@@ -170,12 +170,12 @@ function makeCtx(state, day) {
   const firstDay = hariOn.length ? hariOn[0] : -1, lastDay = hariOn.length ? hariOn[hariOn.length - 1] : -1;
   const pagiHariPertama = p.loadingHariPertama === "pagi";
   const acts = [];
-  (p.aktivitas || []).filter(a => a.hari && a.hari[day] && +a.durasi > 0).forEach(a => {
+  (p.aktivitas || []).filter(a => a.hari && a.hari[day] && (+a.durasi > 0 || (a.muatan && a.waktu !== "setelah"))).forEach(a => {
     if (a.waktu !== "setelah") { acts.push(Object.assign({}, a, { waktu: "sebelum" })); return; }
     // aktivitas "setelah kembali" = persiapan rit berikutnya (shift berikutnya / esok hari)
-    if (pagiHariPertama && day === firstDay) acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "shift1", pagi: true }));
+    if (pagiHariPertama && day === firstDay) acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "shift1", pagi: true, muatan: false }));
     // hari terakhir (mode pagi): tidak perlu menyiapkan esok hari; rit ke-2 dst. tetap disiapkan (dijalankan sebelum berangkat rit itu)
-    if (pagiHariPertama && day === lastDay) { if (a.berlaku !== "shift1") acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "lanjut" })); }
+    if (pagiHariPertama && day === lastDay) { if (a.berlaku !== "shift1") acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "lanjut", muatan: false })); }
     else acts.push(Object.assign({}, a, { waktu: "setelah" }));
   });
   const H = (+p.jamShift || 8) * 60, start = toMin(p.jamMulai) ?? 480;
@@ -185,13 +185,13 @@ function makeCtx(state, day) {
   if (acts.some(a => a.berlaku === "shift1" && a.waktu !== "setelah")) {
     let t = start, ss = null;
     const a1 = acts.filter(a => a.waktu !== "setelah" && a.berlaku !== "lanjut");
-    for (const a of a1.filter(a => !a.dihitung)) t = advance(advance(t, 0), +a.durasi);
-    for (const a of a1.filter(a => a.dihitung)) { t = advance(t, 0); if (ss == null) ss = t; t = advance(t, +a.durasi); }
+    for (const a of a1.filter(a => !a.dihitung)) t = advance(advance(t, 0), a.muatan ? 0 : +a.durasi);
+    for (const a of a1.filter(a => a.dihitung)) { t = advance(t, 0); if (ss == null) ss = t; t = advance(t, a.muatan ? 0 : +a.durasi); }
     const dep = advance(t, 0); if (ss == null) ss = dep;
     const D = (state.stores || []).find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
     let minTrip = Infinity;
     if (D) for (const s of state.stores) if (s !== D && s.aktif !== false && s.lat != null && s.antaran !== "Origin") {
-      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
+      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate * (a1.some(a => a.muatan) || s.loading === "Menaikkan" ? 2 : 1) + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
       if (m < minTrip) minTrip = m;
     }
     const after = acts.filter(a => a.waktu === "setelah" && a.dihitung).reduce((x, a) => x + (+a.durasi || 0), 0);
@@ -208,8 +208,11 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   let t = t0, shiftStart = null;
   const all = ctx.acts.filter(a => a.berlaku === "shift1" ? shiftNo === 1 : a.berlaku === "lanjut" ? shiftNo > 1 : true);
   const acts = all.filter(a => a.waktu !== "setelah"), after = all.filter(a => a.waktu === "setelah");
-  for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
-  for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
+  // aktivitas "dari muatan" (loading di gudang, Gandi 2026-11-27): durasi = muatan store antaran Tujuan + Menurunkan barang di rit ini ÷ rasio loading/unloading
+  const kgNaik = stops.reduce((x, s) => x + (s.loading !== "Menaikkan" && s.antaran !== "Origin" ? +s.beratKg || 0 : 0), 0);
+  const durA = a => a.muatan ? kgNaik / ctx.rate : +a.durasi;
+  for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, durA(a)); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
+  for (const a of acts.filter(a => a.dihitung)) { t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, durA(a)); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   t = ctx.advance(t, 0);
   if (shiftStart == null) shiftStart = t;
   const dep = t;
@@ -239,6 +242,8 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   const back = ctx.leg(pos, [depot.lat, depot.lng], t, speed);
   t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
   if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
+  // barang yang dinaikkan di store (mis. PRODUKSI) diturunkan di gudang setelah pulang, rasio sama dengan store (Gandi 2026-11-27)
+  if (kgPick > 0) { t = ctx.advance(t, 0); const s0 = t; t = ctx.advance(t, kgPick / ctx.rate); if (detail) segs.push({ type: "bongkar", start: s0, end: t, label: "Menurunkan barang di " + depot.nama, kg: kgPick }); }
   const ret = t;
   let end = t, endCounted = t;
   for (const a of after) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama + " (untuk rit berikutnya)", after: true }); if (a.dihitung) endCounted = t; }
