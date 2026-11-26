@@ -695,7 +695,8 @@ function* buildPlanCore(state, opts) {
         const st = t.stops.map(x => byId.get(String(x.store.id))).filter(Boolean);
         st.forEach(x => used.add(String(x.id))); if (st.length) R[t.vIdx].push(st);
       });
-      const left = (B.unserved || []).filter(u => u.day === d).map(u => byId.get(String(u.store.id))).filter(x => x && !used.has(String(x.id)));
+      // kunjungan yang di plan dasar belum terlayani tetap dicatat (store >1x seminggu bisa terlayani di satu hari dan tidak di hari lain)
+      const left = (B.unserved || []).filter(u => u.day === d).map(u => byId.get(String(u.store.id))).filter(Boolean);
       left.forEach(x => used.add(String(x.id)));
       sol[d] = { R, left, vc: R.map((L, vi) => { const r = vehEval(d, vi, L, false); return r ? r.cost : 0; }) };
     });
