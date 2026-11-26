@@ -30,7 +30,7 @@
    "maksShift": 1,
    "bbm": "Bensin",
    "maksKmRit": null,
-   "maksRadiusKm": 15
+   "maksRadiusKm": 10
   }
  ],
  "stores": [
@@ -1405,7 +1405,7 @@
   },
   "loadingHariPertama": "malam"
  },
- "_savedAt": 1795664660133,
+ "_savedAt": 1795664694720,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
