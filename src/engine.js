@@ -930,38 +930,7 @@ function* buildPlanCore(state, opts) {
   const mNoFair = fairOn ? metric0(best) : null; const TnoFair = fairOn ? totals(best) : null;
   if (fairOn) fairLS(best);
   const pairMoved = pairPass(best);
-  const pickMoved = pickPass(best);
-  return finish(best, mInit, { starts, rr, rrOk, cost: pairMoved || pickMoved ? solCost(best) : bestCost, mNoFair, TnoFair, pairMoved });
-
-  /* 7) Store penjemputan ("Menaikkan barang", mis. PRODUKSI) selalu di akhir rit setelah semua barang turun, jadi tidak
-        memakan kapasitas antar. Diberikan ke kendaraan yang paling cepat selesai bila itu membuat jam pulang terakhir
-        hari itu lebih awal (min. 15 menit) dengan tambahan jarak kecil; rit tidak bertambah dan semua aturan tetap dicek. */
-  function pickPass(sol) {
-    let moved = 0; const PICK_GAIN = 15, PICK_KM = 12;
-    const info = (d, vi, L) => { const LL = L.filter(r => r.length); if (!LL.length) return { end: 0, km: 0, cost: 0, L: LL }; const r = vehEval(d, vi, LL, true); if (!r) return null; return { end: Math.max(...r.trips.map(t => t.end)), km: r.trips.reduce((a, t) => a + t.km, 0), cost: r.cost, L: LL }; };
-    for (const d of days) {
-      const picks = []; sol[d].R.forEach((L, vi) => L.forEach(r => r.forEach(x => { if (x.loading === "Menaikkan") picks.push([x, vi]); })));
-      for (const [s, vi] of picks) {
-        const S = sol[d], cur = S.R.map((L, j) => info(d, j, L)); if (cur.some(x => !x)) continue;
-        const mk0 = Math.max(...cur.map(x => x.end));
-        const from = info(d, vi, S.R[vi].map(r => r.filter(x => x.id !== s.id))); if (!from) continue;
-        let best = null;
-        for (let vj = 0; vj < vehicles.length; vj++) {
-          if (vj === vi || !vehOnDay(vehicles[vj], d) || !aksesOk(s, normJenis(vehicles[vj].jenis))) continue;
-          S.R[vj].forEach((r, ri) => {
-            if (!r.length || r.some(x => x.loading === "Menaikkan")) return;
-            const L = S.R[vj].map(q => q.slice()); L[ri] = L[ri].concat([s]);
-            const to = info(d, vj, L); if (!to) return;
-            const ends = cur.map(x => x.end); ends[vi] = from.end; ends[vj] = to.end; const mk = Math.max(...ends);
-            const dkm = from.km + to.km - cur[vi].km - cur[vj].km;
-            if (mk <= mk0 - PICK_GAIN && dkm <= PICK_KM && (!best || mk < best.mk - 1e-6 || (Math.abs(mk - best.mk) < 1e-6 && dkm < best.dkm))) best = { mk, dkm, vj, L: to.L, cj: to.cost };
-          });
-        }
-        if (best) { S.R[vi] = from.L; S.vc[vi] = from.cost; S.R[best.vj] = best.L; S.vc[best.vj] = best.cj; moved++; }
-      }
-    }
-    return moved;
-  }
+  return finish(best, mInit, { starts, rr, rrOk, cost: pairMoved ? solCost(best) : bestCost, mNoFair, TnoFair, pairMoved });
 
   /* 6) Store yang berdekatan (≤ 1,5 km) diusahakan dikirim di hari yang sama dan dengan mobil/rit yang sama:
         pindah satu store ke hari/rit pasangannya, bila perlu ditukar dengan store lain, selama total biaya
