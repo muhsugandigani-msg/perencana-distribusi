@@ -213,11 +213,16 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   const vnm = (veh.jenis || "Kendaraan") + (veh.plat ? " " + veh.plat : "");
   const maxR = +veh.maksRadiusKm, maxK = +veh.maksKmRit;
   if (maxR > 0) for (const s of stops) { const rk = ctx.leg([depot.lat, depot.lng], [s.lat, s.lng], null, speed).km; if (rk > maxR + 1e-6) { ok = false; why = s.nama + " berjarak " + rk.toFixed(1) + " km dari gudang, di luar radius maks " + vnm + " (" + maxR + " km)"; break; } }
+  // Akses kendaraan per store: kosong = semua jenis kendaraan boleh
+  const vj = normJenis(veh.jenis);
+  for (const s of stops) if (!aksesOk(s, vj)) { ok = false; why = s.nama + " hanya bisa dilayani " + s.akses.join(" / ") + " (akses kendaraan)"; break; }
   if (maxK > 0 && km > maxK + 1e-6) { ok = false; why = "Rit " + km.toFixed(1) + " km melebihi maks jarak per rit " + vnm + " (" + maxK + " km)"; }
   if (end > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
   return { ok, why, t0, shiftStart, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
+function normJenis(x) { return String(x || "").trim().toLowerCase().replace(/\s+/g, " "); }
+function aksesOk(s, vj) { return !Array.isArray(s.akses) || !s.akses.length || s.akses.some(a => normJenis(a) === vj); }
 /* Jika titik pertama belum buka saat tiba, tunda mulai shift (menunggu di gudang tidak memakan jam shift). */
 function simFlex(ctx, depot, veh, t0, shiftNo, stops, detail) {
   let r = simulate(ctx, depot, veh, t0, shiftNo, stops, false), t = t0;
@@ -354,6 +359,7 @@ function* buildPlanCore(state, opts) {
   const restricted = s => okDays(s).length < days.length;
   state.vehicles.filter(v => v.aktif !== false && !(+v.kapasitasKg > 0)).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena kapasitas kosong/0."));
   vehicles.filter(v => !(+v.kecepatan > 0)).forEach(v => warn.push("Kecepatan " + (v.jenis || "") + " " + (v.plat || "") + " kosong, dipakai 40 km/jam."));
+  valid.filter(s => !vehicles.some(v => aksesOk(s, normJenis(v.jenis)))).forEach(s => warn.push("\"" + s.nama + "\" hanya boleh dilayani " + s.akses.join(" / ") + ", tetapi tidak ada kendaraan aktif dengan jenis itu."));
   const maxCap = Math.max(...vehicles.map(v => +v.kapasitasKg));
   valid.filter(s => +s.beratKg > maxCap).forEach(s => warn.push("\"" + s.nama + "\" " + Math.round(s.beratKg) + " kg melebihi kapasitas kendaraan terbesar (" + maxCap + " kg). Pecah menjadi 2 baris store atau tambah kendaraan lebih besar."));
   const D = days.length;
@@ -814,4 +820,4 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
