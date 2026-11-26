@@ -480,15 +480,15 @@ function renderGantt() {
   const narrow = (el.clientWidth || 999) < 640;
   const LW = narrow ? 178 : 250, RH = 30, TOP = 34, LBL = 190, NM = narrow ? 12 : 22;
   ganttW = el.clientWidth || 0;
-  const avail = (el.clientWidth || 0) - 4 - LW - LBL; // lebar sumbu waktu agar Gantt muat tanpa geser ke samping
-  const PX = avail > 0 ? Math.max(40, Math.min(96, avail / ((tMax - tMin) / 60))) : 64;
+  const avail = (el.clientWidth || 0) - 22 - LW - LBL; // lebar sumbu waktu agar Gantt muat tanpa geser ke samping
+  const PX = avail > 0 ? Math.max(26, Math.min(96, avail / ((tMax - tMin) / 60))) : 64;
   const W = LW + (tMax - tMin) / 60 * PX + LBL;
   let labels = "";
   const H = TOP + rows.length * RH + 10;
   const x = m => LW + (m - tMin) / 60 * PX;
   const segCol = { aktivitas: "var(--seg-act)", jalan: "var(--seg-drive)", bongkar: "var(--seg-drop)", muat: "var(--seg-pick)", tunggu: "var(--seg-wait)" };
   let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gantt jadwal armada">`;
-  for (let m = tMin; m <= tMax; m += 60) svg += `<line x1="${x(m)}" x2="${x(m)}" y1="${TOP - 6}" y2="${H - 10}" stroke="var(--line)"/><text x="${x(m)}" y="${TOP - 12}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtJam(m)}</text>`;
+  for (let m = tMin; m <= tMax; m += 60) svg += `<line x1="${x(m)}" x2="${x(m)}" y1="${TOP - 6}" y2="${H - 10}" stroke="var(--line)"/>` + (PX >= 42 || (m - tMin) % 120 === 0 ? `<text x="${x(m)}" y="${TOP - 12}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtJam(m)}</text>` : "");
   let prevD = null;
   rows.forEach((r, i) => {
     const y = TOP + i * RH;
