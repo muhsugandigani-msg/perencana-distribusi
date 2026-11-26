@@ -725,7 +725,8 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 main { padding-block: 20px 60px; }
 .panel { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .panel > *, .grid2 > *, .grid3 > *, .head > div { min-width: 0; }
-.head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.head { display: flex; align-items: flex-end; gap: 10px 12px; flex-wrap: wrap; }
+.head > div:first-child { flex: 1 1 420px; }
 .head h2 { font: 700 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; margin: 0; margin-right: auto; text-wrap: balance; }
 .head p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .addways { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 12px; }
@@ -786,9 +787,9 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent);
 .banner.info { background: var(--info-bg); color: var(--fg); }
 .banner b { font-weight: 600; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; }
 .tile .k { font: 600 11px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.tile .v { font: 700 30px/1.1 var(--f-display); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.tile .v { font: 700 30px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
 .tile .v small { font: 500 14px var(--f-body); color: var(--muted); margin-left: 3px; }
 .tile.alert .v { color: var(--bad); }
 .dayblock { display: grid; gap: 10px; }
@@ -913,8 +914,8 @@ details.adv[open] summary { margin-bottom: 12px; }
 <div class="tip" id="tip" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 /*BOOT*/
 /* ===== Mesin perencanaan distribusi ===== */
@@ -2501,26 +2502,36 @@ let tab = "kendaraan";
 function loadState() {
   let ls = null;
   try { const raw = localStorage.getItem(LS_KEY); if (raw) ls = JSON.parse(raw); } catch (e) {}
-  if (window.INIT_STATE && !(ls && ls._stamp && ls._stamp === window.INIT_STATE._stamp)) return normalize(clone(window.INIT_STATE));
-  if (ls) return normalize(ls);
+  try {
+    if (window.INIT_STATE && !(ls && ls._stamp && ls._stamp === window.INIT_STATE._stamp)) return normalize(clone(window.INIT_STATE));
+    if (ls) return normalize(ls);
+  } catch (e) { console.warn("Data tersimpan rusak, memuat contoh", e); }
   return normalize(clone(SAMPLE));
 }
+function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
+function arrObj(v) { return Array.isArray(v) ? v.filter(isObj) : []; }
 function normalize(s) {
-  s.vehicles = s.vehicles || []; s.stores = s.stores || []; s.breaks = s.breaks || {};
-  for (let d = 0; d < 7; d++) s.breaks[d] = s.breaks[d] || [];
-  s.params = Object.assign(clone(SAMPLE.params), s.params || {});
-  s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), s.params.lalin || {});
+  if (!isObj(s)) throw new Error("format data tidak dikenali");
+  s.vehicles = arrObj(s.vehicles); s.stores = arrObj(s.stores); s.breaks = isObj(s.breaks) ? s.breaks : {};
+  for (let d = 0; d < 7; d++) s.breaks[d] = arrObj(s.breaks[d]);
+  s.params = Object.assign(clone(SAMPLE.params), isObj(s.params) ? s.params : {});
+  s.params.lalin = Object.assign(clone(SAMPLE.params.lalin), isObj(s.params.lalin) ? s.params.lalin : {});
+  if (!Array.isArray(s.params.hari) || s.params.hari.length !== 7) s.params.hari = clone(SAMPLE.params.hari);
+  s.params.aktivitas = arrObj(s.params.aktivitas);
+  if (!Array.isArray(s.params.lalin.jamSibuk)) s.params.lalin.jamSibuk = clone(SAMPLE.params.lalin.jamSibuk);
+  s.params.lalin.jamSibuk = arrObj(s.params.lalin.jamSibuk);
   ["pusat", "fPusat", "fPusatLuar", "fPinggir"].forEach(k => delete s.params.lalin[k]);
-  s.stores.forEach(x => { x.id = x.id || uid("s"); x.hariTetap = x.hariTetap || []; });
+  const num = v => v === "" || v == null || isNaN(+v) ? null : +v;
+  s.stores.forEach(x => { x.id = String(x.id || uid("s")); x.nama = String(x.nama ?? ""); x.hariTetap = Array.isArray(x.hariTetap) ? x.hariTetap.map(Number).filter(d => d >= 0 && d < 7) : []; x.lat = num(x.lat); x.lng = num(x.lng); if (x.lat != null && (Math.abs(x.lat) > 90 || Math.abs(x.lng ?? 0) > 180)) { x.lat = null; x.lng = null; } x.beratKg = num(x.beratKg) ?? 0; x.frek = num(x.frek) ?? 1; });
   // alamat lama "Makassar" pada store contoh -> pakai alamat hasil koordinat
   s.stores.forEach(x => { if (String(x.alamat || "").trim().toLowerCase() === "makassar") { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.alamat = smp.alamat; x.alamatAuto = true; } } });
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
   s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
-  s.vehicles.forEach(x => { x.id = x.id || uid("v"); });
+  s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); });
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
-  s.params.jalanBlok = s.params.jalanBlok || clone(SAMPLE.params.jalanBlok);
-  s.params.jalanBlok.daftar = (s.params.jalanBlok.daftar || []).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
+  s.params.jalanBlok = isObj(s.params.jalanBlok) ? s.params.jalanBlok : clone(SAMPLE.params.jalanBlok);
+  s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   return s;
 }
 let saveT = null;
@@ -2602,7 +2613,7 @@ async function reverseGeocode(lat, lng) {
 }
 async function isiAlamat(s, i) {
   if (s.lat == null || s.lng == null) return false;
-  const msg = document.getElementById("lm" + i);
+  let msg = document.getElementById("lm" + i);
   if (msg) { msg.className = "msg"; msg.textContent = "Mencari alamat…"; }
   const lat = s.lat, lng = s.lng;
   const g = await reverseGeocode(lat, lng);
@@ -2612,6 +2623,8 @@ async function isiAlamat(s, i) {
   if (s.alamatAuto !== false || !s.alamat) { s.alamat = al; s.alamatAuto = true; }
   if (g.kota) s.kota = g.kota;
   save();
+  i = state.stores.indexOf(s); if (i < 0) return true; // baris bisa bergeser selama menunggu
+  msg = document.getElementById("lm" + i);
   const inp = document.querySelector(`[data-k="stores.${i}.alamat"]`); if (inp) { inp.value = s.alamat; inp.title = s.alamat; }
   const kt = document.getElementById("kt" + i); if (kt) { kt.value = s.kota || ""; kt.title = s.kota || ""; }
   if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat, alamat & kota terisi otomatis"; }
@@ -2621,7 +2634,12 @@ function onLink(el, v) {
   const i = +el.dataset.link; const s = state.stores[i]; const msg = document.getElementById("lm" + i);
   const r = parseKoordinat(v);
   if (r && r.lat != null) {
+    const moved = s.lat !== r.lat || s.lng !== r.lng;
     s.lat = r.lat; s.lng = r.lng;
+    if (moved) { // lokasi baru: kosongkan alamat/kota lama supaya tidak menyesatkan bila pencarian gagal
+      s.kota = ""; const kt = document.getElementById("kt" + i); if (kt) kt.value = "";
+      if (s.alamatAuto !== false) { s.alamat = ""; const ai = document.querySelector(`[data-k="stores.${i}.alamat"]`); if (ai) ai.value = ""; }
+    }
     const la = document.getElementById("lat" + i), lo = document.getElementById("lng" + i);
     if (la) la.value = r.lat; if (lo) lo.value = r.lng;
     if (msg) { msg.className = "msg ok"; msg.textContent = "Koordinat terbaca"; }
@@ -2945,8 +2963,12 @@ function renderGantt() {
   plan.trips.forEach(t => { t.segs.forEach(s => { tMin = Math.min(tMin, s.start); tMax = Math.max(tMax, s.end); }); });
   if (!isFinite(tMin)) { tMin = 360; tMax = 1320; }
   tMin = Math.floor(Math.min(tMin, toMin(state.params.jamMulai) ?? 480) / 60) * 60; tMax = Math.ceil(tMax / 60) * 60;
-  const LW = 250, PX = 64, RH = 30, TOP = 34;
-  const W = LW + (tMax - tMin) / 60 * PX + 200;
+  const narrow = (el.clientWidth || 999) < 640;
+  const LW = narrow ? 178 : 250, RH = 30, TOP = 34, LBL = 190, NM = narrow ? 12 : 22;
+  ganttW = el.clientWidth || 0;
+  const avail = (el.clientWidth || 0) - 4 - LW - LBL; // lebar sumbu waktu agar Gantt muat tanpa geser ke samping
+  const PX = avail > 0 ? Math.max(40, Math.min(96, avail / ((tMax - tMin) / 60))) : 64;
+  const W = LW + (tMax - tMin) / 60 * PX + LBL;
   let labels = "";
   const H = TOP + rows.length * RH + 10;
   const x = m => LW + (m - tMin) / 60 * PX;
@@ -2962,7 +2984,7 @@ function renderGantt() {
     if (!r.firstOfVeh) svg += `<line x1="${LW - 8}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 3"/>`;
     (plan.ctxBreaks[r.d] || []).forEach(([a, b]) => { if (b > tMin && a < tMax) svg += `<rect x="${x(Math.max(a, tMin))}" y="${y}" width="${(Math.min(b, tMax) - Math.max(a, tMin)) / 60 * PX}" height="${RH}" fill="var(--brk)" data-tip="${esc("<b>Istirahat</b><br>" + HARI[r.d] + " " + fmtJam(a) + "–" + fmtJam(b))}"/>`; });
     const first = rows.findIndex(q => q.d === r.d) === i;
-    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${r.firstOfVeh ? esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22)) : `<tspan fill="transparent">${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, 22))}</tspan>`}</text><rect x="${LW - 62}" y="${y + 7}" width="50" height="16" rx="8" fill="${r.trips.length ? "var(--sel)" : "none"}" stroke="${r.trips.length ? "none" : "var(--line)"}"/><text x="${LW - 37}" y="${y + RH / 2 + 4}" font-size="10.5" font-weight="600" text-anchor="middle" fill="${r.trips.length ? "var(--sel-fg)" : "var(--muted)"}">Shift ${r.sh}</text>${r.trips.length ? "" : `<text x="${LW + 6}" y="${y + RH / 2 + 4}" font-size="11" fill="var(--muted)" font-style="italic">tidak ada rit</text>`}`;
+    svg += `<text x="10" y="${y + RH / 2 + 4}" font-size="12" fill="var(--fg)">${first ? `<tspan font-weight="700" fill="${dayColor(r.d)}">${HARI3[r.d]}</tspan>  ` : `<tspan fill="transparent">${HARI3[r.d]}</tspan>  `}${r.firstOfVeh ? esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, NM) + ((r.v.jenis + " " + (r.v.plat || "")).length > NM ? "…" : "")) : `<tspan fill="transparent">${esc((r.v.jenis + " " + (r.v.plat || "")).slice(0, NM) + ((r.v.jenis + " " + (r.v.plat || "")).length > NM ? "…" : ""))}</tspan>`}</text><rect x="${LW - 62}" y="${y + 7}" width="50" height="16" rx="8" fill="${r.trips.length ? "var(--sel)" : "none"}" stroke="${r.trips.length ? "none" : "var(--line)"}"/><text x="${LW - 37}" y="${y + RH / 2 + 4}" font-size="10.5" font-weight="600" text-anchor="middle" fill="${r.trips.length ? "var(--sel-fg)" : "var(--muted)"}">Shift ${r.sh}</text>${r.trips.length ? "" : `<text x="${LW + 6}" y="${y + RH / 2 + 4}" font-size="11" fill="var(--muted)" font-style="italic">tidak ada rit</text>`}`;
     r.trips.forEach(t => {
       t.segs.forEach(s => {
         // pecah segmen di jam istirahat agar bar tidak menutupi istirahat
@@ -2999,13 +3021,15 @@ document.addEventListener("mousemove", e => {
 });
 
 /* ---------- Peta ---------- */
-let map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
+let mapBounds = null, map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
 const osrmCache = {};
 try { localStorage.removeItem(LS_KEY + "-osrm"); Object.assign(osrmCache, JSON.parse(localStorage.getItem(LS_KEY + "-rute-tanpa-tol") || "{}")); } catch (e) {}
 function ensureMap() {
   if (map || typeof L === "undefined") return;
   const el = $("#map"); el.innerHTML = ""; el.classList.add("map-gray");
-  map = L.map(el, { preferCanvas: false, zoomControl: true }).setView([plan.depot.lat, plan.depot.lng], 12);
+  map = L.map(el, { preferCanvas: false, zoomControl: true, zoomSnap: 0.25, zoomDelta: 0.5 }).setView([plan.depot.lat, plan.depot.lng], 12);
+  if (window.ResizeObserver) { let rt = null; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { if (!map || tab !== "peta") return; map.invalidateSize(); if (mapBounds && !map._userMoved) map.fitBounds(mapBounds, { padding: [30, 30] }); }, 80); }).observe(el); }
+  map.on("dragstart", () => { map._userMoved = true; }); el.addEventListener("wheel", () => { map._userMoved = true; }, { passive: true });
   const tl = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }).addTo(map);
   tl.on("tileload", () => { if (!tileOk) { tileOk = true; updateMapNote(); } });
   tl.on("tileerror", () => { tileErr++; if (tileErr === 3) updateMapNote(); });
@@ -3096,8 +3120,9 @@ function renderPeta() {
   document.querySelectorAll("[data-mday]").forEach(b => b.onclick = () => { mapDay = b.dataset.mday; mapDrawn = null; renderPeta(); });
   $("#useRoad").onchange = e => { useRoad = e.target.checked; mapDrawn = null; renderPeta(); };
   ensureMap();
-  setTimeout(() => map.invalidateSize(), 50);
+  setTimeout(() => { const sz = map.getSize(); map.invalidateSize(); const nz = map.getSize(); if (mapBounds && (sz.x !== nz.x || sz.y !== nz.y)) map.fitBounds(mapBounds, { padding: [30, 30] }); }, 60);
   if (!window._mapRs) { window._mapRs = 1; window.addEventListener("resize", () => { if (tab === "peta" && map) map.invalidateSize(); }); }
+
   const sig = mapDay + "|" + useRoad;
   if (mapDrawn === sig) return;
   mapDrawn = sig;
@@ -3138,7 +3163,8 @@ async function drawMap() {
   L.marker([d0.lat, d0.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(d0.nama)}</b><br>Origin / gudang`);
   if (mapDay === "all") legend.push(`<span><i class="sw" style="background:#17201d;border-radius:50%;width:10px;height:10px"></i>Store dikunjungi &gt;1 hari</span>`);
   $("#mapLegend").innerHTML = legend.join("");
-  if (bounds.length > 1) map.fitBounds(bounds, { padding: [30, 30] });
+  mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
+  if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
   // rute jalan (bertahap)
   if (useRoad) {
     for (const ln of lines) {
@@ -3341,5 +3367,7 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   runPlan(true);
   setTab(t);
 })();
+let ganttRs = null, ganttW = 0;
+window.addEventListener("resize", () => { clearTimeout(ganttRs); ganttRs = setTimeout(() => { const w = $("#p-gantt").clientWidth; if (tab === "gantt" && plan && Math.abs(w - ganttW) > 40) renderGantt(); }, 200); });
 
 </script>

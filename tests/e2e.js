@@ -65,7 +65,7 @@ const log=(...a)=>console.log('•',...a);
   await p.emulateMedia({colorScheme:'dark'}); await p.setViewportSize({width:1400,height:900}); await p.click('[data-tab="gantt"]'); await p.screenshot({path:'e_dark.png'});
   // downloaded html opens with state
   const p2 = await ctx.newPage(); p2.on('pageerror',e=>errs.push('P2 '+e.message));p2.on('console',m=>{if(!/Failed to load/.test(m.text()))errs.push('P2c '+m.text())});
-  let h=fs.readFileSync(fh,'utf8').replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js','../deps/leaflet/dist/leaflet.js').replace('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js','../deps/xlsx/dist/xlsx.full.min.js'); fs.writeFileSync('dl/reopen.html',h);
+  let h=fs.readFileSync(fh,'utf8').replace(/ integrity="[^"]*" crossorigin="anonymous" referrerpolicy="no-referrer"/g,'').replace('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js','../deps/leaflet/dist/leaflet.js').replace('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js','../deps/xlsx/dist/xlsx.full.min.js'); fs.writeFileSync('dl/reopen.html',h);
   await p2.goto('file://'+__dirname+'/dl/reopen.html#plan'); await p2.waitForTimeout(500); log('reopened html: stores', await p2.evaluate(()=>state.stores.map(s=>s.nama).join(',')), 'trips', await p2.evaluate(()=>plan.trips.length));
   console.log('ERRORS:', errs.join('\n')||'none'); await b.close();
 })();
