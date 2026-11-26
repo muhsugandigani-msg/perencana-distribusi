@@ -1236,7 +1236,7 @@ function drawPoints() {
       .bindPopup(`<b>${esc(x.nama)}</b><br>${esc([x.alamat, x.kota].filter(Boolean).join(", "))}<br>${fmtNum(x.beratKg)} kg · ${x.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}${zn ? "<br>Zona " + zn : ""}<br><i>Belum ada rute</i>`);
   });
   if (D) { bounds.push([D.lat, D.lng]); L.marker([D.lat, D.lng], { icon: L.divIcon({ html: '<div class="depotpin"><span>G</span></div>', className: "", iconSize: [22, 22] }), zIndexOffset: 1000 }).addTo(mapLayer).bindPopup(`<b>${esc(D.nama)}</b><br>Origin / gudang`); }
-  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${zoneColor(z.no)}"></i>Zona ${z.no} · ${fmtNum(z.kg)} kg · ${z.n} store</span>`).join("") + `<span class="hint">Belum ada rute: zona dibuat dari jarak titik terdekat, muatan per kirim antar zona seimbang (rata-rata ${fmtNum(Z.target)} kg).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
+  $("#mapLegend").innerHTML = Z ? Z.zones.map(z => `<span><i class="sw" style="background:${zoneColor(z.no)}"></i>Zona ${z.no} · ${z.n} store · ${fmtNum(z.kg)} kg</span>`).join("") + `<span class="hint">Belum ada rute: zona dibuat dari jarak titik terdekat, jumlah store tiap zona rata (${fmtNum(Z.target, Z.target % 1 ? 1 : 0)} store per zona).</span>` : `<span><i class="sw" style="background:#6b7280;border-radius:50%;width:10px;height:10px"></i>Store aktif, belum ada rute (${st.length})</span>`;
   mapBounds = bounds.length > 1 ? bounds : null; map._userMoved = false;
   if (mapBounds) map.fitBounds(mapBounds, { padding: [30, 30] });
 }

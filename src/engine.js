@@ -289,13 +289,13 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
 }
 
 /* Zona pratinjau (tanpa kendaraan, Gandi 2026-11-27): tiap store satu titik & satu zona, dikelompokkan berdasarkan jarak terdekat,
-   muatan per kirim antar zona seimbang. Frekuensi kirim dan hari belum dipakai (rute belum dibuat). Jumlah zona = jumlah hari distribusi. */
+   jumlah store tiap zona rata (Gandi 2026-11-27: tanpa melihat muatan). Frekuensi kirim dan hari belum dipakai. Jumlah zona = jumlah hari distribusi. */
 function zonePreview(state) {
   const days = (state.params.hari || []).map((x, i) => x ? i : -1).filter(i => i >= 0);
   const D = days.length; if (!D) return null;
   const st = state.stores.filter(x => x.aktif !== false && x.antaran !== "Origin" && x.lat != null && x.lng != null);
   if (!st.length) return null;
-  const pt = x => [x.lat, x.lng], kgOf = x => +x.beratKg || 0;
+  const pt = x => [x.lat, x.lng], kgOf = () => 1, kgReal = x => +x.beratKg || 0; // yang diratakan: jumlah titik
   const fOf = () => 1;
   const visits = []; st.forEach(x => { for (let k = 0; k < fOf(x); k++) visits.push(x); });
   const tot = visits.reduce((a, x) => a + kgOf(x), 0), target = tot / D;
@@ -311,7 +311,7 @@ function zonePreview(state) {
     for (const { x } of order) {
       const used = Z.get(x.id) || [];
       const cand = C.map((c, i) => i).filter(i => !used.includes(i)).sort((a, b) => hav(pt(x), C[a]) - hav(pt(x), C[b]));
-      let pick = cand.find(i => kg[i] + kgOf(x) <= target * 1.06 + 1);
+      let pick = cand.find(i => kg[i] + kgOf(x) <= Math.ceil(target));
       if (pick == null) pick = cand.slice().sort((a, b) => kg[a] - kg[b])[0];
       Z.set(x.id, used.concat([pick])); kg[pick] += kgOf(x);
     }
@@ -364,9 +364,9 @@ function zonePreview(state) {
   // nomor zona berurutan searah jarum jam dari gudang
   const ang = c => Math.atan2(c[0] - D0.lat, c[1] - D0.lng);
   const ord = C.map((c, i) => i).sort((a, b) => ang(C[b]) - ang(C[a]));
-  const zones = ord.map((i, k) => ({ no: k + 1, kg: R.kg[i], n: st.filter(x => R.Z.get(x.id)[0] === i).length, center: C[i] }));
+  const zones = ord.map((i, k) => { const m = st.filter(x => R.Z.get(x.id)[0] === i); return { no: k + 1, kg: m.reduce((a, x) => a + kgReal(x), 0), n: m.length, center: C[i] }; });
   const byStore = {}; st.forEach(x => { byStore[x.id] = ord.indexOf(R.Z.get(x.id)[0]) + 1; });
-  return { zones, byStore, target, total: tot };
+  return { zones, byStore, target, total: st.reduce((a, x) => a + kgReal(x), 0) };
 }
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
 // Prioritas store: bila armada tidak cukup, store prioritas tinggi dilayani lebih dulu (biaya "belum terlayani" lebih besar)
