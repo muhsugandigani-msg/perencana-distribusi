@@ -1782,10 +1782,11 @@ function* buildPlanCore(state, opts) {
   const pairMoved = pairPass(best);
   return finish(best, mInit, { starts, rr, rrOk, cost: pairMoved ? solCost(best) : bestCost, mNoFair, TnoFair, pairMoved });
 
-  /* 6) Store yang sangat berdekatan (≤ 1 km) diusahakan dikirim di hari yang sama: pindah satu store ke hari pasangannya,
-        bila perlu ditukar dengan store lain dari hari itu, selama total biaya (termasuk fairness) tidak memburuk. */
+  /* 6) Store yang berdekatan (≤ 1,5 km) diusahakan dikirim di hari yang sama dan dengan mobil/rit yang sama:
+        pindah satu store ke hari/rit pasangannya, bila perlu ditukar dengan store lain, selama total biaya
+        (termasuk fairness) tidak memburuk. */
   function pairPass(sol) {
-    const PAIR_KM = 1.0, AFF = 40;
+    const PAIR_KM = 1.5, AFF = 40, AFF_RIT = 100;
     const P2 = [];
     for (let i = 0; i < valid.length; i++) for (let j = i + 1; j < valid.length; j++) {
       const a = valid[i], b = valid[j];
@@ -1798,12 +1799,14 @@ function* buildPlanCore(state, opts) {
       let c = solCost(S);
       if (fairOn) { c += fairPen(totals(S)); days.forEach(d => vehicles.forEach((v, vi) => { if (vehOnDay(v, d) && !S[d].R[vi].some(r => r.length)) c += IDLE; })); }
       P2.forEach(([a, b]) => { const A = daysOf(S, a.id), B = daysOf(S, b.id); if (A.some(x => B.includes(x))) c -= AFF; });
+      days.forEach(d => S[d].R.forEach(L => L.forEach(r => { const ids = new Set(r.map(x => x.id)); P2.forEach(([a, b]) => { if (ids.has(a.id) && ids.has(b.id)) c -= AFF_RIT; }); })));
       return c;
     };
+    const ritOf = (S, d, id) => { for (let vi = 0; vi < S[d].R.length; vi++) for (let ri = 0; ri < S[d].R[vi].length; ri++) if (S[d].R[vi][ri].some(x => x.id === id)) return [vi, ri]; return null; };
     const without = (S, d, st) => { const R = S[d].R.map(L => L.map(r => r.filter(x => x.id !== st.id)).filter(r => r.length)); const vc = R.map((L, vi) => { const r = vehEval(d, vi, L, false); return r ? r.cost : Infinity; }); return dayLS(d, { R, left: S[d].left.slice(), vc }); };
     const withS = (S, d, st) => dayLS(d, { R: S[d].R, left: S[d].left.concat([st]), vc: S[d].vc });
     let cur = obj(sol), moved = 0;
-    for (const [a, b] of P2) {
+    const s1 = () => { for (const [a, b] of P2) {
       if (evals > EVAL_MAX) break;
       const A = daysOf(sol, a.id), B = daysOf(sol, b.id);
       if (!A.length || !B.length || A.some(x => B.includes(x))) continue;
@@ -1827,7 +1830,35 @@ function* buildPlanCore(state, opts) {
         }
       }
       if (best) { days.forEach(d => sol[d] = best.C[d]); cur = best.c; moved++; }
-    }
+    } };
+    // tahap 2: pasangan yang sudah sehari tapi beda mobil/rit -> satukan ke rit yang sama
+    const s2 = () => { for (const [a, b] of P2) {
+      if (evals > EVAL_MAX) break;
+      let best = null;
+      for (const d of daysOf(sol, a.id).filter(x => daysOf(sol, b.id).includes(x))) {
+        const pa = ritOf(sol, d, a.id), pb = ritOf(sol, d, b.id); if (!pa || !pb || (pa[0] === pb[0] && pa[1] === pb[1])) continue;
+        for (const [st, ps, pm] of [[a, pa, pb], [b, pb, pa]]) {
+          const R0 = sol[d].R, from = R0[ps[0]][ps[1]], to = R0[pm[0]][pm[1]];
+          const evalDay = R => { const vc = R.map((L, vi) => { const r = vehEval(d, vi, L.filter(x => x.length), false); return r ? r.cost : null; }); if (vc.some(x => x == null)) return null; const C = Object.assign({}, sol); C[d] = { R: R.map(L => L.filter(x => x.length)), left: sol[d].left, vc }; return { C, c: obj(C) }; };
+          const variants = [null]; to.forEach(u => { if (u.id !== st.id && P2.every(([x, y]) => !((x.id === u.id && y.id !== st.id && to.some(z => z.id === y.id)) || (y.id === u.id && to.some(z => z.id === x.id))))) variants.push(u); });
+          for (const u of variants) {
+            const fromN = from.filter(x => x.id !== st.id), toB = to.filter(x => !u || x.id !== u.id);
+            for (let p = 0; p <= toB.length; p++) {
+              const toN = toB.slice(0, p).concat([st], toB.slice(p));
+              const fromOpts = u ? Array.from({ length: fromN.length + 1 }, (_, q) => fromN.slice(0, q).concat([u], fromN.slice(q))) : [fromN];
+              for (const fN of fromOpts) {
+                const R = R0.map(L => L.map(r => r.slice()));
+                R[ps[0]][ps[1]] = fN; R[pm[0]][pm[1]] = toN;
+                const r = evalDay(R); if (r && r.c < cur - 1 && (!best || r.c < best.c)) best = r;
+              }
+            }
+          }
+        }
+      }
+      if (best) { days.forEach(d => sol[d] = best.C[d]); cur = best.c; moved++; }
+    } };
+    s2(); s1(); s2();
+    if (moved) days.forEach(d => sol[d] = dayLSfair(d, sol[d])); // rapikan urutan dalam rit tanpa memindah store antar mobil
     return moved;
   }
   function finish(best, mInit, X) {
