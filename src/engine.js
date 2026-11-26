@@ -34,6 +34,36 @@ function parseKoordinat(txt) {
   return null;
 }
 
+
+/* ---------- Jarak jalan sebenarnya (matriks dari server rute, disimpan di state.jarakJalan) ---------- */
+function ptKey(lat, lng) { return (+lat).toFixed(5) + "," + (+lng).toFixed(5); }
+function normJalan(s) {
+  return " " + String(s || "").toLowerCase().replace(/\./g, " ").replace(/\binsinyur\b/g, "ir").replace(/\bdokter\b/g, "dr").replace(/\bjenderal\b/g, "jend").replace(/\b(jalan|jln|jl)\b/g, " ").replace(/\s+/g, " ").trim() + " ";
+}
+function roadCfgKey(state) { // jarak berubah bila aturan blok tol / jalan berubah
+  const b = (state.params && state.params.jalanBlok) || {};
+  const nama = (Array.isArray(b.daftar) ? b.daftar : []).filter(x => x && x.aktif !== false && String(x.nama || "").trim()).map(x => normJalan(x.nama).trim()).sort();
+  return (b.semuaTol !== false ? "T" : "t") + "|" + nama.join("|");
+}
+function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik cepat
+  const J = state.jarakJalan;
+  if (!J || J.cfg !== roadCfgKey(state) || !Array.isArray(J.k) || !J.d) return null;
+  const idx = new Map(J.k.map((k, i) => [k, i])), byLat = new Map();
+  for (const st of state.stores) {
+    if (st.lat == null || st.lng == null || isNaN(st.lat) || isNaN(st.lng)) continue;
+    const i = idx.get(ptKey(st.lat, st.lng)); if (i == null) continue;
+    let m = byLat.get(+st.lat); if (!m) byLat.set(+st.lat, m = new Map()); m.set(+st.lng, i);
+  }
+  const memo = new Map();
+  return function (a, b) {
+    const ma = byLat.get(+a[0]), mb = byLat.get(+b[0]); if (!ma || !mb) return null;
+    const i = ma.get(+a[1]), j = mb.get(+b[1]); if (i == null || j == null) return null;
+    const key = i * 100003 + j; if (memo.has(key)) return memo.get(key);
+    const v = J.d[i + ":" + j], r = typeof v === "number" && isFinite(v) && v >= 0 ? v : null;
+    memo.set(key, r); return r;
+  };
+}
+
 /* ---------- Model waktu ---------- */
 function makeCtx(state, day) {
   const p = state.params, L = p.lalin;
@@ -49,10 +79,12 @@ function makeCtx(state, day) {
     }
     return t + dur;
   }
+  const RT = state._roadT !== undefined ? state._roadT : roadTable(state);
   function leg(a, b, t, speed) {
     const h = hav(a, b);
     if (h < 1e-6) return { km: 0, min: 0 };
-    const road = h * (+L.faktorJalan || 1.65);
+    let road = RT ? RT(a, b) : null;
+    if (road == null) road = h * (+L.faktorJalan || 1.65);
     let f;
     if (h >= (+L.batasAntarKotaKm || 25)) f = +L.fAntarKota || 1;
     else {
@@ -224,6 +256,17 @@ const W = { unserved: 10000, rit: 60, km: 2 };
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function buildPlan(state) {
+  try { Object.defineProperty(state, "_roadT", { value: roadTable(state), configurable: true, enumerable: false, writable: true }); } catch (e) {}
+  try { const P = buildPlanCore(state); if (P && !P.error) P.jarak = jarakInfo(state, P); return P; }
+  finally { try { delete state._roadT; } catch (e) {} }
+}
+function jarakInfo(state, P) { // berapa kaki perjalanan di plan final yang memakai jarak jalan sebenarnya
+  const RT = roadTable(state); let real = 0, est = 0;
+  const pts = t => [[P.depot.lat, P.depot.lng]].concat(t.stops.map(x => [x.store.lat, x.store.lng]), [[P.depot.lat, P.depot.lng]]);
+  P.trips.forEach(t => { const q = pts(t); for (let i = 1; i < q.length; i++) { if (hav(q[i - 1], q[i]) < 1e-6) continue; if (RT && RT(q[i - 1], q[i]) != null) real++; else est++; } });
+  return { real, est, mode: !est ? "jalan" : !real ? "perkiraan" : "campuran" };
+}
+function buildPlanCore(state) {
   const warn = [];
   const days = state.params.hari.map((b, i) => b ? i : -1).filter(i => i >= 0);
   const depot = state.stores.find(s => s.aktif !== false && s.antaran === "Origin" && s.lat != null && s.lng != null);
@@ -608,4 +651,4 @@ function buildPlan(state) {
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
 }
 
-if (typeof module !== "undefined") module.exports = { buildPlan, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { buildPlan, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };

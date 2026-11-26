@@ -24,6 +24,12 @@ function loadState() {
 }
 function isObj(v) { return !!v && typeof v === "object" && !Array.isArray(v); }
 function arrObj(v) { return Array.isArray(v) ? v.filter(isObj) : []; }
+function cleanJarak(J) { // matriks jarak jalan: {cfg, k:[titik], d:{"i:j": km}}
+  if (!isObj(J) || typeof J.cfg !== "string" || !Array.isArray(J.k) || !isObj(J.d)) return undefined;
+  const k = J.k.map(String).filter(x => /^-?\d+\.\d+,-?\d+\.\d+$/.test(x)); if (k.length !== J.k.length) return undefined;
+  const d = {}; for (const key in J.d) { const v = J.d[key]; if (/^\d+:\d+$/.test(key) && typeof v === "number" && isFinite(v) && v >= 0 && v < 5000) d[key] = v; }
+  return { cfg: J.cfg, k, d, t: +J.t || 0 };
+}
 function normalize(s) {
   if (!isObj(s)) throw new Error("format data tidak dikenali");
   s.vehicles = arrObj(s.vehicles); s.stores = arrObj(s.stores); s.breaks = isObj(s.breaks) ? s.breaks : {};
@@ -48,6 +54,7 @@ function normalize(s) {
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
   s.params.jalanBlok = isObj(s.params.jalanBlok) ? s.params.jalanBlok : clone(SAMPLE.params.jalanBlok);
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
+  s.jarakJalan = cleanJarak(s.jarakJalan);
   return s;
 }
 /* Simpan: perubahan baru tersimpan saat tombol "Simpan" (atau Ctrl+S) ditekan.
@@ -85,7 +92,7 @@ async function ghPutFile(data, sha) {
   return (await r.json()).content.sha;
 }
 function applyShared(f, quiet) {
-  state = normalize(f.data); shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
+  const keep = state.jarakJalan; state = normalize(f.data); mergeJarak(keep); try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {} shared.sha = f.sha; shared.at = +state._savedAt || 0; shared.src = "github";
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
   unsaved = false; plan = null; planDirty = true; runPlan(true); renderTab(); saveStatus();
   if (!quiet) toast("Data bersama terbaru dimuat dari GitHub.");
@@ -100,6 +107,7 @@ async function loadShared() { // saat web dibuka
     if (shared.at >= (+state._savedAt || 0)) applyShared({ sha: f.sha, data: f.data }, true);
     else saveStatus();
   } catch (e) { shared.ok = false; console.warn("Data bersama GitHub tidak bisa dimuat", e); saveStatus(); }
+  finally { sharedChecked = true; maybeHitungJarak(); }
 }
 function saveLocal() {
   try { localStorage.setItem(LS_KEY, JSON.stringify(state)); return true; }
@@ -482,11 +490,11 @@ function renderParameter() {
     <details class="adv"><summary>Lalu lintas &amp; jalan (lanjutan)</summary>
       <div class="grid2">
         <div style="display:grid;gap:12px;align-content:start">
-          <div class="field"><label>Faktor jarak jalan (tanpa tol)</label>${num("params.lalin.faktorJalan", L.faktorJalan)}<span class="hint">Jarak garis lurus × faktor ini = perkiraan jarak jalan. 1,65 dikalibrasi ke Google Maps "hindari tol" di Makassar.</span></div>
+          <div class="field"><label>Faktor jarak jalan (tanpa tol)</label>${num("params.lalin.faktorJalan", L.faktorJalan)}<span class="hint">Plan memakai jarak rute jalan sebenarnya (tanpa tol) dari server rute. Faktor ini hanya dipakai sebagai cadangan bila jarak jalan belum bisa diambil: jarak garis lurus × faktor = perkiraan jarak jalan.</span></div>
           <div class="field"><label>Batas antar kota</label><div class="row">${num("params.lalin.batasAntarKotaKm", L.batasAntarKotaKm, "1", 'style="max-width:110px"')}<span>km garis lurus</span></div><span class="hint">Perjalanan antar titik yang lebih jauh dari batas ini memakai faktor antar kota; yang lebih dekat memakai faktor dalam kota.</span></div>
         </div>
         <div style="display:grid;gap:12px;align-content:start">
-          <div class="field"><label>Faktor macet (pengali waktu tempuh)</label>
+          <div class="field"><label>Faktor macet (pengali waktu tempuh)</label><span class="hint">Waktu tempuh = jarak jalan ÷ kecepatan kendaraan × faktor ini. Contoh: 40 km/jam × faktor 1,65 ≈ rata-rata 24 km/jam di dalam kota.</span>
             <div class="brow" style="grid-template-columns:1fr 90px"><span>Dalam kota</span>${num("params.lalin.fDalamKota", L.fDalamKota)}</div>
             <div class="brow" style="grid-template-columns:1fr 90px"><span>Antar kota</span>${num("params.lalin.fAntarKota", L.fAntarKota)}</div></div>
           <div class="field"><label>Jam sibuk (faktor tambahan)</label>${peaks || '<span class="off">Tidak ada</span>'}<div><button class="btn sm" type="button" id="addPeak">＋ Tambah jam sibuk</button></div></div>
@@ -504,6 +512,7 @@ function runPlan(silent) {
   try { plan = buildPlan(state); } catch (e) { plan = { error: "Gagal membuat plan: " + e.message }; console.error(e); }
   planDirty = false; mapDrawn = null;
   if (!silent) { if (plan.error) toast(plan.error, 4000); else toast("Plan dibuat: " + plan.trips.length + " rit" + (plan.unserved.length ? ", " + plan.unserved.length + " kunjungan belum terlayani" : "")); }
+  setTimeout(maybeHitungJarak, 0);
 }
 $("#btnSave").onclick = () => commitSave(); saveStatus();
 $("#btnPlan").onclick = () => { runPlan(); if (!["plan", "gantt", "peta"].includes(tab)) setTab("plan"); else renderTab(); };
@@ -587,6 +596,7 @@ function renderPlan() {
   let html = `<div class="head"><div><h2>Plan Distribusi Mingguan</h2><p>Gudang asal: <b>${esc(plan.depot.nama)}</b>. Disusun dan dioptimasi otomatis dari data input.</p><details class="help"><summary>Cara mesin menyusun plan</summary>Mesin mencoba banyak variasi pembagian hari dan rute, memindah serta menukar store antar rit, kendaraan, dan hari, lalu memilih yang paling efisien (semua terlayani, rit paling sedikit, jam kerja dan jarak terpendek) tanpa melanggar kapasitas, jam shift, jam istirahat, dan jam buka store.</details></div>
     <button class="btn" type="button" onclick="exportExcel()">⬇ Unduh Excel</button></div>
     ${dirtyBanner()}
+    <div id="roadNote">${roadNoteHtml()}</div>
     <div class="tiles">
       <div class="tile"><div class="k">Total rit</div><div class="v">${T.length}<small>rit/mgg</small></div></div>
       <div class="tile"><div class="k">Kunjungan</div><div class="v">${nVisit}<small>titik</small></div></div>
@@ -621,7 +631,7 @@ function renderPlan() {
     }
     html += `</div>`;
   }
-  el.innerHTML = html;
+  el.innerHTML = html; roadNote();
 }
 
 /* ---------- Gantt ---------- */
@@ -698,6 +708,89 @@ document.addEventListener("mousemove", e => {
   tip.style.top = Math.min(window.innerHeight - r.height - 8, e.clientY + 14) + "px";
 });
 
+/* ---------- Jarak jalan sebenarnya ----------
+   Matriks jarak antar semua titik diambil dari server rute Valhalla (sources_to_targets), tanpa tol dan menghindari
+   titik jalan yang diblok. Disimpan di state.jarakJalan (ikut tersimpan ke GitHub) dan di browser ini. Pasangan
+   yang gagal diambil memakai perkiraan garis lurus × faktor jarak jalan. */
+const JARAK_LS = LS_KEY + "-jarak";
+const roadJob = { run: false, done: 0, total: 0, failKey: "", err: "" };
+let sharedChecked = false;
+function jarakPts() { return [...new Set(state.stores.filter(s => s.aktif !== false && s.lat != null && s.lng != null && !isNaN(s.lat) && !isNaN(s.lng)).map(s => ptKey(s.lat, s.lng)))]; }
+function mergeJarak(src) { // gabungkan matriks lain (cache browser / data bersama) ke state
+  src = cleanJarak(src); const cfg = roadCfgKey(state); if (!src || src.cfg !== cfg) return 0;
+  let J = state.jarakJalan; if (!J || J.cfg !== cfg) J = state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
+  const idx = new Map(J.k.map((k, i) => [k, i])); const at = k => { let i = idx.get(k); if (i == null) { i = J.k.length; J.k.push(k); idx.set(k, i); } return i; };
+  let n = 0; for (const key in src.d) { const [a, b] = key.split(":").map(Number); if (src.k[a] == null || src.k[b] == null) continue; const kk = at(src.k[a]) + ":" + at(src.k[b]); if (J.d[kk] == null) { J.d[kk] = src.d[key]; n++; } }
+  J.t = Math.max(J.t || 0, src.t || 0); return n;
+}
+function jarakMissing() { // pasangan titik (dari -> ke) yang belum punya jarak jalan
+  const cfg = roadCfgKey(state), pts = jarakPts(); const J = state.jarakJalan && state.jarakJalan.cfg === cfg ? state.jarakJalan : null;
+  const idx = J ? new Map(J.k.map((k, i) => [k, i])) : new Map(); const miss = [];
+  pts.forEach(a => pts.forEach(b => { if (a === b) return; const i = idx.get(a), j = idx.get(b); if (i == null || j == null || J.d[i + ":" + j] == null) miss.push([a, b]); }));
+  return { pts, miss };
+}
+function saveJarakLocal() { try { localStorage.setItem(JARAK_LS, JSON.stringify(state.jarakJalan || null)); } catch (e) {} }
+async function valhallaMatrix(src, tgt) {
+  const cfg = blokCfg(); const zona = cfg.nama.flatMap(n => blokTitik[n] || []).slice(-50);
+  const loc = k => { const [la, ln] = k.split(",").map(Number); return { lat: la, lon: ln }; };
+  const body = { sources: src.map(loc), targets: tgt.map(loc), costing: "auto", costing_options: { auto: cfg.tol ? { exclude_tolls: true, use_tolls: 0 } : {} }, units: "kilometers" };
+  if (zona.length) body.exclude_locations = zona.map(([la, ln]) => ({ lat: la, lon: ln }));
+  const wait = 1100 - (Date.now() - lastRouteReq); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastRouteReq = Date.now();
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 30000);
+  try {
+    const r = await fetch("https://valhalla1.openstreetmap.de/sources_to_targets", { method: "POST", body: JSON.stringify(body), signal: ctl.signal }); // text/plain: tanpa preflight CORS
+    const j = await r.json(); if (!j.sources_to_targets) throw new Error(j.error || ("HTTP " + r.status)); return j.sources_to_targets;
+  } finally { clearTimeout(to); }
+}
+async function hitungJarak(manual) {
+  if (roadJob.run) return;
+  const { pts, miss } = jarakMissing(); if (!miss.length) { if (manual) toast("Semua jarak sudah memakai rute jalan sebenarnya."); return; }
+  const cfg = roadCfgKey(state); if (!state.jarakJalan || state.jarakJalan.cfg !== cfg) state.jarakJalan = { cfg, k: [], d: {}, t: 0 };
+  const J = state.jarakJalan, idx = new Map(J.k.map((k, i) => [k, i])); const at = k => { let i = idx.get(k); if (i == null) { i = J.k.length; J.k.push(k); idx.set(k, i); } return i; };
+  // permintaan seminimal mungkin: baris penuh untuk titik baru, sisanya per kolom; tiap permintaan maks. 2.500 pasangan
+  const bySrc = new Map(); miss.forEach(([a, b]) => { if (!bySrc.has(a)) bySrc.set(a, new Set()); bySrc.get(a).add(b); });
+  const full = pts.filter(a => bySrc.has(a) && bySrc.get(a).size > pts.length / 2), fullSet = new Set(full);
+  const rest = miss.filter(([a]) => !fullSet.has(a)), blocks = [];
+  const chunk = (S, T) => { for (let j = 0; j < T.length; j += 50) { const Tc = T.slice(j, j + 50), n = Math.max(1, Math.floor(2500 / Tc.length)); for (let i = 0; i < S.length; i += n) blocks.push([S.slice(i, i + n), Tc]); } };
+  if (full.length) chunk(full, pts);
+  if (rest.length) chunk([...new Set(rest.map(x => x[0]))], [...new Set(rest.map(x => x[1]))]);
+  const wasUnsaved = unsaved; let got = 0, failed = 0;
+  Object.assign(roadJob, { run: true, done: 0, total: blocks.length, err: "" }); roadNote();
+  for (const [S, T] of blocks) {
+    try {
+      const rows = await valhallaMatrix(S, T);
+      rows.forEach((row, si) => (row || []).forEach((c, ti) => { if (!c || S[si] === T[ti]) return; if (typeof c.distance === "number" && c.distance >= 0) { J.d[at(S[si]) + ":" + at(T[ti])] = +c.distance.toFixed(2); got++; } }));
+    } catch (e) { failed++; roadJob.err = e.name === "AbortError" ? "server rute tidak menjawab" : String(e.message || e).slice(0, 120); }
+    roadJob.done++; roadNote();
+  }
+  J.t = Date.now(); roadJob.run = false;
+  if (failed || got < miss.length) roadJob.failKey = cfg + "|" + pts.length;
+  saveJarakLocal();
+  if (got) {
+    runPlan(true); renderTab();
+    if (ghToken() && !wasUnsaved) { await commitSave(); }
+    else if (ghToken()) { save(); toast("Jarak jalan sebenarnya sudah dipakai. Tekan 💾 Simpan agar tersimpan untuk semua.", 5000); }
+    else toast("Plan dihitung ulang memakai jarak jalan sebenarnya (" + got + " pasangan titik).", 4000);
+  } else { roadNote(); toast("Jarak jalan belum bisa diambil" + (roadJob.err ? " (" + roadJob.err + ")" : "") + ". Plan memakai perkiraan.", 5000); }
+}
+function maybeHitungJarak() { // otomatis bila ada pasangan titik yang belum punya jarak jalan
+  if (roadJob.run || !sharedChecked || !plan || plan.error) return;
+  const { pts, miss } = jarakMissing(); if (!miss.length) return;
+  if (roadJob.failKey === roadCfgKey(state) + "|" + pts.length) return; // sudah dicoba dan gagal: tunggu tombol
+  hitungJarak(false);
+}
+function roadNoteHtml() {
+  if (roadJob.run) return `<div class="banner info"><span class="spin" aria-hidden="true"></span><div><b>Menghitung jarak jalan sebenarnya…</b> ${roadJob.done}/${roadJob.total} bagian. Plan akan dihitung ulang otomatis setelah selesai.</div></div>`;
+  const J = plan && plan.jarak; if (!J) return "";
+  const tot = J.real + J.est;
+  if (!J.est) return tot ? `<div class="hint" style="margin:-4px 0 12px">🛣 Jarak dan waktu tempuh memakai <b>rute jalan sebenarnya</b> (tanpa tol${blokCfg().nama.length ? ", menghindari jalan yang diblok" : ""}).</div>` : "";
+  return `<div class="banner warn"><div><b>${J.real ? fmtNum(J.est) + " dari " + fmtNum(tot) + " perjalanan" : "Jarak"} masih memakai perkiraan</b> (garis lurus × ${fmtNum(+state.params.lalin.faktorJalan || 1.65, 2)}).${roadJob.err ? " Server rute: " + esc(roadJob.err) + "." : ""}</div><button class="btn sm" type="button" id="btnJarak">🛣 Hitung jarak jalan</button></div>`;
+}
+function roadNote() {
+  const el = document.getElementById("roadNote"); if (!el) return;
+  el.innerHTML = roadNoteHtml(); const b = document.getElementById("btnJarak"); if (b) b.onclick = () => { roadJob.failKey = ""; hitungJarak(true); };
+}
 /* ---------- Peta ---------- */
 let mapBounds = null, map = null, mapLayer = null, mapDay = "all", mapDrawn = null, tileOk = false, tileErr = 0, useRoad = true;
 const osrmCache = {};
@@ -738,9 +831,7 @@ let lastRouteReq = 0;
    jika rute masih melewati jalan itu, titik-titik di ruas tsb. dikeluarkan (exclude_locations) lalu rute dihitung ulang. Titik yang dipelajari disimpan. */
 const blokTitik = {};
 try { Object.assign(blokTitik, JSON.parse(localStorage.getItem(LS_KEY + "-blok-titik") || "{}")); } catch (e) {}
-function normJalan(s) {
-  return " " + String(s || "").toLowerCase().replace(/\./g, " ").replace(/\binsinyur\b/g, "ir").replace(/\bdokter\b/g, "dr").replace(/\bjenderal\b/g, "jend").replace(/\b(jalan|jln|jl)\b/g, " ").replace(/\s+/g, " ").trim() + " ";
-}
+
 function blokCfg() {
   const b = state.params.jalanBlok || {};
   return { tol: b.semuaTol !== false, nama: (b.daftar || []).filter(x => x.aktif !== false && String(x.nama || "").trim()).map(x => normJalan(x.nama)) };
@@ -1046,6 +1137,7 @@ $("#fileStore").onchange = e => { const f = e.target.files[0]; if (f) importStor
   let t = location.hash.slice(1);
   if (!document.getElementById("p-" + t)) { try { t = localStorage.getItem(LS_KEY + "-tab") || "plan"; } catch (e) { t = "plan"; } }
   if (!document.getElementById("p-" + t)) t = "plan";
+  try { mergeJarak(JSON.parse(localStorage.getItem(JARAK_LS) || "null")); } catch (e) {}
   runPlan(true);
   setTab(t);
   loadShared();
