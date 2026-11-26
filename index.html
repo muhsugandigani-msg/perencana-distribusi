@@ -1158,12 +1158,33 @@ function makeCtx(state, day) {
     if (pagiHariPertama && day === lastDay) { if (a.berlaku !== "shift1") acts.push(Object.assign({}, a, { waktu: "sebelum", berlaku: "lanjut" })); }
     else acts.push(Object.assign({}, a, { waktu: "setelah" }));
   });
-  return { day, breaks, advance, leg, overlap, rate, acts, H: (+p.jamShift || 8) * 60, start: toMin(p.jamMulai) ?? 480 };
+  const H = (+p.jamShift || 8) * 60, start = toMin(p.jamMulai) ?? 480;
+  // Shift 1 habis untuk aktivitas khusus shift 1 (mis. pembersihan Senin) sehingga tidak ada rit yang muat:
+  // kendaraan 2 shift langsung jalan di shift 2 sesudah shift 1 selesai; kendaraan 1 shift libur hari itu (Gandi 2026-11-26).
+  let skip1 = false, s1end = null;
+  if (acts.some(a => a.berlaku === "shift1" && a.waktu !== "setelah")) {
+    let t = start, ss = null;
+    const a1 = acts.filter(a => a.waktu !== "setelah" && a.berlaku !== "lanjut");
+    for (const a of a1.filter(a => !a.dihitung)) t = advance(advance(t, 0), +a.durasi);
+    for (const a of a1.filter(a => a.dihitung)) { t = advance(t, 0); if (ss == null) ss = t; t = advance(t, +a.durasi); }
+    const dep = advance(t, 0); if (ss == null) ss = dep;
+    const D = (state.stores || []).find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
+    let minTrip = Infinity;
+    if (D) for (const s of state.stores) if (s !== D && s.aktif !== false && s.lat != null && s.antaran !== "Origin") {
+      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
+      if (m < minTrip) minTrip = m;
+    }
+    const after = acts.filter(a => a.waktu === "setelah" && a.dihitung).reduce((x, a) => x + (+a.durasi || 0), 0);
+    if (minTrip < Infinity && dep + minTrip + after > ss + H) { skip1 = true; s1end = ss + H; }
+  }
+  return { day, breaks, advance, leg, overlap, rate, acts, H, start, skip1, s1end };
 }
 
 /* Simulasi satu rit. stops: array store (pengantaran dulu, lalu penjemputan). */
-function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
+function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   const segs = [];
+  const shiftNo = ctx.skip1 ? shiftNo0 + 1 : shiftNo0; // shift 1 dipakai aktivitas (pembersihan): rit pertama = shift 2
+  if (ctx.skip1 && t0 < ctx.s1end) t0 = ctx.s1end;
   let t = t0, shiftStart = null;
   const all = ctx.acts.filter(a => a.berlaku === "shift1" ? shiftNo === 1 : a.berlaku === "lanjut" ? shiftNo > 1 : true);
   const acts = all.filter(a => a.waktu !== "setelah"), after = all.filter(a => a.waktu === "setelah");
@@ -1216,7 +1237,8 @@ function simulate(ctx, depot, veh, t0, shiftNo, stops, detail) {
   for (const s of stops) if (!aksesOk(s, vj)) { ok = false; why = s.nama + " hanya bisa dilayani " + s.akses.join(" / ") + " (akses kendaraan)"; break; }
   if (maxK > 0 && km > maxK + 1e-6) { ok = false; why = "Rit " + km.toFixed(1) + " km melebihi maks jarak per rit " + vnm + " (" + maxK + " km)"; }
   if (end > 24 * 60) { ok = false; why = "Melewati tengah malam"; }
-  return { ok, why, t0, shiftStart, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
+  if (shiftNo > (+veh.maksShift || 1)) { ok = false; why = "Shift 1 hari " + HARI[ctx.day] + " habis untuk " + (ctx.acts.filter(a => a.berlaku === "shift1").map(a => a.nama).join(" dan ") || "aktivitas") + "; " + vnm + " hanya 1 shift"; }
+  return { ok, why, t0, shiftStart, shiftEff: shiftNo, dep, ret, end, endShift: endCounted, dur: endCounted - shiftStart, km, kgDel, kgPick, stops: out, segs, backKm: back.km, backMin: back.min, backDep: tb, backBrk: ctx.overlap(tb, ret) };
 }
 
 function vehOnDay(v, d) { return !Array.isArray(v.hariAktif) || v.hariAktif.includes(d); } // hari aktif distribusi per kendaraan (tidak diisi = semua hari)
@@ -1279,7 +1301,7 @@ function routeDay(state, day, visits, depot, vehicles, rnd) {
     }
     route = improve(route, sim);
     const res = simFlex(ctx, depot, v, avail[vi], sh, orderStops(route), true);
-    trips.push(Object.assign(res, { day, vIdx: vi, veh: v, shift: sh }));
+    trips.push(Object.assign(res, { day, vIdx: vi, veh: v, shift: res.shiftEff || sh }));
     avail[vi] = res.end; used[vi] = sh;
   }
   return { trips, left: U };
@@ -1309,7 +1331,7 @@ function dayCapacity(state, day, depot, vehicles) {
   vehicles.forEach(v => {
     if (!vehOnDay(v, day)) return;
     let t = ctx.start;
-    for (let k = 1; k <= (+v.maksShift || 1); k++) {
+    for (let k = 1; k <= (+v.maksShift || 1) - (ctx.skip1 ? 1 : 0); k++) {
       const e = simulate(ctx, depot, v, t, k, [], false);
       const end = Math.min(e.shiftStart + ctx.H, 24 * 60);
       const work = Math.max(0, end - e.dep - ctx.overlap(e.dep, end));
@@ -1369,6 +1391,7 @@ function* buildPlanCore(state, opts) {
   const D = days.length;
   const ctx0 = makeCtx(state, days[0]);
   const ctxOf = {}; days.forEach(d => ctxOf[d] = makeCtx(state, d));
+  days.filter(d => ctxOf[d].skip1).forEach(d => warn.push("Hari " + HARI[d] + ": shift 1 habis untuk " + ctxOf[d].acts.filter(a => a.berlaku === "shift1").map(a => a.nama).join(" dan ") + " sampai " + fmtJam(ctxOf[d].s1end) + ", jadi kendaraan 2 shift langsung jalan di shift 2; kendaraan 1 shift tidak dapat rit."));
   const work = s => (+s.beratKg || 0) / ctx0.rate + ctx0.leg([depot.lat, depot.lng], [s.lat, s.lng], null, 40).min * 0.9;
   const cap = {}; days.forEach(d => cap[d] = dayCapacity(state, d, depot, vehicles));
   // Frekuensi kirim (Nx seminggu) menentukan jumlah kunjungan; harinya dipilih otomatis berjarak rata di antara hari beroperasi store.
@@ -1465,7 +1488,7 @@ function* buildPlanCore(state, opts) {
       const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), detail);
       if (!r.ok) return null;
       cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi];
-      if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: sh }));
+      if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: r.shiftEff || sh }));
       t = r.end;
     }
     return { cost, trips };
