@@ -45,6 +45,10 @@ function roadCfgKey(state) { // jarak berubah bila aturan blok tol / jalan berub
   const nama = (Array.isArray(b.daftar) ? b.daftar : []).filter(x => x && x.aktif !== false && String(x.nama || "").trim()).map(x => normJalan(x.nama).trim()).sort();
   return (b.semuaTol !== false ? "T" : "t") + "|" + nama.join("|");
 }
+function gatePt(state) { // titik keluar/masuk gudang (Parameter); null bila kosong / tidak terbaca
+  const g = parseKoordinat(state.params && state.params.titikGudang);
+  return g && g.lat != null ? [g.lat, g.lng] : null;
+}
 function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik cepat
   const J = state.jarakJalan;
   if (!J || J.cfg !== roadCfgKey(state) || !Array.isArray(J.k) || !J.d) return null;
@@ -54,6 +58,8 @@ function roadTable(state) { // -> {km(a,b) -> km|null} memakai lookup numerik ce
     const i = idx.get(ptKey(st.lat, st.lng)); if (i == null) continue;
     let m = byLat.get(+st.lat); if (!m) byLat.set(+st.lat, m = new Map()); m.set(+st.lng, i);
   }
+  const G = gatePt(state);
+  if (G) { const i = idx.get(ptKey(G[0], G[1])); if (i != null) { let m = byLat.get(+G[0]); if (!m) byLat.set(+G[0], m = new Map()); m.set(+G[1], i); } }
   const memo = new Map();
   return function (a, b) {
     const ma = byLat.get(+a[0]), mb = byLat.get(+b[0]); if (!ma || !mb) return null;
@@ -151,7 +157,18 @@ function makeCtx(state, day) {
     return t + dur;
   }
   const RT = state._roadT !== undefined ? state._roadT : roadTable(state);
+  // semua rit keluar & masuk gudang lewat satu titik (mis. simpang jalan lingkar barat) bila diisi di Parameter
+  const G = gatePt(state), D0 = state.stores.find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
+  const atD = q => D0 && Math.abs(q[0] - D0.lat) < 1e-7 && Math.abs(q[1] - D0.lng) < 1e-7;
+  const near = (q, r) => Math.abs(q[0] - r[0]) < 1e-7 && Math.abs(q[1] - r[1]) < 1e-7;
   function leg(a, b, t, speed) {
+    if (G && D0 && !near(a, G) && !near(b, G) && (atD(a) !== atD(b))) {
+      const x = leg0(a, G, t, speed), y = leg0(G, b, t != null ? t + x.min : null, speed);
+      return { km: x.km + y.km, min: x.min + y.min };
+    }
+    return leg0(a, b, t, speed);
+  }
+  function leg0(a, b, t, speed) {
     const h = hav(a, b);
     if (h < 1e-6) return { km: 0, min: 0 };
     let road = RT ? RT(a, b) : null;
@@ -1108,4 +1125,4 @@ function* buildPlanCore(state, opts) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
+if (typeof module !== "undefined") module.exports = { gatePt, prioOf, vehOnDay, aksesOk, normJenis, buildPlan, planGen, buildWeeks, weeksGen, baseState, weekMeta, weekState, periodeOf, roadCfgKey, ptKey, normJalan, roadTable, parseKoordinat, fmtJam, toMin, HARI, simulate, makeCtx };
