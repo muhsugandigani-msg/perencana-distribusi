@@ -1096,7 +1096,7 @@
    "id": "s41",
    "aktif": true,
    "nama": "Lazuna Chicken Tamalate 2",
-   "alamat": "Jalan Tidung 5, Bonto Makkio, Rappocini",
+   "alamat": "Jalan Tamalate Raya, Mappala, Rappocini",
    "kota": "Kota Makassar",
    "link": "https://www.google.com/maps?q=-5.1721955,119.4454488",
    "lat": -5.1721955,
@@ -1173,14 +1173,14 @@
    "id": "si6a5ih",
    "aktif": true,
    "nama": "Lazuna Chicken Barombong",
-   "alamat": "",
-   "link": "https://maps.app.goo.gl/QCifapDeD8Ji2MAa9",
-   "lat": null,
-   "lng": null,
+   "alamat": "Jalan Perjanjian Bungaya, Barombong, Tamalate",
+   "link": "https://www.google.com/maps/place/Golqi+Chicken+Barombong/@-5.2091608,119.3862073,17z/data=!4m6!3m5!1s0x2dbf1d410d5828a1:0xc9c91653ce613d63!8m2!3d-5.2091661!4d119.3887822!16s%2Fg%2F11xtmhrgk0?entry=tts&g_ep=EgoyMDI2MTEyMy4wIOC7DCoASAFQAw%3D%3D&skid=eed93869-2caf-4a44-b4f1-5560a61585e8",
+   "lat": -5.2091661,
+   "lng": 119.3887822,
    "buka": "07:00",
    "tutup": "22:00",
-   "beratKg": 500,
-   "frek": 1,
+   "beratKg": 2000,
+   "frek": 0.5,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
    "hariOperasi": [
@@ -1191,7 +1191,9 @@
     4,
     5,
     6
-   ]
+   ],
+   "kota": "Kota Makassar",
+   "alamatAuto": true
   }
  ],
  "breaks": {
@@ -1430,7 +1432,7 @@
   "loadingHariPertama": "malam",
   "mingguMulai": "2026-11-30"
  },
- "_savedAt": 1795674824529,
+ "_savedAt": 1795675171660,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3204,8 +3206,8 @@
   "t": 1795663212669
  },
  "savedPlan": {
-  "at": 1795674824529,
-  "sig": "1y4vxt2:19387",
+  "at": 1795675171661,
+  "sig": "kv9zfz:19733",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -5202,7 +5204,7 @@
          "d": {
           "aktif": true,
           "nama": "Lazuna Chicken Tamalate 2",
-          "alamat": "Jalan Tidung 5, Bonto Makkio, Rappocini",
+          "alamat": "Jalan Tamalate Raya, Mappala, Rappocini",
           "kota": "Kota Makassar",
           "link": "https://www.google.com/maps?q=-5.1721955,119.4454488",
           "lat": -5.1721955,
