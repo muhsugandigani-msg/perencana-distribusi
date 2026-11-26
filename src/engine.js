@@ -234,9 +234,17 @@ function buildPlan(state) {
   const stores = state.stores.filter(s => s.aktif !== false && s.antaran !== "Origin");
   const noCoord = stores.filter(s => s.lat == null || s.lng == null || isNaN(s.lat) || isNaN(s.lng));
   noCoord.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena belum ada koordinat."));
-  const zeroF = stores.filter(s => !noCoord.includes(s) && !(s.hariTetap && s.hariTetap.length) && !(Math.round(+s.frek) > 0));
+  const zeroF = stores.filter(s => !noCoord.includes(s) && !(Math.round(+s.frek) > 0));
   zeroF.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena frekuensi kirim belum diisi / tidak dikirim."));
-  const valid = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s));
+  // Hari beroperasi: store hanya boleh diantar pada hari aktifnya (kosong = setiap hari)
+  const opsOf = s => Array.isArray(s.hariOperasi) ? s.hariOperasi : [0, 1, 2, 3, 4, 5, 6];
+  const okDaysOf = {};
+  stores.forEach(s => { okDaysOf[s.id] = days.filter(d => opsOf(s).includes(d)); });
+  const closed = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s) && !okDaysOf[s.id].length);
+  closed.forEach(s => warn.push("\"" + s.nama + "\" dilewati karena hari beroperasinya tidak ada yang jatuh di hari distribusi."));
+  const valid = stores.filter(s => !noCoord.includes(s) && !zeroF.includes(s) && !closed.includes(s));
+  const okDays = s => okDaysOf[s.id] || days;
+  const restricted = s => okDays(s).length < days.length;
   state.vehicles.filter(v => v.aktif !== false && !(+v.kapasitasKg > 0)).forEach(v => warn.push("Kendaraan \"" + (v.jenis || "") + " " + (v.plat || "") + "\" tidak dipakai karena kapasitas kosong/0."));
   vehicles.filter(v => !(+v.kecepatan > 0)).forEach(v => warn.push("Kecepatan " + (v.jenis || "") + " " + (v.plat || "") + " kosong, dipakai 40 km/jam."));
   const maxCap = Math.max(...vehicles.map(v => +v.kapasitasKg));
@@ -246,12 +254,11 @@ function buildPlan(state) {
   const ctxOf = {}; days.forEach(d => ctxOf[d] = makeCtx(state, d));
   const work = s => (+s.beratKg || 0) / ctx0.rate + ctx0.leg([depot.lat, depot.lng], [s.lat, s.lng], null, 40).min * 0.9;
   const cap = {}; days.forEach(d => cap[d] = dayCapacity(state, d, depot, vehicles));
-  // Frekuensi kirim (Nx seminggu) menentukan jumlah kunjungan; hari tetap (opsional) dipakai lebih dulu, sisanya diisi otomatis berjarak rata.
-  const freqOf = s => { const f = Math.round(+s.frek || 0); return f > 0 ? f : ((s.hariTetap || []).length || 0); };
-  const multi = valid.filter(s => (s.hariTetap && s.hariTetap.length) || freqOf(s) > 1).sort((a, b) => freqOf(b) - freqOf(a));
-  const circ = (a, b) => { const i = days.indexOf(a), j = days.indexOf(b); const x = Math.abs(i - j); return Math.min(x, D - x); };
-  const fixedIds = new Set(multi.map(s => s.id));
-  const pinned = s => !!(s.hariTetap && s.hariTetap.length); // punya hari tetap: tidak dipindah
+  // Frekuensi kirim (Nx seminggu) menentukan jumlah kunjungan; harinya dipilih otomatis berjarak rata di antara hari beroperasi store.
+  const freqOf = s => Math.round(+s.frek || 0);
+  const multi = valid.filter(s => restricted(s) || freqOf(s) > 1).sort((a, b) => freqOf(b) - freqOf(a) || okDays(a).length - okDays(b).length);
+  const multiIds = new Set(multi.map(s => s.id));
+  const fixedIds = new Set(valid.filter(s => freqOf(s) > 1).map(s => s.id)); // >1x seminggu: jarak antar hari dijaga, tidak dipindah satu-satu
   let warned = false;
   // tetangga terdekat tiap store (membatasi pencarian agar cepat untuk ratusan store)
   const NB = {};
@@ -263,39 +270,29 @@ function buildPlan(state) {
   function assign(rnd) {
     const load = {}, perDay = {}; days.forEach(d => { load[d] = 0; perDay[d] = []; });
     for (const s of multi) {
+      const A = okDays(s), K = A.length;
       let f = freqOf(s);
-      if (f > D) { if (!warned) warn.push("\"" + s.nama + "\": frekuensi " + f + "x seminggu melebihi " + D + " hari distribusi, dibatasi " + D + "x."); f = D; }
-      let fixed = (s.hariTetap || []).filter(d => days.includes(d));
-      if (!warned && fixed.length < (s.hariTetap || []).length) warn.push("\"" + s.nama + "\": sebagian hari tetap bukan hari distribusi.");
-      if (fixed.length > f) { if (!warned) warn.push("\"" + s.nama + "\": hari tetap (" + fixed.length + " hari) lebih banyak dari frekuensi " + f + "x seminggu, dipakai " + f + " hari pertama."); fixed = fixed.slice(0, f); }
+      if (f > K) { if (!warned) warn.push("\"" + s.nama + "\": frekuensi " + f + "x seminggu melebihi " + K + " hari beroperasi yang bisa diantar, dibatasi " + K + "x."); f = K; }
       const w = work(s);
-      let ds;
-      if (!fixed.length) {
-        const opts = [];
-        for (let o = 0; o < D; o++) {
-          const set = []; for (let i = 0; i < f; i++) set.push(days[(o + Math.round(i * D / f)) % D]);
-          if (opts.some(x => x.set.join() === set.slice().sort((a, b) => a - b).join())) continue;
-          const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
-          opts.push({ score, set: set.slice().sort((a, b) => a - b) });
-        }
-        opts.sort((a, b) => a.score - b.score);
-        let pick = opts[0];
-        if (rnd) { const near = opts.filter(x => x.score <= opts[0].score * 1.15 + 1e-9); pick = near[Math.floor(rnd() * near.length)]; }
-        ds = pick.set;
-      } else {
-        ds = fixed.slice();
-        while (ds.length < f) {
-          let best = null;
-          for (const d of days) { if (ds.includes(d)) continue; const gap = Math.min(...ds.map(x => circ(x, d))); const r = (load[d] + w) / Math.max(1, cap[d]); if (!best || gap > best.gap || (gap === best.gap && r < best.r)) best = { d, gap, r }; }
-          ds.push(best.d);
-        }
+      // pilihan himpunan hari berjarak rata di antara hari beroperasi; pilih yang beban harinya paling ringan
+      const opts = [];
+      for (let o = 0; o < K; o++) {
+        const set = []; for (let i = 0; i < f; i++) set.push(A[(o + Math.round(i * K / f)) % K]);
+        const key = set.slice().sort((a, b) => a - b);
+        if (opts.some(x => x.set.join() === key.join())) continue;
+        const score = Math.max(...set.map(d => (load[d] + w) / Math.max(1, cap[d])));
+        opts.push({ score, set: key });
       }
+      opts.sort((a, b) => a.score - b.score);
+      let pick = opts[0];
+      if (rnd && opts.length > 1) { const nr = opts.filter(x => x.score <= opts[0].score * 1.15 + 1e-9); pick = nr[Math.floor(rnd() * nr.length)]; }
+      const ds = pick.set.slice();
       ds.sort((a, b) => a - b);
       ds.forEach(d => { perDay[d].push(s); load[d] += w; });
     }
     warned = true;
     // frekuensi 1x: sapuan sudut agar satu hari mengelompok secara geografis
-    const flex = valid.filter(s => !fixedIds.has(s.id)).map(s => ({ s, a: Math.atan2(s.lat - depot.lat, s.lng - depot.lng) })).sort((x, y) => x.a - y.a);
+    const flex = valid.filter(s => !multiIds.has(s.id)).map(s => ({ s, a: Math.atan2(s.lat - depot.lat, s.lng - depot.lng) })).sort((x, y) => x.a - y.a);
     if (flex.length) {
       let gi = 0, gap = -1; // mulai dari celah sudut terbesar
       for (let i = 0; i < flex.length; i++) { const nx = flex[(i + 1) % flex.length]; let g = nx.a - flex[i].a; if (g <= 0) g += 2 * Math.PI; if (g > gap) { gap = g; gi = (i + 1) % flex.length; } }
@@ -321,8 +318,8 @@ function buildPlan(state) {
       for (const d of days) {
         const left = res[d].left.slice();
         for (const s of left) {
-          if (pinned(s)) continue;
-          const others = days.filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
+          if (fixedIds.has(s.id)) continue;
+          const others = okDays(s).filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
           for (const o of others) {
             const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles, rnd);
             if (!trial.left.includes(s) && trial.left.length <= res[o].left.length) {
@@ -448,7 +445,7 @@ function buildPlan(state) {
         const cv = vehEval(d, vi, Sd.R[vi], false); if (!cv) continue; Sd.vc[vi] = cv.cost;
         const before = dayCost(sol[d]);
         let best = null;
-        for (const o of days) {
+        for (const o of okDays(s)) {
           if (o === d || sol[o].R.some(L => L.some(r => r.some(x => x.id === s.id))) || sol[o].left.some(x => x.id === s.id)) continue;
           const So = dayLS(o, { R: sol[o].R, left: sol[o].left.concat([s]), vc: sol[o].vc });
           if (So.left.some(x => x.id === s.id)) continue;

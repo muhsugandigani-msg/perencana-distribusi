@@ -35,8 +35,16 @@
    "frek": 0,
    "antaran": "Origin",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s1",
@@ -53,14 +61,14 @@
    "frek": 5,
    "antaran": "Tujuan",
    "loading": "Menaikkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     0,
     1,
     2,
     3,
     4
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s2",
@@ -77,8 +85,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s3",
@@ -95,8 +111,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s4",
@@ -113,8 +137,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s5",
@@ -131,8 +163,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s6",
@@ -149,8 +189,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s7",
@@ -167,11 +215,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     0,
     3
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s8",
@@ -188,11 +236,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     1,
     4
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s9",
@@ -209,8 +257,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s10",
@@ -227,8 +283,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s11",
@@ -245,8 +309,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s12",
@@ -263,8 +335,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s13",
@@ -281,11 +361,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     2,
     5
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s14",
@@ -302,11 +382,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     0,
     3
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s15",
@@ -323,8 +403,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s16",
@@ -341,8 +429,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s17",
@@ -359,8 +455,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s18",
@@ -377,8 +481,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s19",
@@ -395,8 +507,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s20",
@@ -413,8 +533,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s21",
@@ -431,8 +559,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s22",
@@ -449,8 +585,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s23",
@@ -467,8 +611,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s24",
@@ -485,8 +637,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s25",
@@ -503,8 +663,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s26",
@@ -521,11 +689,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     2,
     5
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s27",
@@ -542,8 +710,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s28",
@@ -560,8 +736,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s29",
@@ -578,8 +762,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s30",
@@ -596,8 +788,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s31",
@@ -614,8 +814,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s32",
@@ -632,8 +840,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s33",
@@ -650,8 +866,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s34",
@@ -668,8 +892,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s35",
@@ -686,8 +918,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s36",
@@ -704,8 +944,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s37",
@@ -722,8 +970,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s38",
@@ -740,8 +996,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s39",
@@ -758,8 +1022,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s40",
@@ -776,8 +1048,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s41",
@@ -794,8 +1074,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   },
   {
    "id": "s42",
@@ -812,11 +1100,11 @@
    "frek": 2,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [
+   "alamatAuto": true,
+   "hariOperasi": [
     1,
     4
-   ],
-   "alamatAuto": true
+   ]
   },
   {
    "id": "s43",
@@ -833,8 +1121,16 @@
    "frek": 1,
    "antaran": "Tujuan",
    "loading": "Menurunkan",
-   "hariTetap": [],
-   "alamatAuto": true
+   "alamatAuto": true,
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   }
  ],
  "breaks": {

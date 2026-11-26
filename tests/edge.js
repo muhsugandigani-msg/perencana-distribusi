@@ -12,7 +12,9 @@ function run(name,mod){const S=base();mod(S);const t=Date.now();const P=E.buildP
  Object.values(byV).forEach(l=>{for(let i=1;i<l.length;i++)if(l[i].t0<l[i-1].ret-0.01)issues.push('overlap shift');if(l.length>+l[0].veh.maksShift)issues.push('too many shifts')});
  // visit counts
  const cnt={};P.trips.forEach(t=>t.stops.forEach(s=>cnt[s.store.id]=(cnt[s.store.id]||0)+1));P.unserved.forEach(u=>cnt[u.store.id]=(cnt[u.store.id]||0)+1);
- S.stores.filter(s=>s.aktif!==false&&s.antaran!=='Origin'&&s.lat!=null&&+s.frek>0).forEach(s=>{const exp=s.hariTetap.length?s.hariTetap.filter(d=>S.params.hari[d]).length:Math.min(+s.frek,S.params.hari.filter(Boolean).length);if((cnt[s.id]||0)!==exp)issues.push('count '+s.nama+' '+(cnt[s.id]||0)+'/'+exp)});
+ S.stores.filter(s=>s.aktif!==false&&s.antaran!=='Origin'&&s.lat!=null&&+s.frek>0).forEach(s=>{const ops=(s.hariOperasi||[0,1,2,3,4,5,6]).filter(d=>S.params.hari[d]);const exp=Math.min(+s.frek,ops.length);if((cnt[s.id]||0)!==exp)issues.push('count '+s.nama+' '+(cnt[s.id]||0)+'/'+exp)});
+ // only on operating days
+ P.trips.forEach(t=>t.stops.forEach(x=>{const o=x.store.hariOperasi||[0,1,2,3,4,5,6];if(!o.includes(t.day))issues.push('closed day '+x.store.nama+'@'+t.day)}));
  // same store twice same day
  const sd={};P.trips.forEach(t=>t.stops.forEach(s=>{const k=t.day+s.store.id;if(sd[k])issues.push('dup day '+s.store.nama);sd[k]=1}));
  console.log(name,'| rit',P.trips.length,'| unserved',P.unserved.map(u=>u.store.nama.replace('Lazuna Chicken ','')+'@'+E.HARI[u.day]+': '+u.reason).join('; '),'| warn',P.warn.length,P.warn.slice(0,3).join(' / '),'| issues',[...new Set(issues)].join(','),'|',Date.now()-t+'ms');return P;}
@@ -29,7 +31,8 @@ run('speed empty',S=>{S.vehicles[0].kecepatan=null});
 run('shift 2h',S=>{S.params.jamShift=2});
 run('3 days only',S=>{S.params.hari=[true,false,true,false,true,false,false]});
 run('sunday on',S=>{S.params.hari[6]=true});
-run('freq7 no fixed',S=>{S.stores.forEach(s=>s.hariTetap=[]);S.stores[3].frek=7});
+run('freq7 all days',S=>{S.stores.forEach(s=>s.hariOperasi=[0,1,2,3,4,5,6]);S.stores[3].frek=7});
+run('ops Sen-Jum 2x, ops Sab 1x, ops kosong',S=>{S.stores[3].hariOperasi=[0,1,2,3,4];S.stores[3].frek=2;S.stores[4].hariOperasi=[5];S.stores[4].frek=1;S.stores[5].hariOperasi=[];S.stores[6].hariOperasi=[2];S.stores[6].frek=3});
 run('no coords',S=>{S.stores[6].lat=null});
 run('rate 0',S=>{S.params.rasioKgMenit=0});
 run('no breaks',S=>{for(const d in S.breaks)S.breaks[d]=[]});

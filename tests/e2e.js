@@ -22,7 +22,7 @@ const log=(...a)=>console.log('•',...a);
   await p.fill('[data-link="3"]','-5.1374438, 119.5136457');
   await p.fill('[data-k="stores.1.beratKg"]','1200.5'); await p.selectOption('[data-k="stores.1.frek"]','2');
   await p.fill('[data-k="stores.2.beratKg"]','800'); await p.fill('[data-k="stores.2.tutup"]','11:00');
-  await p.fill('[data-k="stores.3.beratKg"]','2500'); await p.click('[data-chip="stores.3.hariTetap|2"]');
+  await p.fill('[data-k="stores.3.beratKg"]','2500'); await p.click('[data-chip="stores.3.hariOperasi|2"]');
   await p.selectOption('[data-k="stores.4.loading"]','Menaikkan'); await p.fill('[data-k="stores.4.beratKg"]','1500'); await p.selectOption('[data-k="stores.4.frek"]','5');
   // search + delete while filtered
   await p.click('#addS'); await p.fill('[data-k="stores.5.nama"]','Hapus Saya'); await p.fill('#storeSearch','hapus'); await p.waitForTimeout(100);
@@ -48,13 +48,13 @@ const log=(...a)=>console.log('•',...a);
   const fj = await dl(()=>p.click('#btnMenu').then(()=>p.click('[data-act="export"]'))); log('json', fj);
   const ft = await dl(()=>p.click('#btnMenu').then(()=>p.click('[data-act="template"]'))); log('template', ft);
   const fh = await dl(()=>p.click('#btnMenu').then(()=>p.click('[data-act="html"]'))); log('html', fh, fs.statSync(fh).size);
-  const before = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariTetap])));
+  const before = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariOperasi])));
   // import store from exported excel (Store sheet), replace
   await p.click('#btnMenu'); const [fc]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc.setFiles(fx); await p.waitForTimeout(300); log('imp', await p.textContent('.imp')); await p.waitForTimeout(200);
-  const after = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariTetap])));
+  const after = await p.evaluate(()=>JSON.stringify(state.stores.map(s=>[s.nama,s.beratKg,s.lat,s.lng,s.buka,s.tutup,s.frek,s.antaran,s.loading,s.hariOperasi])));
   log('excel roundtrip equal:', before===after); if(before!==after){console.log(before);console.log(after);}
   // template import
-  await p.click('#btnMenu'); const [fc2]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc2.setFiles(ft); await p.waitForTimeout(300); log('after template add', await p.evaluate(()=>JSON.stringify(state.stores.slice(-3).map(s=>[s.nama,s.lat,s.lng,s.beratKg,s.frek,s.antaran,s.loading,s.hariTetap,s.buka]))));
+  await p.click('#btnMenu'); const [fc2]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="importStore"]')]); await fc2.setFiles(ft); await p.waitForTimeout(300); log('after template add', await p.evaluate(()=>JSON.stringify(state.stores.slice(-3).map(s=>[s.nama,s.lat,s.lng,s.beratKg,s.frek,s.antaran,s.loading,s.hariOperasi,s.buka]))));
   // json import
   await p.click('#btnMenu'); const [fc3]=await Promise.all([p.waitForEvent('filechooser'), p.click('[data-act="import"]')]); await fc3.setFiles(fj); await p.waitForTimeout(300); log('json import stores', await p.evaluate(()=>state.stores.length));
   // sample reload
