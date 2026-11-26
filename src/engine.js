@@ -345,11 +345,61 @@ function buildPlan(state) {
       sh++; if (sh > (+v.maksShift || 1)) return null;
       const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), detail);
       if (!r.ok) return null;
-      cost += W.rit + r.dur + W.km * r.km;
+      cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi];
       if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: sh }));
       t = r.end;
     }
     return { cost, trips };
+  }
+  // Prioritas bahan bakar: kendaraan bensin diberi biaya lebih tinggi agar tugas diutamakan ke kendaraan solar
+  const PS = state.params.prioritasSolar || {};
+  const psOn = PS.aktif !== false;
+  const psF = { ringan: 1.15, sedang: 1.35, kuat: 1.8 }[PS.tingkat] || 1.35;
+  const isBensin = v => /bensin|pertalite|pertamax|gasoline/i.test(v.bbm || "");
+  const fuelF = vehicles.map(v => psOn && isBensin(v) ? psF : 1);
+  const share = fuelF.map(f => 1 / f); // porsi adil: kendaraan bensin mendapat porsi lebih kecil
+  // statistik satu kendaraan di satu hari (untuk fairness)
+  const stCache = new Map();
+  function vehStats(d, vi, list) {
+    const key = d + "|" + vi + "|" + list.map(r => r.map(x => x.id).join(",")).join("/");
+    if (stCache.has(key)) return stCache.get(key);
+    const ctx = ctxOf[d], v = vehicles[vi]; evals++;
+    let t = ctx.start, sh = 0; const o = { cost: 0, rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0 };
+    let res = o;
+    for (const stops of list) {
+      if (!stops.length) continue;
+      sh++; if (sh > (+v.maksShift || 1)) { res = null; break; }
+      const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), false);
+      if (!r.ok) { res = null; break; }
+      o.cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi]; o.rit++; o.toko += stops.length; o.jam += r.dur; o.kg += r.kgDel + r.kgPick; o.km += r.km; if (sh >= 2) o.s2++;
+      t = r.end;
+    }
+    if (stCache.size > 200000) stCache.clear();
+    stCache.set(key, res); return res;
+  }
+  // Fairness: pemerataan beban antar kendaraan (penalti = simpangan relatif kuadrat terhadap rata-rata)
+  const FP = state.params.fairness || {};
+  const fairOn = !!FP.aktif && vehicles.length > 1;
+  const FW = { ringan: 600, sedang: 2000, kuat: 6000 }[FP.tingkat] || 2000;
+  const fKeys = fairOn ? ["rit", "toko", "jam", "kg", "km", "s2"].filter(k => FP[k]) : [];
+  const capV = vehicles.map(v => +v.kapasitasKg || 1);
+  function fairPen(T) { // T: array per kendaraan {rit,toko,jam,kg,km,s2}
+    if (!fKeys.length) return 0;
+    let pen = 0;
+    for (const k of fKeys) {
+      let idx = vehicles.map((v, i) => i);
+      if (k === "s2") idx = idx.filter(i => (+vehicles[i].maksShift || 1) >= 2);
+      if (idx.length < 2) continue;
+      const xs = idx.map(i => (k === "kg" && FP.kgRelatif !== false ? T[i].kg / capV[i] : T[i][k]) / (k === "s2" ? 1 : share[i]));
+      const m = xs.reduce((a, b) => a + b, 0) / xs.length; if (m <= 1e-9) continue;
+      pen += FW * xs.reduce((a, x) => a + ((x - m) / m) ** 2, 0) / xs.length;
+    }
+    return pen;
+  }
+  function totals(sol) {
+    const T = vehicles.map(() => ({ rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0 }));
+    days.forEach(d => sol[d].R.forEach((L, vi) => { const st = vehStats(d, vi, L); if (st) for (const k in T[vi]) T[vi][k] += st[k]; }));
+    return T;
   }
   function toDaySol(d, trips, left) {
     const R = vehicles.map(() => []);
@@ -458,6 +508,59 @@ function buildPlan(state) {
     return moved;
   }
 
+  /* 5) Fairness: pindah/tukar store antar kendaraan di hari yang sama bila beban jadi lebih merata */
+  function fairLS(sol) {
+    let T = totals(sol), pen = fairPen(T), moved = 0;
+    const sub = (a, b) => { const o = {}; for (const k in a) o[k] = a[k] - (b ? b[k] : 0); return o; };
+    const add = (a, b) => { const o = {}; for (const k in a) o[k] = a[k] + (b ? b[k] : 0); return o; };
+    for (let round = 0; round < 6 && evals < EVAL_MAX * 2.5; round++) {
+      let any = false;
+      for (const d of days) {
+        const S = sol[d];
+        for (let va = 0; va < vehicles.length; va++) for (let ra = 0; ra < S.R[va].length; ra++) for (let i = 0; i < (S.R[va][ra] || []).length; i++) {
+          if (evals > EVAL_MAX * 2.5) break;
+          const s = S.R[va][ra][i];
+          const stA0 = vehStats(d, va, S.R[va]); if (!stA0) continue;
+          const La = S.R[va].map(r => r.slice()); La[ra].splice(i, 1); const LaC = La.filter(r => r.length);
+          const stA = vehStats(d, va, LaC); if (!stA) continue;
+          let best = null;
+          for (let vb = 0; vb < vehicles.length; vb++) {
+            if (vb === va) continue;
+            const stB0 = vehStats(d, vb, S.R[vb]); if (!stB0) continue;
+            const slotsB = S.R[vb].map((r, k) => k).filter(k => S.R[vb][k].length);
+            if (slotsB.length < (+vehicles[vb].maksShift || 1)) slotsB.push(-1);
+            for (const rb of slotsB) {
+              const base = rb === -1 ? [] : S.R[vb][rb];
+              if (rb !== -1 && valid.length > 80 && !near(s, base)) continue;
+              for (let p = 0; p <= base.length; p++) {
+                const Lb = S.R[vb].map(r => r.slice()); const nr = base.slice(0, p).concat([s], base.slice(p)); if (rb === -1) Lb.push(nr); else Lb[rb] = nr;
+                const stB = vehStats(d, vb, Lb); if (!stB) continue;
+                const T2 = T.map(x => ({ ...x }));
+                T2[va] = add(sub(T[va], stA0), stA); T2[vb] = add(sub(T[vb], stB0), stB);
+                const delta = (stA.cost - stA0.cost) + (stB.cost - stB0.cost) + fairPen(T2) - pen;
+                if (delta < -1 && (!best || delta < best.delta)) best = { delta, vb, Lb, T2 };
+              }
+            }
+          }
+          if (best) { S.R[va] = LaC; S.R[best.vb] = best.Lb; S.vc[va] = vehStats(d, va, LaC).cost; S.vc[best.vb] = vehStats(d, best.vb, best.Lb).cost; T = best.T2; pen = fairPen(T); moved++; any = true; i = 1e9; ra = 1e9; }
+        }
+        sol[d] = dayLSfair(d, sol[d]);
+      }
+      if (!any) break;
+    }
+    return moved;
+  }
+  // rapikan urutan dalam tiap rit tanpa memindah store antar kendaraan (agar pemerataan tidak dibatalkan)
+  function dayLSfair(d, S) {
+    const R = S.R.map(L => L.map(r => r.slice())), vc = S.vc.slice();
+    for (let vi = 0; vi < vehicles.length; vi++) for (let ri = 0; ri < R[vi].length; ri++) {
+      const simR = st => { const L = R[vi].map(r => r.slice()); L[ri] = st; const r = vehEval(d, vi, L, false); return r ? { ok: true, ret: r.cost } : { ok: false }; };
+      const nr = improve(R[vi][ri], simR); const L = R[vi].map(r => r.slice()); L[ri] = nr; const r = vehEval(d, vi, L, false);
+      if (r && r.cost < vc[vi] - 0.5) { R[vi] = L; vc[vi] = r.cost; }
+    }
+    return { R, left: S.left, vc };
+  }
+
   /* --- jalankan: solusi awal (seperti sebelumnya) lalu multi-start + pencarian lokal --- */
   const t0 = Date.now();
   const initial = construct(assign(null), null);
@@ -480,10 +583,14 @@ function buildPlan(state) {
   }
   for (let r = 0; r < 3 && interDay(best); r++) {}
   bestCost = solCost(best);
+  const mNoFair = fairOn ? metric(best) : null; const TnoFair = fairOn ? totals(best) : null;
+  if (fairOn) fairLS(best);
   const res = {};
   days.forEach(d => { const S = best[d]; const trips = []; S.R.forEach((L, vi) => { const r = vehEval(d, vi, L, true); if (r) trips.push(...r.trips); }); res[d] = { trips, left: S.left }; });
   const mBest = metric(best);
   const opt = { awal: mInit, akhir: mBest, starts, ms: Date.now() - t0, bobot: W };
+  opt.solar = { aktif: psOn && fuelF.some(f => f > 1) && fuelF.some(f => f === 1), tingkat: PS.tingkat || "sedang" };
+  if (fairOn) { opt.fair = { kriteria: fKeys, tingkat: FP.tingkat || "sedang", sebelum: TnoFair, sesudah: totals(best), mSebelum: mNoFair, cap: capV, kgRelatif: FP.kgRelatif !== false }; }
   const unserved = [];
   days.forEach(d => res[d].left.forEach(s => {
     const ctx = makeCtx(state, d);

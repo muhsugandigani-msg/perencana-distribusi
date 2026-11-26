@@ -7,7 +7,8 @@
    "plat": "DD 0001 LZ",
    "kapasitasKg": 6000,
    "kecepatan": 40,
-   "maksShift": 2
+   "maksShift": 2,
+   "bbm": "Solar"
   },
   {
    "id": "v2",
@@ -16,7 +17,8 @@
    "plat": "DD 0002 LZ",
    "kapasitasKg": 3000,
    "kecepatan": 40,
-   "maksShift": 1
+   "maksShift": 1,
+   "bbm": "Solar"
   }
  ],
  "stores": [
@@ -1346,6 +1348,21 @@
      "aktif": true
     }
    ]
+  },
+  "fairness": {
+   "aktif": false,
+   "tingkat": "sedang",
+   "rit": true,
+   "toko": true,
+   "jam": true,
+   "kg": true,
+   "km": false,
+   "s2": false,
+   "kgRelatif": true
+  },
+  "prioritasSolar": {
+   "aktif": true,
+   "tingkat": "sedang"
   }
  }
 }
