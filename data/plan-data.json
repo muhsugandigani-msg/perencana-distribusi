@@ -1168,6 +1168,30 @@
     5,
     6
    ]
+  },
+  {
+   "id": "si6a5ih",
+   "aktif": true,
+   "nama": "Lazuna Chicken Barombong",
+   "alamat": "",
+   "link": "https://maps.app.goo.gl/QCifapDeD8Ji2MAa9",
+   "lat": null,
+   "lng": null,
+   "buka": "07:00",
+   "tutup": "22:00",
+   "beratKg": 500,
+   "frek": 1,
+   "antaran": "Tujuan",
+   "loading": "Menurunkan",
+   "hariOperasi": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ]
   }
  ],
  "breaks": {
@@ -1406,7 +1430,7 @@
   "loadingHariPertama": "malam",
   "mingguMulai": "2026-11-30"
  },
- "_savedAt": 1795674244596,
+ "_savedAt": 1795674824529,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3180,8 +3204,8 @@
   "t": 1795663212669
  },
  "savedPlan": {
-  "at": 1795674244597,
-  "sig": "d8yebn:19112",
+  "at": 1795674824529,
+  "sig": "1y4vxt2:19387",
   "weekSel": 0,
   "meta": {
    "H": 1,
