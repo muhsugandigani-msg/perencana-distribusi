@@ -533,7 +533,7 @@ function* buildPlanCore(state, opts) {
     const key = d + "|" + vi + "|" + list.map(r => r.map(x => x.id).join(",")).join("/");
     if (stCache.has(key)) return stCache.get(key);
     const ctx = ctxOf[d], v = vehicles[vi]; evals++;
-    let t = ctx.start, sh = 0; const o = { cost: 0, rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0 };
+    let t = ctx.start, sh = 0; const o = { cost: 0, rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0, jam1: 0, jam2: 0, km1: 0, km2: 0, toko1: 0, toko2: 0 };
     let res = o;
     for (const stops of list) {
       if (!stops.length) continue;
@@ -541,6 +541,7 @@ function* buildPlanCore(state, opts) {
       const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), false);
       if (!r.ok) { res = null; break; }
       o.cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi]; o.rit++; o.toko += stops.length; o.jam += r.dur; o.kg += r.kgDel + r.kgPick; o.km += r.km; if (sh >= 2) o.s2++;
+      { const se = Math.min(2, r.shiftEff || sh); o["jam" + se] += r.dur; o["km" + se] += r.km; o["toko" + se] += stops.length; }
       t = r.end;
     }
     if (stCache.size > 200000) stCache.clear();
@@ -548,11 +549,16 @@ function* buildPlanCore(state, opts) {
   }
   // Fairness: pemerataan beban antar kendaraan (penalti = simpangan relatif kuadrat terhadap rata-rata)
   const FP = state.params.fairness || {};
-  const fairOn = false; // fairness dihapus (Gandi 2026-11-26)
+  // Fairness (Gandi 2026-11-26): tugas dibagi merata ke tiap kendaraan dan antar shift 1/2, dari sisi waktu, jarak & jumlah tugas
+  const fairOn = !!FP.aktif;
   const FW = { ringan: 600, sedang: 2000, kuat: 6000 }[FP.tingkat] || 2000;
-  const fKeys = fairOn ? ["rit", "toko", "jam", "kg", "km", "s2"].filter(k => FP[k]) : [];
+  const fKeys = fairOn ? ["jam", "km", "toko"].filter(k => FP[k] !== false) : [];
   const capV = vehicles.map(v => +v.kapasitasKg || 1);
-  const IDLE = Math.max(1500, FW); // penalti satu unit aktif tanpa rit di satu hari distribusi
+  const IDLE = 0;
+  const shiftOn = fairOn && FP.antarShift !== false;
+  // rata-rata per hari shift itu bisa jalan (shift 1 tidak dihitung di hari yang shift 1-nya habis untuk pembersihan)
+  const nS1 = vehicles.map(v => Math.max(1, days.filter(d => vehOnDay(v, d) && !ctxOf[d].skip1).length));
+  const nS2 = vehicles.map(v => Math.max(1, days.filter(d => vehOnDay(v, d)).length));
   function fairPen(T) { // T: array per kendaraan {rit,toko,jam,kg,km,s2}
     if (!fKeys.length) return 0;
     let pen = 0;
@@ -565,10 +571,15 @@ function* buildPlanCore(state, opts) {
       const m = xs.reduce((a, b) => a + b, 0) / xs.length; if (m <= 1e-9) continue;
       pen += FW * xs.reduce((a, x) => a + ((x - m) / m) ** 2, 0) / xs.length;
     }
+    // antar shift: shift 1 dan shift 2 tiap kendaraan 2 shift diratakan (jam, km, jumlah tugas)
+    if (shiftOn) for (let i = 0; i < vehicles.length; i++) {
+      if ((+vehicles[i].maksShift || 1) < 2) continue;
+      for (const k of ["jam", "km", "toko"]) { if (!fKeys.includes(k)) continue; const a = T[i][k + "1"] / nS1[i], b = T[i][k + "2"] / nS2[i], m = (a + b) / 2; if (m > 1e-9) pen += FW * (((a - m) / m) ** 2 + ((b - m) / m) ** 2) / 2; }
+    }
     return pen;
   }
   function totals(sol) {
-    const T = vehicles.map(() => ({ rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0 }));
+    const T = vehicles.map(() => ({ rit: 0, toko: 0, jam: 0, kg: 0, km: 0, s2: 0, jam1: 0, jam2: 0, km1: 0, km2: 0, toko1: 0, toko2: 0 }));
     days.forEach(d => sol[d].R.forEach((L, vi) => { const st = vehStats(d, vi, L); if (st) for (const k in T[vi]) T[vi][k] += st[k]; }));
     return T;
   }
@@ -711,26 +722,28 @@ function* buildPlanCore(state, opts) {
           const stA = vehStats(d, va, LaC); if (!stA) continue;
           let best = null;
           for (let vb = 0; vb < vehicles.length; vb++) {
-            if (vb === va) continue;
-            const stB0 = vehStats(d, vb, S.R[vb]); if (!stB0) continue;
-            const slotsB = S.R[vb].map((r, k) => k).filter(k => S.R[vb][k].length);
-            if (slotsB.length < (+vehicles[vb].maksShift || 1)) slotsB.push(-1);
+            const same = vb === va; // same: pindah antar shift di kendaraan yang sama
+            if (same && (!shiftOn || (+vehicles[va].maksShift || 1) < 2)) continue;
+            const RB = same ? LaC : S.R[vb];
+            const stB0 = same ? stA : vehStats(d, vb, RB); if (!stB0) continue;
+            const slotsB = RB.map((r, k) => k).filter(k => RB[k].length && !(same && RB[k] === La[ra]));
+            if (RB.filter(r => r.length).length < (+vehicles[vb].maksShift || 1)) { slotsB.push(-1); if (same) slotsB.push(-2); }
             for (const rb of slotsB) {
-              const base = rb === -1 ? [] : S.R[vb][rb];
-              if (rb !== -1 && valid.length > 80 && !near(s, base)) continue;
+              const base = rb < 0 ? [] : RB[rb];
+              if (rb >= 0 && valid.length > 80 && !near(s, base)) continue;
               for (let p = 0; p <= base.length; p++) {
-                const Lb = S.R[vb].map(r => r.slice()); const nr = base.slice(0, p).concat([s], base.slice(p)); if (rb === -1) Lb.push(nr); else Lb[rb] = nr;
+                const Lb = RB.map(r => r.slice()); const nr = base.slice(0, p).concat([s], base.slice(p)); if (rb === -1) Lb.push(nr); else if (rb === -2) Lb.unshift(nr); else Lb[rb] = nr;
                 const stB = vehStats(d, vb, Lb); if (!stB) continue;
                 const T2 = T.map(x => ({ ...x }));
-                T2[va] = add(sub(T[va], stA0), stA); T2[vb] = add(sub(T[vb], stB0), stB);
-                // tiap unit aktif harus kebagian rit di setiap hari distribusi: unit yang menganggur di hari itu kena penalti
-                const idleD = (stA.rit === 0 && stA0.rit > 0 ? IDLE : 0) - (stB0.rit === 0 && stB.rit > 0 ? IDLE : 0);
-                const delta = (stA.cost - stA0.cost) + (stB.cost - stB0.cost) + fairPen(T2) - pen + idleD;
+                if (same) T2[va] = add(sub(T[va], stA0), stB); else { T2[va] = add(sub(T[va], stA0), stA); T2[vb] = add(sub(T[vb], stB0), stB); }
+                const idleD = 0;
+                const delta = same ? (stB.cost - stA0.cost) + fairPen(T2) - pen : (stA.cost - stA0.cost) + (stB.cost - stB0.cost) + fairPen(T2) - pen + idleD;
                 if (delta < -1 && (!best || delta < best.delta)) best = { delta, vb, Lb, T2 };
               }
             }
           }
-          if (best) { S.R[va] = LaC; S.R[best.vb] = best.Lb; S.vc[va] = vehStats(d, va, LaC).cost; S.vc[best.vb] = vehStats(d, best.vb, best.Lb).cost; T = best.T2; pen = fairPen(T); moved++; any = true; i = 1e9; ra = 1e9; }
+          if (best && best.vb === va) { S.R[va] = best.Lb.filter(r => r.length); S.vc[va] = vehStats(d, va, S.R[va]).cost; T = best.T2; pen = fairPen(T); moved++; any = true; i = 1e9; ra = 1e9; }
+          else if (best) { S.R[va] = LaC; S.R[best.vb] = best.Lb; S.vc[va] = vehStats(d, va, LaC).cost; S.vc[best.vb] = vehStats(d, best.vb, best.Lb).cost; T = best.T2; pen = fairPen(T); moved++; any = true; i = 1e9; ra = 1e9; }
         }
         sol[d] = dayLSfair(d, sol[d]);
       }
@@ -972,18 +985,6 @@ function* buildPlanCore(state, opts) {
   }));
   const trips = [];
   days.forEach(d => res[d].trips.forEach(t => trips.push(t)));
-  // Fairness aktif: semua unit aktif harus kebagian distribusi; beri tahu bila ada yang menganggur dan kenapa
-  if (fairOn) vehicles.forEach((v, vi) => {
-    if (trips.some(t => t.vIdx === vi)) {
-      const kosong = days.filter(d => vehOnDay(v, d) && !trips.some(t => t.vIdx === vi && t.day === d));
-      if (kosong.length) warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit pada hari " + kosong.map(d => HARI[d]).join(", ") + " karena store hari itu tidak cukup untuk semua unit atau tidak bisa dilayani unit ini (akses, radius, kapasitas, jam kerja).");
-      return;
-    }
-    const dOn = days.filter(d => vehOnDay(v, d));
-    if (!dOn.length) return; // sudah diperingatkan di awal
-    const vj = normJenis(v.jenis), bisa = valid.filter(s => aksesOk(s, vj) && simFlex(ctxOf[dOn[0]], depot, v, ctxOf[dOn[0]].start, 1, [s], false).ok).length;
-    warn.push("Fairness: " + (v.jenis || "Kendaraan") + (v.plat ? " " + v.plat : "") + " tidak mendapat rit minggu ini" + (bisa ? " (beban sudah habis terbagi ke unit lain; naikkan tingkat fairness bila perlu)." : " karena tidak ada store yang bisa dilayaninya (cek akses kendaraan, radius/maks km, atau kapasitas)."));
-  });
   trips.sort((a, b) => a.day - b.day || a.vIdx - b.vIdx || a.shift - b.shift);
   return { depot, vehicles, days, trips, unserved, warn, opt, ctxBreaks: Object.fromEntries(days.map(d => [d, makeCtx(state, d).breaks])), H: ctx0.H };
   }

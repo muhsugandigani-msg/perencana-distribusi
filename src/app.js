@@ -50,6 +50,8 @@ function normalize(s) {
   s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
   s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); x.bbm = /bensin/i.test(x.bbm || "") ? "Bensin" : "Solar"; for (const k of ["maksKmRit", "maksRadiusKm"]) { const v = num(x[k]); if (v != null && v > 0) x[k] = v; else delete x[k]; } if (Array.isArray(x.hariAktif)) { const h = [...new Set(x.hariAktif.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (h.length === 7) delete x.hariAktif; else x.hariAktif = h; } else delete x.hariAktif; });
   s.params.fairness = Object.assign(clone(SAMPLE.params.fairness), isObj(s.params.fairness) ? s.params.fairness : {});
+  // fairness baru (Gandi 2026-11-26): waktu, jarak, jumlah tugas + antar shift; dinyalakan sekali di tingkat sedang
+  if (!s.params.fairness.v2) Object.assign(s.params.fairness, { v2: true, aktif: true, tingkat: "sedang", jam: true, km: true, toko: true, antarShift: true });
   s.params.prioritasSolar = Object.assign(clone(SAMPLE.params.prioritasSolar), isObj(s.params.prioritasSolar) ? s.params.prioritasSolar : {});
   s.params.aktivitas.forEach(x => { x.id = x.id || uid("a"); x.hari = x.hari || [true, true, true, true, true, true, true]; x.waktu = x.waktu === "setelah" ? "setelah" : "sebelum"; });
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
@@ -403,6 +405,16 @@ function tugasCard(p) {
       <h3>Pembagian tugas kendaraan</h3>
       <div class="field"><label class="chk"><input type="checkbox" data-k="params.optimasiMendalam" ${p.optimasiMendalam !== false ? "checked" : ""}> <b>Optimasi mendalam</b></label>
         <p class="hint">Setelah plan cepat tampil, mesin mencoba lebih banyak variasi awal (multi-start), memindah store antar hari di tiap variasi, lalu "bongkar &amp; susun ulang" sekelompok store berdekatan berulang kali. Butuh sekitar 10–20 detik di latar; plan diganti otomatis bila ditemukan yang lebih efisien. Semua aturan (kapasitas, jam, radius) tetap dipatuhi.</p></div>
+      <div class="field"><label class="chk"><input type="checkbox" data-k="params.fairness.aktif" ${F.aktif ? "checked" : ""}> <b>Fairness</b></label>
+        <p class="hint">Tugas dibagi merata ke setiap kendaraan, dan antara shift 1 dan shift 2 pada kendaraan 2 shift. Store dipindah antar kendaraan/shift di hari yang sama bila beban jadi lebih rata, walau total km sedikit naik.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:6px">
+          <label style="display:flex;gap:8px;align-items:center">Tingkat ${lvl("params.fairness.tingkat", F.tingkat || "sedang")}</label>
+          <label class="chk"><input type="checkbox" data-k="params.fairness.jam" ${F.jam !== false ? "checked" : ""}> Waktu (jam kerja)</label>
+          <label class="chk"><input type="checkbox" data-k="params.fairness.km" ${F.km !== false ? "checked" : ""}> Jarak (km)</label>
+          <label class="chk"><input type="checkbox" data-k="params.fairness.toko" ${F.toko !== false ? "checked" : ""}> Jumlah tugas (store)</label>
+          <label class="chk"><input type="checkbox" data-k="params.fairness.antarShift" ${F.antarShift !== false ? "checked" : ""}> Merata antar shift</label>
+        </div>
+        <p class="hint">Antar shift dibandingkan rata-rata per hari (hari yang shift 1-nya habis untuk pembersihan tidak dihitung untuk shift 1). Pemerataan tetap dibatasi kapasitas, jumlah shift, dan jam kerja tiap kendaraan.</p></div>
     </div>`;
 }
 
@@ -1248,6 +1260,7 @@ function exportExcel() {
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)
   { const J = state.params.jalurGudang || {}, g = parseKoordinat(state.params.titikGudang); par.push([], ["Jalur keluar/masuk gudang", state.params.titikGudang ? [J.alamat, J.kota].filter(Boolean).join(", ") || "Diisi" : "Bebas"]); if (g && g.lat != null) par.push(["Koordinat jalur", g.lat + ", " + g.lng]); }
+  { const F = state.params.fairness || {}; par.push([], ["Fairness", F.aktif ? "Aktif, tingkat " + (F.tingkat || "sedang") + " (" + [F.jam !== false && "waktu", F.km !== false && "jarak", F.toko !== false && "jumlah tugas", F.antarShift !== false && "antar shift"].filter(Boolean).join(", ") + ")" : "Tidak aktif"]); }
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);
