@@ -1,0 +1,22 @@
+const { chromium } = require('playwright'); const fs = require('fs');
+const DATA = JSON.parse(fs.readFileSync('/home/user/perencana-distribusi/data/plan-data.json', 'utf8'));
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1400, height: 900 } }); const errs=[]; p.on('pageerror', e => errs.push(e.message));
+  await p.route(/api\.github\.com|valhalla|tile/, r => r.abort());
+  await p.route(/nominatim/, r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ address: { road: 'Jalan Lingkar Barat', suburb: 'Bira', city: 'Makassar' } }) }));
+  await p.goto('file://' + __dirname + '/local.html');
+  await p.evaluate(d => { localStorage.clear(); const s = d.state || d; delete s.params.jalurGudang; localStorage.setItem(LS_KEY, JSON.stringify(s)); }, DATA); await p.reload(); await p.waitForTimeout(800);
+  await p.click('[data-tab="parameter"]'); await p.waitForTimeout(300);
+  const vals = () => p.evaluate(() => ['gAlamat','gKota','gLat','gLng'].map(id => document.getElementById(id).value).join(' | '));
+  await p.waitForTimeout(2200); console.log('• dibuka (link lama):', await vals());
+  const li = p.locator('input[data-k="params.titikGudang"]'); await li.fill('https://www.google.com/maps/place/x/@-5.0950,119.4850,17z'); await p.waitForTimeout(2200);
+  console.log('• tempel link:', await vals(), '| state:', await p.evaluate(() => JSON.stringify(state.params.jalurGudang)));
+  await p.fill('#gLat', '-5.0960'); await p.fill('#gLng', '119.4870'); await p.waitForTimeout(2200);
+  console.log('• isi lat/lng manual -> link:', await p.evaluate(() => state.params.titikGudang), '|', await vals());
+  const w = await p.evaluate(() => { const i = document.querySelector('[data-k="params.titikGudang"]'); return Math.round(i.getBoundingClientRect().width); }); console.log('• lebar kolom link:', w, 'px');
+  await p.screenshot({ path: __dirname + '/../gate2.png', clip: { x: 0, y: 0, width: 1400, height: 900 }, fullPage: true });
+  await li.fill(''); await p.waitForTimeout(200); console.log('• kosongkan:', JSON.stringify(await vals()), await p.evaluate(() => JSON.stringify(state.params.jalurGudang)));
+  await p.setViewportSize({ width: 390, height: 800 }); await p.click('[data-tab="parameter"]'); await p.waitForTimeout(300);
+  console.log('• overflow HP:', await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1));
+  console.log('ERRORS:', errs.length ? errs.join(' | ') : 'none'); await b.close();
+})();

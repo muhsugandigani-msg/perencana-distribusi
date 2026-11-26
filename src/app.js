@@ -55,6 +55,7 @@ function normalize(s) {
   if (s.params.loadingHariPertama !== "pagi") s.params.loadingHariPertama = "malam";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s.params.mingguMulai || ""))) s.params.mingguMulai = SAMPLE.params.mingguMulai || "2026-11-30";
   s.params.jalanBlok = isObj(s.params.jalanBlok) ? s.params.jalanBlok : clone(SAMPLE.params.jalanBlok);
+  s.params.jalurGudang = isObj(s.params.jalurGudang) ? s.params.jalurGudang : {};
   s.params.jalanBlok.daftar = arrObj(s.params.jalanBlok.daftar).map(x => Object.assign({ id: uid("j"), aktif: true }, x));
   s.jarakJalan = cleanJarak(s.jarakJalan);
   if (!(isObj(s.savedPlan) && Array.isArray(s.savedPlan.weeks) && s.savedPlan.weeks.length && s.savedPlan.weeks.length <= 12 && s.savedPlan.weeks.every(isObj))) delete s.savedPlan;
@@ -235,9 +236,38 @@ document.addEventListener("input", e => {
   // tampilan turunan
   if (el.dataset.ton) { const s = document.getElementById(el.dataset.ton); if (s) s.textContent = ton(v); }
   if (el.dataset.link) onLink(el, v);
+  if (el.dataset.k === "params.titikGudang") onGateLink(v);
   if (el.dataset.alamat != null) { const st = state.stores[+el.dataset.alamat]; if (st) st.alamatAuto = false; }
   save();
 });
+// lat/lng jalur gudang diisi manual -> link diganti koordinat
+document.addEventListener("input", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.gate) return;
+  const la = parseFloat(String(($("#gLat") || {}).value || "").replace(",", ".")), lo = parseFloat(String(($("#gLng") || {}).value || "").replace(",", "."));
+  if (isNaN(la) || isNaN(lo)) return;
+  state.params.titikGudang = la + ", " + lo; const li = document.querySelector('[data-k="params.titikGudang"]'); if (li) { li.value = state.params.titikGudang; li.title = li.value; }
+  onGateLink(state.params.titikGudang, true); save();
+});
+let gateTimer = null;
+function onGateLink(v, fromLatLng) {
+  const P = state.params, r = parseKoordinat(v), msg = $("#gMsg");
+  const li = document.querySelector('[data-k="params.titikGudang"]'); if (li) li.title = v || "";
+  if (!v) { P.jalurGudang = {}; ["gAlamat", "gKota", "gLat", "gLng"].forEach(id => { const x = document.getElementById(id); if (x) x.value = ""; }); if (msg) msg.textContent = ""; return; }
+  if (!r || r.lat == null) { if (msg) { msg.className = "msg bad"; msg.textContent = r && r.short ? "Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau isi latitude & longitude." : "Koordinat tidak terbaca dari link."; } return; }
+  if (!fromLatLng) { const la = $("#gLat"), lo = $("#gLng"); if (la) la.value = r.lat; if (lo) lo.value = r.lng; }
+  const J = P.jalurGudang = isObj(P.jalurGudang) ? P.jalurGudang : {};
+  if (J.lat === r.lat && J.lng === r.lng && J.alamat) return;
+  J.lat = r.lat; J.lng = r.lng; J.alamat = ""; J.kota = "";
+  const ga = $("#gAlamat"), gk = $("#gKota"); if (ga) ga.value = ""; if (gk) gk.value = "";
+  if (msg) { msg.className = "msg"; msg.textContent = "Mencari alamat…"; }
+  clearTimeout(gateTimer); gateTimer = setTimeout(async () => {
+    const lat = r.lat, lng = r.lng, g = await reverseGeocode(lat, lng);
+    if (J.lat !== lat || J.lng !== lng) return;
+    const m2 = $("#gMsg");
+    if (g && g.alamat) { J.alamat = g.alamat; J.kota = g.kota || ""; save(); const a2 = $("#gAlamat"), k2 = $("#gKota"); if (a2) a2.value = J.alamat; if (k2) k2.value = J.kota; if (m2) { m2.className = "msg ok"; m2.textContent = "Alamat & kota terisi otomatis"; } }
+    else if (m2) { m2.className = "msg bad"; m2.textContent = "Koordinat terbaca, alamat tidak ditemukan (isi manual)"; }
+  }, 700);
+}
 document.addEventListener("change", e => {
   const el = e.target; if (!el.dataset || !el.dataset.k) return;
   if (el.dataset.rerender) renderTab();
@@ -356,6 +386,7 @@ window.addEventListener("hashchange", () => { const h = location.hash.slice(1); 
 
 function renderTab() {
   ({ kendaraan: renderKendaraan, store: renderStore, istirahat: renderIstirahat, parameter: renderParameter, plan: renderPlan, gantt: renderGantt, peta: renderPeta })[tab]();
+  if (tab === "parameter" && state.params.titikGudang && !(state.params.jalurGudang || {}).alamat) onGateLink(state.params.titikGudang); // isi alamat untuk link lama
 }
 function markDirty() {
   const b = document.getElementById("dirtyBanner"); if (b) b.hidden = !planDirty;
@@ -637,8 +668,15 @@ function renderParameter() {
   </div>
   <div class="card pad" style="display:grid;gap:12px">
     <div class="head"><div><h3>Jalan yang diblok</h3><p class="hint" style="margin-top:4px">Rute di peta tidak akan melewati jalan-jalan ini. Tulis nama jalan seperti di peta (contoh: <b>Tol Reformasi</b>, <b>Ir. Sutami</b>, <b>Jalan Andi Pangeran Pettarani</b>); cukup sebagian nama yang khas. Hitungan waktu plan memakai model jarak tanpa tol di Lalu lintas &amp; jalan.</p></div><button class="btn" type="button" id="addJB">＋ Tambah jalan</button></div>
-    <div class="field"><label>Jalur keluar/masuk gudang</label><input class="in" data-k="params.titikGudang" data-rerender="1" value="${esc(p.titikGudang || "")}" placeholder="Tempel link Google Maps titik jalur, atau koordinat">
-      <p class="hint">Semua rit berangkat dari gudang lewat titik ini dan pulang lewat titik ini juga (mis. simpang masuk jalan lingkar barat). Kosongkan bila kendaraan bebas lewat jalan mana saja. ${(() => { const g = parseKoordinat(p.titikGudang); return !p.titikGudang ? "" : g && g.lat != null ? "<b>Terbaca: " + g.lat.toFixed(5) + ", " + g.lng.toFixed(5) + "</b>" : g && g.short ? '<b style="color:var(--danger,#b42318)">Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau tempel koordinatnya.</b>' : '<b style="color:var(--danger,#b42318)">Koordinat tidak terbaca.</b>'; })()}</p></div>
+    <div class="field"><label>Jalur keluar/masuk gudang</label>
+      <div class="gategrid">
+        <div><span class="hint">Link titik Maps</span><input class="in" data-k="params.titikGudang" value="${esc(p.titikGudang || "")}" title="${esc(p.titikGudang || "")}" placeholder="Tempel link Google Maps"></div>
+        <div><span class="hint">Alamat</span><input class="in" id="gAlamat" data-k="params.jalurGudang.alamat" value="${esc((p.jalurGudang || {}).alamat || "")}" placeholder="Terisi otomatis"></div>
+        <div><span class="hint">Kota/Kabupaten</span><input class="in" id="gKota" data-k="params.jalurGudang.kota" value="${esc((p.jalurGudang || {}).kota || "")}" placeholder="Terisi otomatis"></div>
+        <div><span class="hint">Latitude</span><input class="in mono" id="gLat" data-gate="lat" value="${(() => { const g = parseKoordinat(p.titikGudang); return g && g.lat != null ? g.lat : ""; })()}" placeholder="-5.10"></div>
+        <div><span class="hint">Longitude</span><input class="in mono" id="gLng" data-gate="lng" value="${(() => { const g = parseKoordinat(p.titikGudang); return g && g.lat != null ? g.lng : ""; })()}" placeholder="119.48"></div>
+      </div>
+      <p class="hint">Semua rit berangkat dari gudang lewat titik ini dan pulang lewat titik ini juga (mis. simpang masuk jalan lingkar barat). Tempel link Maps, atau isi latitude &amp; longitude; alamat dan kota terisi otomatis. Kosongkan bila kendaraan bebas lewat jalan mana saja. <span id="gMsg" class="msg">${(() => { const g = parseKoordinat(p.titikGudang); return !p.titikGudang ? "" : g && g.lat != null ? "" : g && g.short ? "Link pendek (maps.app.goo.gl) tidak bisa dibaca; buka link lalu salin alamat lengkapnya, atau isi latitude &amp; longitude." : "Koordinat tidak terbaca dari link."; })()}</span></p></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-k="params.jalanBlok.semuaTol" ${p.jalanBlok.semuaTol !== false ? "checked" : ""}> <span><b>Blok semua jalan tol</b> <span class="hint">(Tol Reformasi, Tol Ir. Sutami, Tol Pelabuhan, dan tol lain)</span></span></label>
     <div style="display:grid;gap:6px">${p.jalanBlok.daftar.map((j, i) => `<div class="brow" style="grid-template-columns:auto minmax(0,1fr) auto"><input type="checkbox" data-k="params.jalanBlok.daftar.${i}.aktif" ${j.aktif !== false ? "checked" : ""} aria-label="Aktif"><input class="in" data-k="params.jalanBlok.daftar.${i}.nama" value="${esc(j.nama || "")}" placeholder="Nama jalan, mis. Tol Reformasi"><button class="btn icon" type="button" data-del="params.jalanBlok.daftar|${i}" aria-label="Hapus">✕</button></div>`).join("") || '<span class="off">Belum ada jalan yang diblok.</span>'}</div>
   </div>
@@ -1205,7 +1243,7 @@ function exportExcel() {
   const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio loading di store (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)
-  par.push([], ["Jalur keluar/masuk gudang", state.params.titikGudang || "Bebas"]);
+  { const J = state.params.jalurGudang || {}, g = parseKoordinat(state.params.titikGudang); par.push([], ["Jalur keluar/masuk gudang", state.params.titikGudang ? [J.alamat, J.kota].filter(Boolean).join(", ") || "Diisi" : "Bebas"]); if (g && g.lat != null) par.push(["Koordinat jalur", g.lat + ", " + g.lng]); }
   par.push([], ["Jalan yang diblok", ""], ["Blok semua jalan tol", state.params.jalanBlok.semuaTol !== false ? "Ya" : "Tidak"]);
   state.params.jalanBlok.daftar.forEach(j => par.push([j.nama, j.aktif !== false ? "Aktif" : "Nonaktif"]));
   par.push([], ["Jam istirahat", "Hari"]);

@@ -6,6 +6,7 @@
 <style>
 /*LEAFLET_CSS*/
 .mvbtns{display:flex;gap:4px;align-items:center;justify-content:flex-end}.mvbtns .btn.sm{padding:4px 7px;font-size:11px;line-height:1}.mvbtns .btn:disabled{opacity:.3;cursor:default}
+.gategrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,2fr) minmax(0,1.3fr) minmax(0,.8fr) minmax(0,.8fr);gap:8px}.gategrid>div{display:grid;gap:3px;min-width:0}.gategrid .in{width:100%;min-width:0;text-overflow:ellipsis}@media (max-width:760px){.gategrid{grid-template-columns:1fr 1fr}.gategrid>div:first-child,.gategrid>div:nth-child(2){grid-column:1/-1}}
 </style>
 <style>
 /* Layout: header berisi aksi utama, tab langkah 1-4 untuk input, tab hasil (Plan, Gantt, Peta). Nuansa rambu jalan + papan logistik. */
