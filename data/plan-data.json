@@ -1446,7 +1446,7 @@
   "tingkatOptimasi": "sedang",
   "rasioGudangKgMenit": 60
  },
- "_savedAt": 1795762253904,
+ "_savedAt": 1795762467198,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3392,7 +3392,7 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795762253904,
+  "at": 1795762467198,
   "sig": "6gmket:20249",
   "weekSel": 0,
   "meta": {
@@ -7332,7 +7332,7 @@
       "unserved": 0
      },
      "starts": 80,
-     "ms": 54471,
+     "ms": 20623,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
