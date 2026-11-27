@@ -1443,7 +1443,7 @@
   "metodeZona": true,
   "subZona": true
  },
- "_savedAt": 1795734876017,
+ "_savedAt": 1795739690149,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3389,8 +3389,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795732598346,
-  "sig": "1i9q9oc:20238",
+  "at": 1795739690149,
+  "sig": "6dzvga:20251",
   "weekSel": 0,
   "meta": {
    "H": 1,
@@ -3431,7 +3431,7 @@
      {
       "$v": "v1",
       "d": {
-       "aktif": false,
+       "aktif": true,
        "jenis": "CDD Box",
        "plat": "DD 0001 LZ",
        "kapasitasKg": 6000,
@@ -3443,7 +3443,7 @@
      {
       "$v": "vtt5ge9",
       "d": {
-       "aktif": false,
+       "aktif": true,
        "jenis": "Pickup Box",
        "plat": "DD 0002 LZ",
        "kapasitasKg": 1500,
@@ -3620,7 +3620,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -3825,7 +3825,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -3998,7 +3998,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -4212,7 +4212,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -4419,7 +4419,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -4586,7 +4586,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -4800,7 +4800,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -5007,7 +5007,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -5222,7 +5222,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -5437,7 +5437,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -5645,7 +5645,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -5816,7 +5816,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -5979,7 +5979,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -6185,7 +6185,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -6344,7 +6344,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -6556,7 +6556,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -6761,7 +6761,7 @@
       "veh": {
        "$v": "v1",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "CDD Box",
         "plat": "DD 0001 LZ",
         "kapasitasKg": 6000,
@@ -6928,7 +6928,7 @@
       "veh": {
        "$v": "vtt5ge9",
        "d": {
-        "aktif": false,
+        "aktif": true,
         "jenis": "Pickup Box",
         "plat": "DD 0002 LZ",
         "kapasitasKg": 1500,
@@ -7001,7 +7001,8 @@
          6
         ],
         "kota": "Kota Makassar",
-        "alamatAuto": true
+        "alamatAuto": true,
+        "zonaManual": 4
        }
       },
       "reason": "Waktu/kapasitas armada di hari ini sudah penuh"
@@ -7184,7 +7185,7 @@
       "unserved": 7
      },
      "starts": 160,
-     "ms": 30870,
+     "ms": 45495,
      "bobot": {
       "unserved": 10000,
       "rit": 60,
