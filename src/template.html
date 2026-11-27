@@ -124,6 +124,11 @@ select.in { padding-right: 4px; }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
 .sub { display: block; color: var(--muted); font: 400 11px/1.2 var(--f-mono); margin-top: 3px; text-align: right; }
 .hint { color: var(--muted); font-size: 12px; }
+.qhelp { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; margin-left: 6px; padding: 0; border-radius: 50%; border: 1.5px solid var(--muted); background: transparent; color: var(--muted); font: 700 11px/1 var(--f-body); cursor: help; vertical-align: middle; flex: none; text-transform: none; letter-spacing: 0; }
+.qhelp:hover, .qhelp:focus-visible { border-color: var(--fg); color: var(--fg); outline: none; }
+h2 .qhelp, h3 .qhelp { width: 19px; height: 19px; font-size: 12px; position: relative; top: -2px; }
+.qtipbox { position: fixed; z-index: 3000; max-width: min(340px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 8px; background: #17201d; color: #f4f2ee; font: 400 12.5px/1.45 var(--f-body); box-shadow: 0 6px 24px rgba(0,0,0,.25); text-transform: none; letter-spacing: 0; }
+.qtipbox b { color: #fff; } .qtipbox .hint { color: #cfd4d1; }
 .msg { font-size: 11px; margin-top: 3px; }
 .in.auto { background: transparent; border-color: transparent; color: var(--muted); cursor: default; }
 .in.auto:focus { border-color: transparent; }
@@ -308,7 +313,7 @@ details.adv[open] summary { margin-bottom: 12px; }
   <section class="panel" id="p-plan" hidden></section>
   <section class="panel" id="p-gantt" hidden></section>
   <section class="panel" id="p-peta" hidden>
-    <div class="head"><div><h2>Peta Rute</h2><p>Peta dasar abu-abu, hanya rute dan titik store yang berwarna. Pilih semua hari (warna per hari) atau satu hari (warna per rit).</p></div></div>
+    <div class="head"><div><h2>Peta Rute</h2><p class="help">Peta dasar abu-abu, hanya rute dan titik store yang berwarna. Pilih semua hari (warna per hari) atau satu hari (warna per rit).</p></div></div>
     <div class="maptools" id="mapTools"></div>
     <div id="mapNote"></div>
     <div id="map"></div>
