@@ -321,7 +321,7 @@ document.addEventListener("click", e => {
   const mv = e.target.closest("[data-mv]");
   if (mv) { // pindahkan baris ke atas/bawah (urutan ikut tersimpan saat Simpan)
     const [path, idx, dir] = mv.dataset.mv.split("|"); const arr = getPath(path), i = +idx, j = i + (+dir);
-    if (j < 0 || j >= arr.length) return;
+    if (!Array.isArray(arr) || j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]]; save(); renderTab();
     const b = document.querySelector(`[data-mv="${path}|${j}|${dir}"]`) || document.querySelector(`[data-mv="${path}|${j}|${-dir}"]`); if (b) b.focus();
     return;
@@ -450,53 +450,6 @@ function tugasCard(p) {
 }
 
 /* ---------- 1. Kendaraan ---------- */
-/* Saran armada: coba beberapa susunan armada dengan mesin plan yang sama, rekomendasikan yang paling hemat */
-let saranRes = null, saranRun = false, saranSig = "";
-function saranCands() {
-  const V = state.vehicles, cp = () => V.map(v => JSON.parse(JSON.stringify(v)));
-  const ok = v => v.aktif !== false && +v.kapasitasKg > 0;
-  const C = [{ label: "Armada sekarang", veh: cp(), now: true }];
-  V.forEach((v, i) => { if (ok(v)) { const x = cp(); x[i].aktif = false; C.push({ label: "Tanpa " + vehLabel(v), veh: x, d: -1 }); } });
-  V.forEach((v, i) => { if (!ok(v) && +v.kapasitasKg > 0) { const x = cp(); x[i].aktif = true; C.push({ label: "Aktifkan " + vehLabel(v), veh: x, d: 1 }); } });
-  jenisKendaraan().forEach(j => { const t = V.find(v => ok(v) && normJenis(v.jenis) === normJenis(j)); if (!t) return; const x = cp(); x.push(Object.assign(JSON.parse(JSON.stringify(t)), { id: uid("v"), plat: "(baru)", aktif: true })); C.push({ label: "Tambah 1 " + j, veh: x, d: 1 }); });
-  // ganti satu unit dengan jenis lain (mis. Traga diganti Pickup)
-  const tpl = []; V.forEach(v => { if (+v.kapasitasKg > 0 && !tpl.some(t => normJenis(t.jenis) === normJenis(v.jenis))) tpl.push(v); });
-  V.forEach((v, i) => { if (!ok(v)) return; tpl.forEach(t => { if (normJenis(t.jenis) === normJenis(v.jenis)) return; const x = cp(); x[i] = Object.assign(JSON.parse(JSON.stringify(t)), { id: uid("v"), plat: "(baru)", aktif: true }); C.push({ label: "Ganti " + vehLabel(v) + " dengan " + t.jenis, veh: x, d: 0 }); }); });
-  return C;
-}
-function saranScore(r) { return r.T.un * 1e9 + r.unit * 1e6 + r.T.km; }
-function hitungSaran() {
-  if (saranRun) return; const C = saranCands(); saranRun = true; saranRes = []; saranSig = inputSig(state); let k = 0;
-  const step = () => {
-    if (k >= C.length) { saranRun = false; const el = document.getElementById("saranOut"); if (el) el.innerHTML = saranHtml(); return; }
-    const c = C[k++], st = Object.assign({}, state, { vehicles: c.veh });
-    try { const W = buildWeeks(st, { mendalam: false }); if (!W.some(P => !P || P.error)) { const T = weeksTotal(W), unit = c.veh.filter(v => v.aktif !== false && +v.kapasitasKg > 0).length, cap = c.veh.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0); saranRes.push(Object.assign({}, c, { T, unit, cap, nW: W.length })); } else saranRes.push(Object.assign({}, c, { err: (W.find(P => P && P.error) || {}).error || "gagal" })); }
-    catch (e) { saranRes.push(Object.assign({}, c, { err: e.message })); }
-    const el = document.getElementById("saranOut"); if (el) el.innerHTML = `<p class="hint"><span class="spin" aria-hidden="true"></span> Menghitung ${k}/${C.length}: ${esc(c.label)}…</p>`;
-    setTimeout(step, 20);
-  };
-  step();
-}
-function saranHtml() {
-  if (saranRun) return `<p class="hint"><span class="spin" aria-hidden="true"></span> Menghitung…</p>`;
-  if (!saranRes) return `<p class="hint">Klik tombol untuk menghitung. Butuh sekitar 1 detik per susunan.</p>`;
-  const ok = saranRes.filter(r => !r.err).sort((a, b) => saranScore(a) - saranScore(b)); const now = saranRes.find(r => r.now && !r.err);
-  if (!ok.length) return `<p class="hint">Tidak ada susunan yang bisa dihitung.</p>`;
-  let best = ok[0];
-  // beda tipis (< 3% jarak, unit & layanan sama) dianggap tidak layak mengubah armada
-  if (now && !best.now && best.T.un >= now.T.un && best.unit >= now.unit && best.T.km > now.T.km * 0.97) best = now;
-  const per = best.nW > 1 ? " per siklus " + best.nW + " minggu" : " per minggu";
-  const dif = (a, b, f, u) => { const x = a - b; return Math.abs(x) < 1e-9 ? "" : ` <span class="hint">(${x > 0 ? "+" : ""}${f(x)}${u})</span>`; };
-  const rows = ok.map(r => `<tr class="${r === best ? "sel" : ""}"><td>${r === best ? "⭐ " : ""}${esc(r.label)}</td><td class="num mono">${r.unit}</td><td class="num mono">${fmtNum(r.cap)} kg</td><td class="num mono">${r.T.rit}${now ? dif(r.T.rit, now.T.rit, x => x, "") : ""}</td><td class="num mono">${fmtNum(r.T.km)} km${now ? dif(r.T.km, now.T.km, x => fmtNum(x), "") : ""}</td><td class="num mono">${fmtNum(r.T.jam, 1)} jam</td><td class="num mono" style="${r.T.un ? "color:var(--bad);font-weight:600" : ""}">${r.T.un}</td><td>${r.now ? '<span class="hint">dipakai</span>' : `<button class="btn sm" type="button" data-saran="${saranRes.indexOf(r)}">Pakai</button>`}</td></tr>`).join("");
-  const msg = best.now ? "Armada sekarang sudah susunan yang paling pas: tidak ada susunan lain yang melayani semua store dengan unit lebih sedikit atau jarak lebih hemat dari 3%." : `Rekomendasi: <b>${esc(best.label)}</b>` + (now ? ` (${best.unit} unit, ${best.T.rit} rit, ${fmtNum(best.T.km)} km${per}; armada sekarang ${now.unit} unit, ${now.T.rit} rit, ${fmtNum(now.T.km)} km${now.T.un ? ", " + now.T.un + " kunjungan belum terlayani" : ""}).` : ".");
-  const stale = saranSig && saranSig !== inputSig(state) ? `<div class="banner warn" style="margin:0">Data sudah berubah sejak saran dihitung. Klik Hitung saran armada lagi.</div>` : "";
-  return stale + `<div class="banner ${best.now ? "info" : "warn"}" style="margin:0">${msg}</div><div class="tbl-wrap"><table><thead><tr><th>Susunan armada</th><th class="num">Unit</th><th class="num">Kapasitas</th><th class="num">Rit</th><th class="num">Jarak${esc(per)}</th><th class="num">Jam kerja</th><th class="num">Belum terlayani</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="hint">Dihitung dengan mode cepat dan aturan yang berlaku sekarang (termasuk fairness). Tombol Pakai mengubah data kendaraan; setelah itu klik Buat Plan.</p>`;
-}
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-saran]"); if (!b || !saranRes) return; const r = saranRes[+b.dataset.saran]; if (!r) return;
-  state.vehicles = JSON.parse(JSON.stringify(r.veh)); saranRes = null; save(); renderKendaraan(); toast("Armada diganti: " + r.label + ". Klik Buat Plan untuk membuat plan baru.", 5000);
-});
-
 /* Hari aktif distribusi per kendaraan: dropdown centang (tidak diisi = semua hari) */
 function hariAktifLabel(v) { if (!Array.isArray(v.hariAktif)) return "Semua hari"; const on = v.hariAktif.filter(d => state.params.hari[d]); return on.length ? on.map(d => HARI3[d]).join(", ") : "Tidak ada hari"; }
 function hariAktifCell(v, i, open) {
@@ -526,10 +479,10 @@ function renderKendaraan() {
     <td>${hariAktifCell(v, i)}</td>
     <td><div class="mvbtns"><button class="btn icon sm" type="button" data-mv="vehicles|${i}|-1" aria-label="Pindah ke atas" title="Pindah ke atas" ${i === 0 ? "disabled" : ""}>▲</button><button class="btn icon sm" type="button" data-mv="vehicles|${i}|1" aria-label="Pindah ke bawah" title="Pindah ke bawah" ${i === state.vehicles.length - 1 ? "disabled" : ""}>▼</button><button class="btn icon" type="button" data-del="vehicles|${i}" aria-label="Hapus">✕</button></div></td></tr>`).join("");
   const totCap = state.vehicles.filter(v => v.aktif !== false).reduce((a, v) => a + (+v.kapasitasKg || 0), 0);
-  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari. <b>Bahan bakar</b>: kendaraan solar diutamakan mendapat tugas. <b>Maks km/rit</b> dan <b>Maks radius</b> (km jalan dari gudang) membatasi kendaraan ke rute pendek, misalnya pickup agar hemat BBM. Kosongkan bila tanpa batas. <b>Hari aktif distribusi</b> = hari unit ini boleh dijadwalkan (mis. servis tiap Rabu); default semua hari.</p></div>
+  el.innerHTML = `<div class="head"><div><h2>1 · Data Kendaraan</h2><p>Jenis, plat, kapasitas muatan (kg, otomatis dikonversi ke ton), dan kecepatan rata-rata. <b>Maks shift/hari</b> = berapa rit (shift) yang boleh dijalankan unit ini dalam sehari. <b>Maks km/rit</b> dan <b>Maks radius</b> (km jalan dari gudang) membatasi kendaraan ke rute pendek, misalnya pickup agar hemat BBM. Kosongkan bila tanpa batas. <b>Hari aktif distribusi</b> = hari unit ini boleh dijadwalkan (mis. servis tiap Rabu); default semua hari.</p></div>
     <button class="btn" type="button" id="addV">＋ Tambah kendaraan</button></div>
     <div class="card tbl-wrap lock"><table>
-    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Kendaraan solar diutamakan mendapat tugas (atur di tab Parameter)">Bahan bakar</th><th title="Hari kendaraan ini boleh dijadwalkan distribusi. Default semua hari.">Hari aktif distribusi</th><th></th></tr></thead>
+    <thead><tr><th>Aktif</th><th>Jenis kendaraan</th><th>Nomor plat</th><th class="num">Kapasitas (kg)</th><th class="num">Kecepatan (km/jam)</th><th class="num">Maks shift/hari</th><th class="num" title="Total km jalan pulang-pergi dalam satu rit. Kosong = tanpa batas">Maks km/rit</th><th class="num" title="Hanya store dalam jarak jalan ini dari gudang. Kosong = tanpa batas">Maks radius (km)</th><th title="Jenis bahan bakar kendaraan (informasi, tidak memengaruhi pembagian tugas)">Bahan bakar</th><th title="Hari kendaraan ini boleh dijadwalkan distribusi. Default semua hari.">Hari aktif distribusi</th><th></th></tr></thead>
     <tbody>${rows || `<tr><td colspan="11" class="empty">Belum ada kendaraan. Klik "Tambah kendaraan".</td></tr>`}</tbody></table></div>
     <p class="hint">Total kapasitas armada aktif: <b>${fmtNum(totCap)} kg (${ton(totCap)})</b> per rit. Kecepatan dipakai sebagai dasar, lalu disesuaikan dengan faktor macet di tab Parameter.</p>
     <datalist id="jenisList">${JENIS.map(j => `<option value="${j}">`).join("")}</datalist>`;
@@ -1239,10 +1192,10 @@ function moveHtml(s, days, fromDay) {
   const lockTxt = st.kunci ? "🔒 Terkunci: " + [kh ? "hari " + kh.map(d => HARI[d]).join(", ") : "", k.kendaraan ? (k.kendaraanNama || k.kendaraan) : "", k.shift ? "shift " + k.shift : ""].filter(Boolean).join(" · ") : "Belum dikunci (diatur otomatis).";
   return `<div class="mvbox" data-sid="${esc(s.id)}" data-from="${from ?? ""}" data-days="${days.join(",")}">
 <span class="mvh">Pindah rute / hari / kendaraan / shift</span>
-<span>Rute</span><select data-mv="rute"><option value="">— pilih rute —</option>${rutes.map(t => `<option value="${t.day}|${esc(t.veh.id)}|${t.shift}">${HARI[t.day]} · ${esc(vehLabel(t.veh))} · Shift ${t.shift} (${t.stops.length} store)</option>`).join("")}</select>
-<span>Hari${from != null && days.length > 1 ? " (kunjungan " + HARI[from] + ")" : ""}</span><select data-mv="hari"><option value="">Bebas</option>${dOk.map(d => `<option value="${d}" ${kh && kh.includes(d) && (days.length < 2 || d === from) ? "selected" : ""}>${HARI[d]}</option>`).join("")}</select>
-<span>Kendaraan</span><select data-mv="kendaraan"><option value="">Bebas</option>${vs.map(v => `<option value="${esc(v.id)}" ${k.kendaraan === v.id ? "selected" : ""}>${esc(vehLabel(v))}</option>`).join("")}</select>
-<span>Shift</span><select data-mv="shift"><option value="">Bebas</option>${Array.from({ length: maxSh }, (_, i) => `<option value="${i + 1}" ${+k.shift === i + 1 ? "selected" : ""}>Shift ${i + 1}</option>`).join("")}</select>
+<span>Rute</span><select data-mvsel="rute"><option value="">— pilih rute —</option>${rutes.map(t => `<option value="${t.day}|${esc(t.veh.id)}|${t.shift}">${HARI[t.day]} · ${esc(vehLabel(t.veh))} · Shift ${t.shift} (${t.stops.length} store)</option>`).join("")}</select>
+<span>Hari${from != null && days.length > 1 ? " (kunjungan " + HARI[from] + ")" : ""}</span><select data-mvsel="hari"><option value="">Bebas</option>${dOk.map(d => `<option value="${d}" ${kh && kh.includes(d) && (days.length < 2 || d === from) ? "selected" : ""}>${HARI[d]}</option>`).join("")}</select>
+<span>Kendaraan</span><select data-mvsel="kendaraan"><option value="">Bebas</option>${vs.map(v => `<option value="${esc(v.id)}" ${k.kendaraan === v.id ? "selected" : ""}>${esc(vehLabel(v))}</option>`).join("")}</select>
+<span>Shift</span><select data-mvsel="shift"><option value="">Bebas</option>${Array.from({ length: maxSh }, (_, i) => `<option value="${i + 1}" ${+k.shift === i + 1 ? "selected" : ""}>Shift ${i + 1}</option>`).join("")}</select>
 <span class="mvnote">${lockTxt}</span>
 <span class="mvbtn"><button type="button" class="btn sm primary" data-mvgo="1">Pindahkan & buat ulang plan</button>${st.kunci ? '<button type="button" class="btn sm" data-mvfree="1">Lepas kunci</button>' : ""}</span></div>`;
 }
@@ -1257,9 +1210,9 @@ function afterMove(ids) {
 document.addEventListener("change", e => {
   const zs = e.target.closest("[data-zmv]");
   if (zs) { const st = stById(zs.closest("[data-zsid]").dataset.zsid); if (!st) return; const v = +zs.value; if (v) st.zonaManual = v; else delete st.zonaManual; save(); if (map) map.closePopup(); drawPoints(); toast(v ? st.nama + " dipindah ke zona " + v + ". Tekan 💾 Simpan agar tersimpan." : st.nama + " kembali ke zona otomatis."); return; }
-  const r = e.target.closest('[data-mv="rute"]'); if (!r || !r.value) return;
+  const r = e.target.closest('[data-mvsel="rute"]'); if (!r || !r.value) return;
   const box = r.closest(".mvbox"), [d, vid, sh] = r.value.split("|");
-  box.querySelector('[data-mv="hari"]').value = d; box.querySelector('[data-mv="kendaraan"]').value = vid; box.querySelector('[data-mv="shift"]').value = sh;
+  box.querySelector('[data-mvsel="hari"]').value = d; box.querySelector('[data-mvsel="kendaraan"]').value = vid; box.querySelector('[data-mvsel="shift"]').value = sh;
 });
 document.addEventListener("click", e => {
   if (e.target.closest("[data-zreset]")) { state.stores.forEach(x => delete x.zonaManual); save(); drawPoints(); toast("Semua zona kembali otomatis."); return; }
@@ -1268,7 +1221,7 @@ document.addEventListener("click", e => {
   const box = go.closest(".mvbox"), st = stById(box.dataset.sid); if (!st) return;
   if (go.dataset.mvfree) delete st.kunci;
   else {
-    const val = n => box.querySelector(`[data-mv="${n}"]`).value;
+    const val = n => box.querySelector(`[data-mvsel="${n}"]`).value;
     const k = {}, hd = val("hari"), vid = val("kendaraan"), sh = val("shift");
     if (hd !== "") {
       const days = box.dataset.days ? box.dataset.days.split(",").map(Number) : [], from = box.dataset.from === "" ? null : +box.dataset.from;
@@ -1337,7 +1290,7 @@ async function drawMap() {
     else { const x = list[0]; html = `<div class="seqpin" style="background:${tripColor(x.t, x.i)}">${x.k + 1}</div>`; }
     if (stById(s.id) && stById(s.id).kunci) html = `<div style="position:relative">${html}<span class="lockbadge">🔒</span></div>`;
     const icon = L.divIcon({ html, className: "", iconSize: mapDay === "all" ? [12, 12] : [18, 18] });
-    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>${list.map(x => HARI[x.t.day] + ": " + esc(vehLabel(x.t.veh)) + " · Shift " + x.t.shift).join("<br>")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}${moveHtml(s, days)}`);
+    L.marker([s.lat, s.lng], { icon }).addTo(mapLayer).bindPopup(`<b>${esc(s.nama)}</b><br>${esc([s.alamat, s.kota].filter(Boolean).join(", "))}<br>${fmtNum(s.beratKg)} kg · ${s.loading === "Menaikkan" ? "Menaikkan barang" : "Menurunkan barang"}<br>Hari: ${days.map(d => HARI[d]).join(", ")}<br>${list.map(x => HARI[x.t.day] + ": " + esc(vehLabel(x.t.veh)) + " · Shift " + x.t.shift).join("<br>")}<br>Buka ${esc(s.buka || "-")}–${esc(s.tutup || "-")}${moveHtml(s, servedDays(s.id))}`);
   });
   // store yang belum terlayani tetap tampil di peta (penanda merah bergaris, tanpa garis rute)
   const unG = {};
