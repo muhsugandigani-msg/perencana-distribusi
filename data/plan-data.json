@@ -1340,7 +1340,7 @@
  "params": {
   "jamShift": 8,
   "jamMulai": "08:00",
-  "rasioKgMenit": 30,
+  "rasioKgMenit": 35,
   "hari": [
    true,
    true,
@@ -1441,7 +1441,7 @@
   "tingkatOptimasi": "sedang",
   "rasioGudangKgMenit": 60
  },
- "_savedAt": 1795751465607,
+ "_savedAt": 1795751541222,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3387,8 +3387,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795751465607,
-  "sig": "sl7ix3:20228",
+  "at": 1795751541222,
+  "sig": "1mrpo6k:20228",
   "weekSel": 0,
   "meta": {
    "H": 1,
