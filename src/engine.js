@@ -391,7 +391,7 @@ function orderStops(list) { // pengantaran dulu, penjemputan ("Menaikkan barang"
 }
 
 /* Bangun rute untuk satu hari */
-function routeDay(state, day, visits, depot, vehicles, rnd) {
+function routeDay(state, day, visits, depot, vehicles, rnd, rrc) { // rrc: rit rapat ikut dihitung saat penyisipan (plan cepat)
   const ctx = makeCtx(state, day);
   const U = visits.slice();
   const trips = [];
@@ -411,16 +411,18 @@ function routeDay(state, day, visits, depot, vehicles, rnd) {
     if (okc.length) route = [okc[rnd ? Math.floor(rnd() * okc.length) : 0]];
     if (!route) { done[vi] = true; continue; }
     U.splice(U.indexOf(route[0]), 1);
-    // penyisipan termurah
+    // penyisipan termurah (rit rapat: lompatan antar store di atas batas km ikut dihitung, Gandi 2026-11-27)
+    const RRd = state.params.ritRapat || {}, rrOn = !!rrc && RRd.aktif !== false, rrKm = +RRd.km > 0 ? +RRd.km : 5;
+    const pen = r => { if (!rrOn) return 0; let x = 0; for (let q = 1; q < r.stops.length; q++) x += Math.max(0, r.stops[q].km - rrKm); return 60 * x; };
     for (;;) {
-      const base = sim(route).ret;
+      const b0 = sim(route), base = b0.ret + pen(b0);
       let best = null;
       for (const s of U) {
         if (route.some(r => r.id === s.id)) continue; // store sama tidak dua kali dalam satu rit
         for (let k = 0; k <= route.length; k++) {
           const r2 = route.slice(0, k).concat([s], route.slice(k));
           const res = sim(r2);
-          if (res.ok) { const c = res.ret - base; if (!best || c < best.c) best = { c, r2, s }; }
+          if (res.ok) { const c = res.ret + pen(res) - base; if (!best || c < best.c) best = { c, r2, s }; }
         }
       }
       if (!best) break;
@@ -588,7 +590,7 @@ function* buildPlanCore(state, opts) {
   /* 2) Rute per hari + pindahkan kunjungan yang tidak muat ke hari lain */
   function construct(A, rnd) {
     const { perDay, load } = A, res = {};
-    days.forEach(d => res[d] = routeDay(state, d, perDay[d], depot, vehicles, rnd));
+    days.forEach(d => res[d] = routeDay(state, d, perDay[d], depot, vehicles, rnd, !deep));
     for (let pass = 0; pass < 2; pass++) {
       for (const d of days) {
         const left = res[d].left.slice();
@@ -596,7 +598,7 @@ function* buildPlanCore(state, opts) {
           if (fixedIds.has(s.id)) continue;
           const others = okDays(s).filter(x => x !== d && !perDay[x].some(y => y.id === s.id)).sort((a, b) => (load[a] / cap[a]) - (load[b] / cap[b]));
           for (const o of others) {
-            const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles, rnd);
+            const trial = routeDay(state, o, perDay[o].concat([s]), depot, vehicles, rnd, !deep);
             if (!trial.left.includes(s) && trial.left.length <= res[o].left.length) {
               perDay[o].push(s); res[o] = trial; load[o] += work(s);
               perDay[d] = perDay[d].filter(x => x !== s); res[d].left = res[d].left.filter(x => x !== s); load[d] -= work(s);
@@ -613,7 +615,7 @@ function* buildPlanCore(state, opts) {
 
   /* --- representasi solusi harian: R[vi] = daftar rit (array store) berurutan shift --- */
   // Rit rapat (Gandi 2026-11-27): perpindahan antar store dalam satu rit yang lebih jauh dari batas km diberi biaya tambahan 60 per km
-  const RR = state.params.ritRapat || {}, RR_ON = RR.aktif === true, RR_KM = +RR.km > 0 ? +RR.km : 5, RR_P = 60;
+  const RR = state.params.ritRapat || {}, RR_ON = RR.aktif !== false, RR_KM = +RR.km > 0 ? +RR.km : 5, RR_P = 60;
   function vehEval(d, vi, list, detail) {
     const ctx = ctxOf[d], v = vehicles[vi]; evals++;
     let t = ctx.start, sh = 0, cost = 0; const trips = [];
