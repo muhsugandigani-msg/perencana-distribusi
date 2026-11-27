@@ -1441,9 +1441,10 @@
   "tingkatOptimasi": "tinggi",
   "zonaV2": true,
   "metodeZona": true,
-  "subZona": true
+  "subZona": true,
+  "rasioGudangKgMenit": 40
  },
- "_savedAt": 1795739690149,
+ "_savedAt": 1795740658089,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3389,8 +3390,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795739690149,
-  "sig": "6dzvga:20251",
+  "at": 1795740658089,
+  "sig": "vl7wmj:20275",
   "weekSel": 0,
   "meta": {
    "H": 1,
