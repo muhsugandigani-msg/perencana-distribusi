@@ -1439,9 +1439,9 @@
   "loadMuatanV1": true,
   "posLoadingGudang": 1,
   "tingkatOptimasi": "sedang",
-  "rasioGudangKgMenit": 40
+  "rasioGudangKgMenit": 60
  },
- "_savedAt": 1795742772930,
+ "_savedAt": 1795751411448,
  "jarakJalan": {
   "cfg": "T|tol reformasi",
   "k": [
@@ -3387,8 +3387,8 @@
   "t": 1795700232718
  },
  "savedPlan": {
-  "at": 1795742772930,
-  "sig": "sl5zgl:20228",
+  "at": 1795751411448,
+  "sig": "sl7ix3:20228",
   "weekSel": 0,
   "meta": {
    "H": 1,
