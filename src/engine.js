@@ -612,6 +612,8 @@ function* buildPlanCore(state, opts) {
   }
 
   /* --- representasi solusi harian: R[vi] = daftar rit (array store) berurutan shift --- */
+  // Rit rapat (Gandi 2026-11-27): perpindahan antar store dalam satu rit yang lebih jauh dari batas km diberi biaya tambahan 60 per km
+  const RR = state.params.ritRapat || {}, RR_ON = RR.aktif === true, RR_KM = +RR.km > 0 ? +RR.km : 5, RR_P = 60;
   function vehEval(d, vi, list, detail) {
     const ctx = ctxOf[d], v = vehicles[vi]; evals++;
     let t = ctx.start, sh = 0, cost = 0; const trips = [];
@@ -621,6 +623,7 @@ function* buildPlanCore(state, opts) {
       const r = simFlex(ctx, depot, v, t, sh, orderStops(stops), detail);
       if (!r.ok) return null;
       cost += (W.rit + r.dur + W.km * r.km) * fuelF[vi];
+      if (RR_ON) for (let q = 1; q < r.stops.length; q++) { const x = r.stops[q].km - RR_KM; if (x > 0) cost += RR_P * x; }
       if (detail) trips.push(Object.assign(r, { day: d, vIdx: vi, veh: v, shift: r.shiftEff || sh }));
       t = r.end;
     }
