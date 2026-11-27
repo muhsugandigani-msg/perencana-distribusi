@@ -1134,6 +1134,7 @@ function makeCtx(state, day) {
   const breaks = (state.breaks[day] || []).map(b => [toMin(b.mulai), toMin(b.selesai)]).filter(b => b[0] != null && b[1] != null && b[1] > b[0]).sort((a, b) => a[0] - b[0]);
   const peaks = (L.jamSibuk || []).map(j => [toMin(j.mulai), toMin(j.selesai), +j.faktor || 1]).filter(j => j[0] != null && j[1] != null);
   const rate = Math.max(0.01, +p.rasioKgMenit || 30);
+  const rateG = Math.max(0.01, +p.rasioGudangKgMenit || rate); // rasio loading/unloading di gudang (Gandi 2026-11-27: dibedakan dari store)
   function advance(t, dur) {
     for (let guard = 0; guard < 100; guard++) {
       for (const [a, b] of breaks) if (a <= t && t < b) t = b;
@@ -1195,7 +1196,7 @@ function makeCtx(state, day) {
     const D = (state.stores || []).find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
     let minTrip = Infinity;
     if (D) for (const s of state.stores) if (s !== D && s.aktif !== false && s.lat != null && s.antaran !== "Origin") {
-      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate * 2 + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
+      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate + (+s.beratKg || 0) / rateG + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
       if (m < minTrip) minTrip = m;
     }
     const after = acts.filter(a => a.waktu === "setelah" && a.dihitung).reduce((x, a) => x + (+a.durasi || 0), 0);
@@ -1204,7 +1205,7 @@ function makeCtx(state, day) {
   // posisi menaikkan barang di gudang di antara aktivitas sebelum berangkat (default: tepat sebelum berangkat)
   const mi = (p.aktivitas || []).findIndex(a => a.muatan && a.waktu !== "setelah");
   const loadPos = mi >= 0 ? mi : Number.isFinite(+p.posLoadingGudang) && p.posLoadingGudang !== null && p.posLoadingGudang !== "" ? +p.posLoadingGudang - 0.5 : Infinity; // dimuat sebelum aktivitas berindeks > loadPos
-  return { day, breaks, advance, leg, overlap, rate, acts, H, start, skip1, s1end, loadPos };
+  return { day, breaks, advance, leg, overlap, rate, rateG, acts, H, start, skip1, s1end, loadPos };
 }
 
 /* Simulasi satu rit. stops: array store (pengantaran dulu, lalu penjemputan). */
@@ -1218,7 +1219,7 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   // menaikkan barang di gudang (otomatis, Gandi 2026-11-27): muatan store antaran Tujuan + Menurunkan barang di rit ini ÷ rasio loading/unloading, masuk jam shift
   const kgNaik = stops.reduce((x, s) => x + (s.loading !== "Menaikkan" && s.antaran !== "Origin" ? +s.beratKg || 0 : 0), 0);
   let loaded = !(kgNaik > 0);
-  const doLoad = () => { loaded = true; t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, kgNaik / ctx.rate); if (detail) segs.push({ type: "muat", start: s, end: t, label: "Menaikkan barang di " + depot.nama, kg: kgNaik }); };
+  const doLoad = () => { loaded = true; t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, kgNaik / ctx.rateG); if (detail) segs.push({ type: "muat", start: s, end: t, label: "Menaikkan barang di " + depot.nama, kg: kgNaik }); };
   for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   for (const a of acts.filter(a => a.dihitung)) { if (!loaded && a._i > ctx.loadPos) doLoad(); t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   if (!loaded) doLoad();
@@ -1252,7 +1253,7 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
   if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
   // barang yang dinaikkan di store (mis. PRODUKSI) diturunkan di gudang setelah pulang, rasio sama dengan store (Gandi 2026-11-27)
-  if (kgPick > 0) { t = ctx.advance(t, 0); const s0 = t; t = ctx.advance(t, kgPick / ctx.rate); if (detail) segs.push({ type: "bongkar", start: s0, end: t, label: "Menurunkan barang di " + depot.nama, kg: kgPick }); }
+  if (kgPick > 0) { t = ctx.advance(t, 0); const s0 = t; t = ctx.advance(t, kgPick / ctx.rateG); if (detail) segs.push({ type: "bongkar", start: s0, end: t, label: "Menurunkan barang di " + depot.nama, kg: kgPick }); }
   const ret = t;
   let end = t, endCounted = t;
   for (const a of after) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama + " (untuk rit berikutnya)", after: true }); if (a.dihitung) endCounted = t; }
@@ -3682,6 +3683,7 @@ function normalize(s) {
   // kolom Kota/Kabupaten baru: store contoh yang alamatnya otomatis ikut alamat & kota dari data contoh
   s.stores.forEach(x => { if (x.kota == null) { const smp = SAMPLE.stores.find(y => y.id === x.id && Math.abs(y.lat - x.lat) < 1e-6 && Math.abs(y.lng - x.lng) < 1e-6); if (smp) { x.kota = smp.kota; if (x.alamatAuto !== false) x.alamat = smp.alamat; } } });
   s.vehicles.forEach(x => { x.id = String(x.id || uid("v")); x.bbm = /bensin/i.test(x.bbm || "") ? "Bensin" : "Solar"; for (const k of ["maksKmRit", "maksRadiusKm"]) { const v = num(x[k]); if (v != null && v > 0) x[k] = v; else delete x[k]; } if (Array.isArray(x.hariAktif)) { const h = [...new Set(x.hariAktif.map(Number).filter(d => d >= 0 && d < 7))].sort((a, b) => a - b); if (h.length === 7) delete x.hariAktif; else x.hariAktif = h; } else delete x.hariAktif; });
+  if (!(+s.params.rasioGudangKgMenit > 0)) s.params.rasioGudangKgMenit = +s.params.rasioKgMenit > 0 ? +s.params.rasioKgMenit : 30; // data lama: rasio gudang = rasio store
   if (!["rendah", "sedang", "tinggi"].includes(s.params.tingkatOptimasi)) s.params.tingkatOptimasi = "sedang";
   if (!s.params.zonaV2) { s.params.zonaV2 = true; s.params.metodeZona = true; s.params.subZona = true; } // susun per zona + sub-zona per shift (Gandi 2026-11-27)
   s.params.fairness = Object.assign(clone(SAMPLE.params.fairness), isObj(s.params.fairness) ? s.params.fairness : {});
@@ -4341,7 +4343,8 @@ function renderParameter() {
       <div class="field"><label for="pShift">Jam kerja per shift (termasuk loading &amp; istirahat)</label><div class="row"><input id="pShift" class="in num" type="number" min="1" max="16" step="0.5" data-t="num" data-k="params.jamShift" value="${p.jamShift}" style="max-width:110px"><span>jam</span></div><span class="hint">Dihitung dari aktivitas pertama yang "masuk jam shift" sampai kendaraan kembali ke gudang, termasuk aktivitas "setelah kembali" yang dicentang masuk jam shift.</span></div>
       <div class="field"><label for="pMulai">Jam mulai aktivitas</label><input id="pMulai" class="in mono" type="time" data-k="params.jamMulai" value="${esc(p.jamMulai)}" style="max-width:130px"></div>
       <div class="field" ${p.aktivitas.some(a => a.waktu === "setelah") ? "" : "hidden"}><label for="pHari1">Hari distribusi pertama dalam minggu (untuk aktivitas "setelah kembali")</label><select id="pHari1" class="in" data-k="params.loadingHariPertama" style="max-width:480px"><option value="malam" ${p.loadingHariPertama !== "pagi" ? "selected" : ""}>Disiapkan di akhir hari terakhir minggu lalu (mis. Sabtu sore)</option><option value="pagi" ${p.loadingHariPertama === "pagi" ? "selected" : ""}>Dilakukan pagi hari, sebelum berangkat</option></select><span class="hint">Jika pilih pagi hari, hari distribusi terakhir (mis. Sabtu) tidak perlu loading sore untuk esok hari.</span></div>
-      <div class="field"><label for="pRasio">Rasio waktu loading/unloading</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Berlaku untuk menurunkan maupun menaikkan barang, di store dan di gudang: aktivitas "dari muatan" (loading di gudang) = total muatan rit ÷ rasio; barang yang dinaikkan di store (mis. PRODUKSI) diturunkan di gudang setelah pulang dengan rasio yang sama. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
+      <div class="field"><label for="pRasio">Rasio waktu loading/unloading store</label><div class="row"><input id="pRasio" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioKgMenit" value="${p.rasioKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Menurunkan / menaikkan barang di store. Contoh: 900 kg ÷ ${p.rasioKgMenit || 30} = ${fmtNum(900 / (p.rasioKgMenit || 30))} menit.</span></div>
+      <div class="field"><label for="pRasioG">Rasio waktu loading/unloading gudang</label><div class="row"><input id="pRasioG" class="in num" type="number" min="1" step="1" data-t="num" data-k="params.rasioGudangKgMenit" value="${p.rasioGudangKgMenit}" style="max-width:110px"><span>kg per menit</span></div><span class="hint">Menaikkan barang di gudang sebelum berangkat (muatan store tujuan di rit itu), dan menurunkan barang di gudang setelah pulang (barang yang dinaikkan di store, mis. PRODUKSI). Contoh: 900 kg ÷ ${p.rasioGudangKgMenit || 30} = ${fmtNum(900 / (p.rasioGudangKgMenit || 30))} menit.</span></div>
     </div>
   </div>
   <div class="card pad" style="display:grid;gap:12px">
@@ -5028,7 +5031,7 @@ function exportExcel() {
   const veh = [["Jenis", "Plat", "Kapasitas (kg)", "Kapasitas (ton)", "Kecepatan (km/jam)", "Maks shift/hari", "Maks km/rit", "Maks radius dari gudang (km)", "Bahan bakar", "Hari aktif distribusi", "Aktif"]];
   state.vehicles.forEach(v => veh.push([v.jenis, v.plat, +v.kapasitasKg, +(v.kapasitasKg / 1000).toFixed(2), +v.kecepatan, +v.maksShift, +v.maksKmRit > 0 ? +v.maksKmRit : "Bebas", +v.maksRadiusKm > 0 ? +v.maksRadiusKm : "Bebas", v.bbm || "Solar", hariAktifLabel(v), v.aktif !== false ? "Ya" : "Tidak"]));
   const sto = storeRows();
-  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Susun per zona", state.params.metodeZona !== false ? "Ya" + (state.params.subZona !== false ? ", sub-zona per shift" : "") : "Tidak"], ["Optimasi", state.params.optimasiMendalam !== false ? "Aktif, tingkat " + (state.params.tingkatOptimasi || "sedang") : "Tidak aktif"], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio waktu loading/unloading (kg/menit)", state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
+  const par = [["Parameter", "Nilai"], ["Jam kerja per shift (jam)", state.params.jamShift], ["Susun per zona", state.params.metodeZona !== false ? "Ya" + (state.params.subZona !== false ? ", sub-zona per shift" : "") : "Tidak"], ["Optimasi", state.params.optimasiMendalam !== false ? "Aktif, tingkat " + (state.params.tingkatOptimasi || "sedang") : "Tidak aktif"], ["Jam mulai aktivitas", state.params.jamMulai], ["Rasio waktu loading/unloading store (kg/menit)", state.params.rasioKgMenit], ["Rasio waktu loading/unloading gudang (kg/menit)", state.params.rasioGudangKgMenit || state.params.rasioKgMenit], ["Hari distribusi", HARI.filter((h, d) => state.params.hari[d]).join(", ")], [], ["Aktivitas", "Durasi (menit)", "Hari", "Waktu pelaksanaan", "Berlaku", "Masuk jam shift"]];
   par.push(["Menaikkan/menurunkan barang di gudang", "Otomatis: muatan rit ÷ rasio loading/unloading", "Setiap hari", "Sebelum berangkat / setelah pulang", "Setiap rit", "Ya"]);
   state.params.aktivitas.forEach(a => par.push([a.nama, a.durasi, HARI3.filter((h, d) => a.hari[d]).join(", "), a.waktu === "setelah" ? "Setelah kembali ke gudang" : "Sebelum berangkat", a.berlaku === "shift1" ? "Shift 1 saja" : "Setiap shift", a.dihitung ? "Ya" : "Tidak"]));
   // (pengaturan prioritas solar & fairness dihapus atas permintaan Gandi)

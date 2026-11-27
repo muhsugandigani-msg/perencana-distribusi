@@ -147,6 +147,7 @@ function makeCtx(state, day) {
   const breaks = (state.breaks[day] || []).map(b => [toMin(b.mulai), toMin(b.selesai)]).filter(b => b[0] != null && b[1] != null && b[1] > b[0]).sort((a, b) => a[0] - b[0]);
   const peaks = (L.jamSibuk || []).map(j => [toMin(j.mulai), toMin(j.selesai), +j.faktor || 1]).filter(j => j[0] != null && j[1] != null);
   const rate = Math.max(0.01, +p.rasioKgMenit || 30);
+  const rateG = Math.max(0.01, +p.rasioGudangKgMenit || rate); // rasio loading/unloading di gudang (Gandi 2026-11-27: dibedakan dari store)
   function advance(t, dur) {
     for (let guard = 0; guard < 100; guard++) {
       for (const [a, b] of breaks) if (a <= t && t < b) t = b;
@@ -208,7 +209,7 @@ function makeCtx(state, day) {
     const D = (state.stores || []).find(s => s.antaran === "Origin" && s.aktif !== false && s.lat != null);
     let minTrip = Infinity;
     if (D) for (const s of state.stores) if (s !== D && s.aktif !== false && s.lat != null && s.antaran !== "Origin") {
-      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate * 2 + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
+      const m = leg([D.lat, D.lng], [s.lat, s.lng], null, 40).min + (+s.beratKg || 0) / rate + (+s.beratKg || 0) / rateG + leg([s.lat, s.lng], [D.lat, D.lng], null, 40).min;
       if (m < minTrip) minTrip = m;
     }
     const after = acts.filter(a => a.waktu === "setelah" && a.dihitung).reduce((x, a) => x + (+a.durasi || 0), 0);
@@ -217,7 +218,7 @@ function makeCtx(state, day) {
   // posisi menaikkan barang di gudang di antara aktivitas sebelum berangkat (default: tepat sebelum berangkat)
   const mi = (p.aktivitas || []).findIndex(a => a.muatan && a.waktu !== "setelah");
   const loadPos = mi >= 0 ? mi : Number.isFinite(+p.posLoadingGudang) && p.posLoadingGudang !== null && p.posLoadingGudang !== "" ? +p.posLoadingGudang - 0.5 : Infinity; // dimuat sebelum aktivitas berindeks > loadPos
-  return { day, breaks, advance, leg, overlap, rate, acts, H, start, skip1, s1end, loadPos };
+  return { day, breaks, advance, leg, overlap, rate, rateG, acts, H, start, skip1, s1end, loadPos };
 }
 
 /* Simulasi satu rit. stops: array store (pengantaran dulu, lalu penjemputan). */
@@ -231,7 +232,7 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   // menaikkan barang di gudang (otomatis, Gandi 2026-11-27): muatan store antaran Tujuan + Menurunkan barang di rit ini ÷ rasio loading/unloading, masuk jam shift
   const kgNaik = stops.reduce((x, s) => x + (s.loading !== "Menaikkan" && s.antaran !== "Origin" ? +s.beratKg || 0 : 0), 0);
   let loaded = !(kgNaik > 0);
-  const doLoad = () => { loaded = true; t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, kgNaik / ctx.rate); if (detail) segs.push({ type: "muat", start: s, end: t, label: "Menaikkan barang di " + depot.nama, kg: kgNaik }); };
+  const doLoad = () => { loaded = true; t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, kgNaik / ctx.rateG); if (detail) segs.push({ type: "muat", start: s, end: t, label: "Menaikkan barang di " + depot.nama, kg: kgNaik }); };
   for (const a of acts.filter(a => !a.dihitung)) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   for (const a of acts.filter(a => a.dihitung)) { if (!loaded && a._i > ctx.loadPos) doLoad(); t = ctx.advance(t, 0); if (shiftStart == null) shiftStart = t; const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama }); }
   if (!loaded) doLoad();
@@ -265,7 +266,7 @@ function simulate(ctx, depot, veh, t0, shiftNo0, stops, detail) {
   t = ctx.advance(t, 0); const tb = t; t = ctx.advance(t, back.min); km += back.km;
   if (detail && back.min > 0) segs.push({ type: "jalan", start: tb, end: t, label: "Kembali ke " + depot.nama, km: back.km });
   // barang yang dinaikkan di store (mis. PRODUKSI) diturunkan di gudang setelah pulang, rasio sama dengan store (Gandi 2026-11-27)
-  if (kgPick > 0) { t = ctx.advance(t, 0); const s0 = t; t = ctx.advance(t, kgPick / ctx.rate); if (detail) segs.push({ type: "bongkar", start: s0, end: t, label: "Menurunkan barang di " + depot.nama, kg: kgPick }); }
+  if (kgPick > 0) { t = ctx.advance(t, 0); const s0 = t; t = ctx.advance(t, kgPick / ctx.rateG); if (detail) segs.push({ type: "bongkar", start: s0, end: t, label: "Menurunkan barang di " + depot.nama, kg: kgPick }); }
   const ret = t;
   let end = t, endCounted = t;
   for (const a of after) { t = ctx.advance(t, 0); const s = t; t = ctx.advance(t, +a.durasi); if (detail) segs.push({ type: "aktivitas", start: s, end: t, label: a.nama + " (untuk rit berikutnya)", after: true }); if (a.dihitung) endCounted = t; }
